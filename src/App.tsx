@@ -17,6 +17,9 @@ const INIT_INV = [
   { id:"PI-2025-0003", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumber:"4500001236", amount:45000000,  currency:"IDR", desc:"Maintenance services June 2025",    status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
   { id:"PI-2025-0004", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumber:"4500001237", amount:230000000, currency:"IDR", desc:"Cleaning services contract Q2",     status:"Submitted",    taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
   { id:"PI-2025-0005", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumber:"4500001238", amount:15000000,  currency:"IDR", desc:"Courier services May 2025",         status:"Rejected",     taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001239", amount:8500,       currency:"USD", desc:"Enterprise software license renewal (Salesforce)",  status:"Submitted",    taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0007", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001240", amount:12000,      currency:"AUD", desc:"Training & consulting services – Sydney workshop",  status:"Under Review", taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumber:"4500001241", amount:45000,      currency:"CNY", desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
 ];
 const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, desc:"BRM requires 50 laptops and 20 workstations for office expansion.", items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",estPrice:8000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",estPrice:12500000}], status:"Open" },
@@ -74,6 +77,9 @@ const applyTheme = mode => { C = mode==="dark"?DARK:LIGHT; STC = buildSTC(); };
 
 // ── Helpers ────────────────────────────────────────────────────
 const idr = n => "IDR " + Number(n||0).toLocaleString("id-ID");
+const CURRENCY_LOCALE = { IDR:"id-ID", USD:"en-US", AUD:"en-AU", CNY:"zh-CN" };
+const fmtAmt = (n, currency = "IDR") =>
+  `${currency} ${Number(n||0).toLocaleString(CURRENCY_LOCALE[currency] || "en-US")}`;
 const uid = () => Date.now().toString(36);
 
 const Badge = ({s}) => {
@@ -271,7 +277,7 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
           <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
             <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.desc} · {inv.invoiceDate}</div></div>
             <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-              <div style={{fontSize:12,fontWeight:700}}>{idr(inv.amount)}</div>
+              <div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div>
               <Badge s={inv.status}/>
             </div>
           </div>
@@ -392,13 +398,13 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
       <FilterBar opts={["All","Draft","Submitted","Under Review","Confirmed","Rejected"]} val={flt} onChange={setFlt}/>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
-          <thead><tr>{["Invoice No.","PO Number","Date","Due Date","Amount (IDR)","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
+          <thead><tr>{["Invoice No.","PO Number","Date","Due Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
           <tbody>
             {mine.length===0?<tr><Td colSpan={8} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:mine.map(inv=>(
               <tr key={inv.id}>
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
                 <Td>{inv.poNumber}</Td><Td>{inv.invoiceDate}</Td><Td>{inv.dueDate}</Td>
-                <Td style={{fontWeight:700}}>{idr(inv.amount)}</Td>
+                <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
                 <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ {inv.files.length} file(s)</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
                 <Td><div style={{display:"flex",gap:5}}>
@@ -413,7 +419,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",idr(view.amount)],["Faktur Pajak",view.taxDoc],["Submitted",view.submittedAt]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",view.submittedAt]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
           </div>
@@ -616,7 +622,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           {pending.length===0?<div style={{color:C.t2,fontSize:13}}>No invoices pending review.</div>:pending.slice(0,5).map(inv=>(
             <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
               <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.vendorName} · {inv.invoiceDate}</div></div>
-              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}><div style={{fontSize:12,fontWeight:700}}>{idr(inv.amount)}</div><Badge s={inv.status}/></div>
+              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}><div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div><Badge s={inv.status}/></div>
             </div>
           ))}
           {pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{marginTop:10,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}>View all {pending.length} pending →</button>}
@@ -656,14 +662,14 @@ const BrmInvoice = ({invoices,setInvoices}) => {
       </div>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-          <thead><tr>{["Invoice No.","Vendor","PO No.","Inv. Date","Amount (IDR)","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
+          <thead><tr>{["Invoice No.","Vendor","PO No.","Inv. Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
           <tbody>
             {list.length===0?<tr><Td colSpan={8} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:list.map(inv=>(
               <tr key={inv.id}>
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
                 <Td><div style={{fontWeight:500}}>{inv.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{inv.vendorId}</div></Td>
                 <Td>{inv.poNumber}</Td><Td>{inv.invoiceDate}</Td>
-                <Td style={{fontWeight:700}}>{idr(inv.amount)}</Td>
+                <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
                 <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ Complete</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
                 <Td><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
@@ -678,7 +684,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",idr(view.amount)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
