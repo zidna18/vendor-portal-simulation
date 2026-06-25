@@ -114,6 +114,20 @@ const fmtDate = d => {
     default: return d;
   }
 };
+const parseToISO = raw => {
+  if (!raw) return "";
+  const fmt = SETTINGS.dateFmt;
+  const sep = fmt.includes("/") ? "/" : fmt.includes(".") ? "." : "-";
+  const parts = raw.split(sep);
+  if (parts.length !== 3) return "";
+  let y, m, day;
+  if (fmt.startsWith("DD"))      { [day, m, y] = parts; }
+  else if (fmt.startsWith("MM")) { [m, day, y] = parts; }
+  else                           { [y, m, day] = parts; }
+  if (!y || y.length !== 4) return "";
+  const iso = `${y}-${m.padStart(2,"0")}-${day.padStart(2,"0")}`;
+  return isNaN(new Date(iso).getTime()) ? "" : iso;
+};
 const uid = () => Date.now().toString(36);
 
 const Badge = ({s}) => {
@@ -140,6 +154,16 @@ const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
   <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
     style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
 );
+const DateInp = ({value, onChange, style={}}) => {
+  const [raw, setRaw] = useState(value ? fmtDate(value) : "");
+  const handle = v => {
+    setRaw(v);
+    if (!v) { onChange(""); return; }
+    const iso = parseToISO(v);
+    if (iso) onChange(iso);
+  };
+  return <Inp value={raw} onChange={handle} placeholder={SETTINGS.dateFmt} style={style}/>;
+};
 const Sel = ({value,onChange,opts,style={}}) => (
   <select value={value} onChange={e=>onChange(e.target.value)}
     style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,outline:"none",boxSizing:"border-box",background:C.field,...style}}>
@@ -391,8 +415,8 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
         </div>
         <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
         <div><Lbl>PO Number *</Lbl><Inp value={f.poNumber} onChange={v=>s("poNumber",v)} placeholder="4500001234"/></div>
-        <div><Lbl>Invoice Date *</Lbl><Inp type="date" value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
-        <div><Lbl>Due Date *</Lbl><Inp type="date" value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
+        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
+        <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
         <div><Lbl>Amount (IDR) *</Lbl><Inp type="number" value={f.amount} onChange={v=>s("amount",v)} placeholder="0"/></div>
         <div><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
@@ -499,7 +523,7 @@ const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
         <strong>RFQ:</strong> {rfq.id} · Closing: {rfq.closingDate} · Est. Value: {idr(rfq.estVal)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-        <div><Lbl>Valid Until *</Lbl><Inp type="date" value={f.validUntil} onChange={v=>s("validUntil",v)}/></div>
+        <div><Lbl>Valid Until *</Lbl><DateInp value={f.validUntil} onChange={v=>s("validUntil",v)}/></div>
         <div><Lbl>Total Amount (IDR)</Lbl><Inp value={idr(f.totalAmt)} onChange={()=>{}}/></div>
       </div>
       <div style={{marginBottom:14}}>
@@ -895,7 +919,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
             <div style={{gridColumn:"1/-1"}}><Lbl>RFQ Title *</Lbl><Inp value={f.title} onChange={v=>sf("title",v)} placeholder="e.g. Procurement of Office Chairs"/></div>
             <div><Lbl>Category *</Lbl><Inp value={f.cat} onChange={v=>sf("cat",v)} placeholder="e.g. Furniture"/></div>
-            <div><Lbl>Closing Date *</Lbl><Inp type="date" value={f.closingDate} onChange={v=>sf("closingDate",v)}/></div>
+            <div><Lbl>Closing Date *</Lbl><DateInp value={f.closingDate} onChange={v=>sf("closingDate",v)}/></div>
             <div style={{gridColumn:"1/-1"}}><Lbl>Estimated Value (IDR)</Lbl><Inp type="number" value={f.estVal} onChange={v=>sf("estVal",v)}/></div>
           </div>
           <div style={{marginBottom:12}}><Lbl>Description / Scope</Lbl><TA value={f.desc} onChange={v=>sf("desc",v)} placeholder="Describe the requirement…"/></div>
