@@ -39,14 +39,14 @@ const WHT_TYPES = [
   {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
 ];
 const INIT_INV = [
-  { id:"PI-2025-0001", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumber:"4500001234", companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Confirmed",    taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
-  { id:"PI-2025-0002", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumber:"4500001235", companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review", taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0003", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumber:"4500001236", companyCode:"BRMS", amount:45000000,  currency:"IDR", vatBase:45000000,  vatAmt:4950000,  whtType:"PPh23", whtBase:45000000,  whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0004", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumber:"4500001237", companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",    taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0005", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumber:"4500001238", companyCode:"LMRS", amount:15000000,  currency:"IDR", vatBase:15000000,  vatAmt:1650000,  whtType:"PPh23", whtBase:15000000,  whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",     taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
-  { id:"PI-2025-0006", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001239", companyCode:"GMIN", amount:8500,       currency:"USD", vatBase:8500,       vatAmt:935,      whtType:"PPh26", whtBase:8500,       whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Submitted",    taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0007", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001240", companyCode:"CPMS", amount:12000,      currency:"AUD", vatBase:12000,      vatAmt:1320,     whtType:"PPh23", whtBase:12000,      whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Under Review", taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumber:"4500001241", companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0001", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Confirmed",    taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
+  { id:"PI-2025-0002", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review", taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0003", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000,  currency:"IDR", vatBase:45000000,  vatAmt:4950000,  whtType:"PPh23", whtBase:45000000,  whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0004", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",    taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0005", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000,  currency:"IDR", vatBase:15000000,  vatAmt:1650000,  whtType:"PPh23", whtBase:15000000,  whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",     taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,       currency:"USD", vatBase:8500,       vatAmt:935,      whtType:"PPh26", whtBase:8500,       whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Submitted",    taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0007", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,      currency:"AUD", vatBase:12000,      vatAmt:1320,     whtType:"PPh23", whtBase:12000,      whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Under Review", taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
 ];
 const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, desc:"BRM requires 50 laptops and 20 workstations for office expansion.", items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",estPrice:8000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",estPrice:12500000}], status:"Open" },
@@ -147,6 +147,7 @@ const parseToISO = raw => {
   return isNaN(new Date(iso).getTime()) ? "" : iso;
 };
 const uid = () => Date.now().toString(36);
+const fmtPOs = inv => { const a=inv.poNumbers?.length?inv.poNumbers:inv.poNumber?[inv.poNumber]:[]; return a.join(", ")||"—"; };
 
 const Badge = ({s}) => {
   const x = STC[s]||{c:C.draft,bg:C.draftBg};
@@ -409,14 +410,57 @@ const VendorProfile = ({user}) => {
   );
 };
 
+// ── PO Value Help ──────────────────────────────────────────────
+const PoValueHelp = ({values,onConfirm,onClose}) => {
+  const [items,setItems]=useState([...values]);
+  const [raw,setRaw]=useState("");
+  const parse=txt=>txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+  const applyRaw=()=>{const p=parse(raw);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");};
+  const pasteClip=async()=>{
+    try{const t=await navigator.clipboard.readText();const p=parse(t);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");}
+    catch{alert("Clipboard access denied. Please paste manually into the field.");}
+  };
+  return (
+    <Modal title="PO Number – Value Help" onClose={onClose} width={500}>
+      <div style={{fontSize:10,color:C.t2,marginBottom:12}}>📡 SAP API: A_PurchaseOrder (OData v4) · Separate entries by newline, comma, or semicolon</div>
+      <Lbl>Paste or type PO numbers</Lbl>
+      <div style={{display:"flex",gap:8,marginBottom:6}}>
+        <textarea value={raw} onChange={e=>setRaw(e.target.value)} placeholder={"4500001234\n4500001235\n4500001236"} rows={4}
+          style={{flex:1,padding:"7px 10px",background:C.field,border:`1px solid ${C.border}`,borderRadius:4,color:C.t1,fontSize:12,fontFamily:"monospace",resize:"vertical",outline:"none"}}/>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <Btn v="neutral" sm onClick={pasteClip}>Paste</Btn>
+          <Btn v="primary" sm onClick={applyRaw}>Add →</Btn>
+        </div>
+      </div>
+      <div style={{marginBottom:14,fontSize:11,color:C.t2}}>Click <strong>Paste</strong> to read from clipboard automatically, or type and click <strong>Add</strong>.</div>
+      <Lbl>Selected PO Numbers ({items.length})</Lbl>
+      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",marginBottom:16,minHeight:40}}>
+        {items.length===0&&<div style={{padding:"12px 16px",color:C.t2,fontSize:12,textAlign:"center"}}>No PO numbers selected yet.</div>}
+        {items.map((po,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 12px",background:i%2===0?C.subtle:C.card,borderBottom:i<items.length-1?`1px solid ${C.border}`:"none"}}>
+            <span style={{fontFamily:"monospace",fontSize:12}}>{po}</span>
+            <button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12,padding:"0 4px"}}>✕</button>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+        <Btn v="primary" onClick={()=>onConfirm(items)}>Confirm ({items.length} PO{items.length!==1?"s":""})</Btn>
+      </div>
+    </Modal>
+  );
+};
+
 // ── Invoice Form Modal ─────────────────────────────────────────
 const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumber:"",companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
   const rmFile=i=>s("files",f.files.filter((_,j)=>j!==i));
   const save=draft=>{
+    if(!draft&&!(f.poNumbers||[]).length){alert("Please add at least one PO Number before submitting.");return;}
     if(!draft&&!f.companyCode){alert("Please select a Company Code before submitting.");return;}
     if(!draft&&!f.taxDoc){alert("Please enter Faktur Pajak number before submitting.");return;}
     if(!draft&&(f.files||[]).length<2){alert("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.");return;}
@@ -432,7 +476,22 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
         <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
-        <div><Lbl>PO Number *</Lbl><Inp value={f.poNumber} onChange={v=>s("poNumber",v)} placeholder="4500001234"/></div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>PO Number *</Lbl>
+          <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",background:C.field,minHeight:38}}>
+            <div onClick={()=>setShowPoHelp(true)} style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"5px 8px",alignContent:"flex-start",cursor:"pointer",minHeight:36}}>
+              {!(f.poNumbers||[]).length&&<span style={{color:C.t2,fontSize:12,alignSelf:"center",pointerEvents:"none"}}>— click or press value help to add PO numbers —</span>}
+              {(f.poNumbers||[]).map((po,i)=>(
+                <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,gap:6,lineHeight:"20px"}}>
+                  <span style={{fontFamily:"monospace"}}>{po}</span>
+                  <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>
+                </span>
+              ))}
+            </div>
+            <button onClick={()=>setShowPoHelp(true)} title="Open Value Help" style={{padding:"0 14px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:12,color:C.t1,fontWeight:700,letterSpacing:1}}>...</button>
+          </div>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
+        </div>
         <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
         <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
         <div>
@@ -474,6 +533,7 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
       </div>
+      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
     </Modal>
   );
 };
@@ -502,7 +562,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
             {mine.length===0?<tr><Td colSpan={9} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:mine.map(inv=>(
               <tr key={inv.id}>
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
-                <Td>{inv.poNumber}</Td>
+                <Td>{fmtPOs(inv)}</Td>
                 <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
                 <Td>{fmtDate(inv.invoiceDate)}</Td><Td>{fmtDate(inv.dueDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
@@ -520,9 +580,15 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <Lbl>PO Numbers</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+            </div>
           </div>
           <Sep/>
           <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
@@ -777,7 +843,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
                 <Td><div style={{fontWeight:500}}>{inv.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{inv.vendorId}</div></Td>
                 <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
-                <Td>{inv.poNumber}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
+                <Td>{fmtPOs(inv)}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
                 <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ Complete</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
@@ -793,9 +859,15 @@ const BrmInvoice = ({invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <Lbl>PO Numbers</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+            </div>
           </div>
           <Sep/>
           <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
