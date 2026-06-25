@@ -577,9 +577,106 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
   );
 };
 
+// ── PDF Preview Components ─────────────────────────────────────
+const InvoiceDoc = ({inv}) => {
+  const vd=VENDORS[inv.vendorId]||{};
+  const net=Number(inv.amount||0)+Number(inv.vatAmt||0)-Number(inv.whtAmt||0);
+  const rows=[["Amount",fmtAmt(inv.amount,inv.currency)],["VAT Base Amount",fmtAmt(inv.vatBase||0,inv.currency)],["VAT Amount (PPN 11%)",fmtAmt(inv.vatAmt||0,inv.currency)],
+    ...(inv.whtType?[[WHT_TYPES.find(w=>w.v===inv.whtType)?.l||inv.whtType,""],["WHT Base Amount",fmtAmt(inv.whtBase||0,inv.currency)],["WHT Amount","("+fmtAmt(inv.whtAmt||0,inv.currency)+")"]]:[])] ;
+  return (
+    <div style={{fontFamily:"Arial,sans-serif",fontSize:11,color:"#222",lineHeight:1.55}}>
+      <div style={{display:"flex",justifyContent:"space-between",paddingBottom:10,borderBottom:"2px solid #0070F2",marginBottom:14}}>
+        <div><div style={{fontSize:16,fontWeight:800,color:"#0070F2"}}>PRE-INVOICE</div><div style={{fontSize:9,color:"#aaa",marginTop:2}}>{inv.id}</div></div>
+        <div style={{textAlign:"right",fontSize:10}}><div style={{fontWeight:700,fontSize:12}}>{inv.invoiceNo}</div><div>Date: {fmtDate(inv.invoiceDate)}</div><div>Due: {fmtDate(inv.dueDate)}</div></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12,padding:"8px 10px",background:"#f5f5f5",borderRadius:4,fontSize:10}}>
+        <div><div style={{fontWeight:700,fontSize:9,color:"#888",textTransform:"uppercase",marginBottom:3}}>From (Vendor)</div><div style={{fontWeight:600}}>{inv.vendorName}</div><div style={{color:"#666",fontSize:9}}>{vd.addr}</div><div>NPWP: {vd.tax}</div></div>
+        <div><div style={{fontWeight:700,fontSize:9,color:"#888",textTransform:"uppercase",marginBottom:3}}>Bill To</div><div style={{fontWeight:600}}>{ccName(inv.companyCode)}</div><div style={{color:"#666"}}>Code: {inv.companyCode}</div><div>PO: {fmtPOs(inv)}</div></div>
+      </div>
+      <div style={{padding:"6px 10px",background:"#EBF5FB",borderLeft:"3px solid #0070F2",marginBottom:12,fontSize:10}}>{inv.desc}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,marginBottom:10}}><tbody>
+        {rows.map(([l,v],i)=><tr key={i} style={{background:i%2?"#f9f9f9":"#fff"}}><td style={{padding:"4px 8px",borderBottom:"1px solid #ececec"}}>{l}</td><td style={{padding:"4px 8px",textAlign:"right",borderBottom:"1px solid #ececec",fontFamily:"monospace"}}>{v}</td></tr>)}
+        <tr style={{background:"#0070F2",color:"#fff"}}><td style={{padding:"6px 8px",fontWeight:700}}>Net Payable</td><td style={{padding:"6px 8px",textAlign:"right",fontWeight:700,fontFamily:"monospace"}}>{fmtAmt(net,inv.currency)}</td></tr>
+      </tbody></table>
+      <div style={{fontSize:9,color:"#aaa",display:"flex",justifyContent:"space-between",paddingTop:6,borderTop:"1px solid #e0e0e0"}}><span>Faktur Pajak: {inv.taxDoc||"—"}</span><span>BRM Vendor Portal</span></div>
+    </div>
+  );
+};
+const FakturDoc = ({inv}) => {
+  const vd=VENDORS[inv.vendorId]||{};
+  return (
+    <div style={{fontFamily:"Arial,sans-serif",fontSize:11,color:"#222",lineHeight:1.55}}>
+      <div style={{textAlign:"center",borderBottom:"2px solid #222",paddingBottom:10,marginBottom:14}}>
+        <div style={{fontSize:14,fontWeight:800,letterSpacing:1}}>FAKTUR PAJAK</div>
+        <div style={{fontSize:9,color:"#888",marginTop:2}}>Kode dan Nomor Seri Faktur Pajak</div>
+        <div style={{fontSize:13,fontWeight:700,letterSpacing:2,marginTop:3}}>{inv.taxDoc||"—"}</div>
+      </div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12,fontSize:10}}><tbody>
+        {[["Nama PKP Penjual",inv.vendorName,true],["NPWP Penjual",vd.tax||"—",false],["Alamat Penjual",vd.addr||"—",false]].map(([l,v,b])=>(
+          <tr key={l}><td style={{padding:"3px 0",color:"#888",width:150}}>{l}</td><td>: <span style={{fontWeight:b?700:400}}>{v}</span></td></tr>
+        ))}
+        <tr><td colSpan={2} style={{padding:"4px 0",borderTop:"1px solid #ddd"}}></td></tr>
+        {[["Nama Pembeli",ccName(inv.companyCode),true],["Kode Perusahaan",inv.companyCode,false],["Tanggal Faktur",fmtDate(inv.invoiceDate),false]].map(([l,v,b])=>(
+          <tr key={l}><td style={{padding:"3px 0",color:"#888",width:150}}>{l}</td><td>: <span style={{fontWeight:b?700:400}}>{v}</span></td></tr>
+        ))}
+      </tbody></table>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12,fontSize:10}}>
+        <thead><tr style={{background:"#f0f0f0"}}><th style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"left",width:30}}>No.</th><th style={{padding:"4px 8px",border:"1px solid #ccc"}}>BKP / Jasa Kena Pajak</th><th style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"right"}}>Harga</th></tr></thead>
+        <tbody><tr><td style={{padding:"4px 8px",border:"1px solid #ccc"}}>1</td><td style={{padding:"4px 8px",border:"1px solid #ccc"}}>{inv.desc}</td><td style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"right",fontFamily:"monospace"}}>{fmtAmt(inv.vatBase||inv.amount||0,inv.currency)}</td></tr></tbody>
+      </table>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,fontSize:10,marginBottom:16}}>
+        <div style={{display:"flex",gap:20}}><span style={{color:"#888"}}>Dasar Pengenaan Pajak (DPP)</span><span style={{fontFamily:"monospace"}}>{fmtAmt(inv.vatBase||0,inv.currency)}</span></div>
+        <div style={{display:"flex",gap:20,fontWeight:700,borderTop:"1px solid #333",paddingTop:4}}><span>PPN (11%)</span><span style={{fontFamily:"monospace"}}>{fmtAmt(inv.vatAmt||0,inv.currency)}</span></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,fontSize:9,color:"#888",textAlign:"center",borderTop:"1px solid #ddd",paddingTop:10}}>
+        <div>Pembeli<br/><br/><br/>________________<br/>{ccName(inv.companyCode)}</div>
+        <div>{inv.vendorName}<br/><br/><br/>________________<br/>Kuasa Penjual</div>
+      </div>
+      <div style={{textAlign:"center",fontSize:9,color:"#aaa",marginTop:10,paddingTop:6,borderTop:"1px solid #ececec"}}>Diterbitkan melalui BRM Vendor Portal</div>
+    </div>
+  );
+};
+const PdfViewer = ({filename,inv,onClose}) => {
+  const isFaktur=filename.toLowerCase().includes("faktur");
+  const dl=()=>{
+    const txt=isFaktur
+      ?`FAKTUR PAJAK\nNo: ${inv.taxDoc||"—"}\nPenjual: ${inv.vendorName}\nNPWP: ${VENDORS[inv.vendorId]?.tax||"—"}\nPembeli: ${ccName(inv.companyCode)}\nDPP: ${fmtAmt(inv.vatBase||0,inv.currency)}\nPPN: ${fmtAmt(inv.vatAmt||0,inv.currency)}`
+      :`PRE-INVOICE\nNo: ${inv.invoiceNo}\nDate: ${fmtDate(inv.invoiceDate)}\nFrom: ${inv.vendorName}\nTo: ${ccName(inv.companyCode)}\nPO: ${fmtPOs(inv)}\nAmount: ${fmtAmt(inv.amount,inv.currency)}\nNet: ${fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)-Number(inv.whtAmt||0),inv.currency)}`;
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));a.download=filename.replace(".pdf",".txt");a.click();
+  };
+  const print=()=>{
+    const el=document.getElementById("bvp-pdf-doc");if(!el)return;
+    const w=window.open("","_blank","width=720,height=900");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;padding:32px;color:#222;font-size:11px}table{width:100%;border-collapse:collapse}td,th{padding:4px 8px}@media print{body{padding:16px}}</style></head><body>${el.innerHTML}</body></html>`);
+    w.document.close();setTimeout(()=>{w.focus();w.print();},400);
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1100,padding:16}}>
+      <div style={{background:C.card,borderRadius:8,width:680,maxWidth:"95vw",maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.3)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,borderRadius:"8px 8px 0 0",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:13,fontWeight:700,color:C.t1}}>📄 {filename}</span>
+            <span style={{fontSize:10,color:C.t2,padding:"1px 8px",border:`1px solid ${C.border}`,borderRadius:10}}>Demo Preview</span>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <Btn v="ghost" sm onClick={print}>Print</Btn>
+            <Btn v="primary" sm onClick={dl}>Download</Btn>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2,lineHeight:1,marginLeft:4}}>✕</button>
+          </div>
+        </div>
+        <div style={{background:"#d8d8d8",padding:20,flex:1,overflowY:"auto"}}>
+          <div id="bvp-pdf-doc" style={{background:"#fff",maxWidth:540,margin:"0 auto",padding:"36px 44px",boxShadow:"0 2px 14px rgba(0,0,0,0.18)"}}>
+            {isFaktur?<FakturDoc inv={inv}/>:<InvoiceDoc inv={inv}/>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Vendor Invoice ─────────────────────────────────────────────
 const VendorInvoice = ({user,invoices,setInvoices}) => {
-  const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null);
+  const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const emptyF={invoiceNo:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
@@ -666,12 +763,15 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
-          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>{(view.files||[]).map(a=><div key={a} style={{fontSize:13,color:C.primary}}>📄 {a}</div>)}{!view.files?.length&&<Val/>}</div>
+          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}>📄 {a}</button>)}
+            {!view.files?.length&&<Val/>}</div>
           {view.rejReason&&<div style={{padding:10,background:C.errBg,borderRadius:4,fontSize:12,color:C.err,marginBottom:12}}><strong>Rejection Reason:</strong> {view.rejReason}</div>}
           {view.status==="Confirmed"&&<div style={{padding:10,background:C.okBg,borderRadius:4,fontSize:12,color:C.ok}}>✓ Invoice confirmed by BRM. SAP Supplier Invoice created via <code>API_SUPPLIERINVOICE_PROCESS_SRV</code>. Flexible Workflow initiated for payment approval.</div>}
         </Modal>
       )}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name}/>}
+      {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
     </div>
   );
 };
@@ -885,7 +985,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const BrmInvoice = ({invoices,setInvoices}) => {
-  const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState("");
+  const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const emptyF={invoiceNo:"",vendorId:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
@@ -972,7 +1072,9 @@ const BrmInvoice = ({invoices,setInvoices}) => {
             {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-          <div style={{marginBottom:14}}><Lbl>Attachments</Lbl>{(view.files||[]).map(a=><div key={a} style={{fontSize:13,color:C.primary}}>📄 {a}</div>)}{!view.files?.length&&<Val/>}</div>
+          <div style={{marginBottom:14}}><Lbl>Attachments</Lbl>
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}>📄 {a}</button>)}
+            {!view.files?.length&&<Val/>}</div>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginBottom:14}}>
             <strong>SAP Integration:</strong> Accepting will call <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> to park the Supplier Invoice in SAP S/4HANA Public Cloud and trigger Flexible Workflow for posting approval.
           </div>
@@ -990,6 +1092,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="neutral" onClick={()=>{setRejM(null);setRejR("");}}>Cancel</Btn><Btn v="danger" onClick={reject}>Confirm Rejection</Btn></div>
         </Modal>
       )}
+      {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
     </div>
   );
 };
