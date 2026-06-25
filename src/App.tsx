@@ -507,10 +507,8 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
           <Sel value={f.whtType} onChange={v=>s("whtType",v)} opts={WHT_TYPES}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: WithholdingTaxType / WithholdingTaxCode</div>
         </div>
-        {f.whtType&&<>
-          <div><Lbl>WHT Base Amount</Lbl><Inp type="number" value={f.whtBase} onChange={v=>s("whtBase",v)} placeholder="0"/></div>
-          <div><Lbl>WHT Amount</Lbl><Inp type="number" value={f.whtAmt} onChange={v=>s("whtAmt",v)} placeholder="0"/></div>
-        </>}
+        <div><Lbl>WHT Base Amount</Lbl><Inp type="number" value={f.whtBase} onChange={v=>s("whtBase",v)} placeholder="0"/></div>
+        <div><Lbl>WHT Amount</Lbl><Inp type="number" value={f.whtAmt} onChange={v=>s("whtAmt",v)} placeholder="0"/></div>
         <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
