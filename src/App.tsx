@@ -20,15 +20,33 @@ const COMPANY_CODES = [
   { v:"LMRS", l:"PT Linge Minerals" },
 ];
 const ccName = code => COMPANY_CODES.find(c=>c.v===code)?.l || "";
+// SAP I_Currency — ISO 4217 transaction currencies
+const CURRENCIES = [
+  {v:"IDR",l:"IDR – Indonesian Rupiah"}, {v:"USD",l:"USD – US Dollar"},
+  {v:"EUR",l:"EUR – Euro"},              {v:"SGD",l:"SGD – Singapore Dollar"},
+  {v:"AUD",l:"AUD – Australian Dollar"}, {v:"JPY",l:"JPY – Japanese Yen"},
+  {v:"CNY",l:"CNY – Chinese Yuan"},      {v:"GBP",l:"GBP – British Pound"},
+  {v:"MYR",l:"MYR – Malaysian Ringgit"}, {v:"HKD",l:"HKD – Hong Kong Dollar"},
+  {v:"SAR",l:"SAR – Saudi Riyal"},
+];
+// SAP WithholdingTaxType / WithholdingTaxCode — Indonesian Pasal WHT
+const WHT_TYPES = [
+  {v:"",      l:"— None / Not Applicable —"},
+  {v:"PPh21", l:"PPh Pasal 21 – Employment & Professional Income"},
+  {v:"PPh22", l:"PPh Pasal 22 – Import & Certain Goods (1.5%)"},
+  {v:"PPh23", l:"PPh Pasal 23 – Services, Rent & Royalties (2%)"},
+  {v:"PPh26", l:"PPh Pasal 26 – Foreign Entity / Non-Resident (20%)"},
+  {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
+];
 const INIT_INV = [
-  { id:"PI-2025-0001", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumber:"4500001234", companyCode:"BRMS", amount:125000000, currency:"IDR", desc:"Office supplies Q2 2025",                          status:"Confirmed",    taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
-  { id:"PI-2025-0002", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumber:"4500001235", companyCode:"CPMS", amount:87500000,  currency:"IDR", desc:"IT peripherals and accessories",                    status:"Under Review", taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0003", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumber:"4500001236", companyCode:"BRMS", amount:45000000,  currency:"IDR", desc:"Maintenance services June 2025",                    status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0004", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumber:"4500001237", companyCode:"SHSI", amount:230000000, currency:"IDR", desc:"Cleaning services contract Q2",                     status:"Submitted",    taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0005", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumber:"4500001238", companyCode:"LMRS", amount:15000000,  currency:"IDR", desc:"Courier services May 2025",                         status:"Rejected",     taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
-  { id:"PI-2025-0006", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001239", companyCode:"GMIN", amount:8500,       currency:"USD", desc:"Enterprise software license renewal (Salesforce)",  status:"Submitted",    taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0007", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001240", companyCode:"CPMS", amount:12000,      currency:"AUD", desc:"Training & consulting services – Sydney workshop",  status:"Under Review", taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumber:"4500001241", companyCode:"GMIN", amount:45000,      currency:"CNY", desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0001", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumber:"4500001234", companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Confirmed",    taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
+  { id:"PI-2025-0002", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumber:"4500001235", companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review", taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0003", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumber:"4500001236", companyCode:"BRMS", amount:45000000,  currency:"IDR", vatBase:45000000,  vatAmt:4950000,  whtType:"PPh23", whtBase:45000000,  whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0004", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumber:"4500001237", companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",    taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0005", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumber:"4500001238", companyCode:"LMRS", amount:15000000,  currency:"IDR", vatBase:15000000,  vatAmt:1650000,  whtType:"PPh23", whtBase:15000000,  whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",     taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001239", companyCode:"GMIN", amount:8500,       currency:"USD", vatBase:8500,       vatAmt:935,      whtType:"PPh26", whtBase:8500,       whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Submitted",    taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0007", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumber:"4500001240", companyCode:"CPMS", amount:12000,      currency:"AUD", vatBase:12000,      vatAmt:1320,     whtType:"PPh23", whtBase:12000,      whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Under Review", taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumber:"4500001241", companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
 ];
 const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, desc:"BRM requires 50 laptops and 20 workstations for office expansion.", items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",estPrice:8000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",estPrice:12500000}], status:"Open" },
@@ -394,7 +412,7 @@ const VendorProfile = ({user}) => {
 // ── Invoice Form Modal ─────────────────────────────────────────
 const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumber:"",companyCode:"",amount:"",currency:"IDR",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumber:"",companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
   const rmFile=i=>s("files",f.files.filter((_,j)=>j!==i));
@@ -406,7 +424,7 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
     onSave(obj);
   };
   return (
-    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={700}>
+    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
@@ -417,8 +435,24 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
         <div><Lbl>PO Number *</Lbl><Inp value={f.poNumber} onChange={v=>s("poNumber",v)} placeholder="4500001234"/></div>
         <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
         <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
-        <div><Lbl>Amount (IDR) *</Lbl><Inp type="number" value={f.amount} onChange={v=>s("amount",v)} placeholder="0"/></div>
-        <div><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
+        <div>
+          <Lbl>Transaction Currency *</Lbl>
+          <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: I_Currency</div>
+        </div>
+        <div><Lbl>Amount *</Lbl><Inp type="number" value={f.amount} onChange={v=>s("amount",v)} placeholder="0"/></div>
+        <div><Lbl>VAT Base Amount</Lbl><Inp type="number" value={f.vatBase} onChange={v=>s("vatBase",v)} placeholder="0"/></div>
+        <div><Lbl>VAT Amount</Lbl><Inp type="number" value={f.vatAmt} onChange={v=>s("vatAmt",v)} placeholder="0"/></div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>WHT Type</Lbl>
+          <Sel value={f.whtType} onChange={v=>s("whtType",v)} opts={WHT_TYPES}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: WithholdingTaxType / WithholdingTaxCode</div>
+        </div>
+        {f.whtType&&<>
+          <div><Lbl>WHT Base Amount</Lbl><Inp type="number" value={f.whtBase} onChange={v=>s("whtBase",v)} placeholder="0"/></div>
+          <div><Lbl>WHT Amount</Lbl><Inp type="number" value={f.whtAmt} onChange={v=>s("whtAmt",v)} placeholder="0"/></div>
+        </>}
+        <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
       <div style={{padding:14,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
@@ -486,9 +520,16 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
+          </div>
+          <Sep/>
+          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
@@ -752,9 +793,16 @@ const BrmInvoice = ({invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
+          </div>
+          <Sep/>
+          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:14}}><Lbl>Attachments</Lbl>{(view.files||[]).map(a=><div key={a} style={{fontSize:13,color:C.primary}}>📄 {a}</div>)}{!view.files?.length&&<Val/>}</div>
