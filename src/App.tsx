@@ -173,6 +173,11 @@ const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
   <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
     style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
 );
+// Positive-only amount input — no spinner buttons, rejects negative/non-numeric input
+const AmtInp = ({value,onChange,placeholder="0",style={}}) => (
+  <input type="text" inputMode="decimal" value={value} onChange={e=>{const v=e.target.value;if(v===""||/^\d*\.?\d*$/.test(v))onChange(v);}} placeholder={placeholder}
+    style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
+);
 const DateInp = ({value, onChange, style={}}) => {
   const [raw, setRaw] = useState(value ? fmtDate(value) : "");
   const handle = v => {
@@ -216,6 +221,42 @@ const FilterBar = ({opts,val,onChange}) => (
         {f}
       </button>
     ))}
+  </div>
+);
+// SAP Fiori-style compact filter bar
+const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,marginBottom:16,overflow:"hidden"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:13,fontWeight:700,color:C.t1,letterSpacing:0.2}}>Filters</span>
+        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 8px",fontWeight:700}}>{activeTokens.length}</span>}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <Btn v="ghost" sm onClick={onReset}>Reset</Btn>
+        <Btn v="primary" sm onClick={onGo}>Go</Btn>
+      </div>
+    </div>
+    <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 16px"}}>
+      {children}
+    </div>
+    {activeTokens.length>0&&(
+      <div style={{padding:"6px 16px 10px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:2}}>Active:</span>
+        {activeTokens.map((t,i)=>(
+          <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}`,borderRadius:12,padding:"2px 10px 2px 8px",fontSize:11,color:C.info}}>
+            <span style={{fontWeight:600}}>{t.label}:</span>{t.val}
+            <button onClick={t.onClear} style={{background:"none",border:"none",cursor:"pointer",color:C.info,fontSize:13,padding:"0 0 0 2px",lineHeight:1}}>×</button>
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+);
+// Compact filter field label wrapper (Fiori style)
+const FField = ({label,children}) => (
+  <div>
+    <div style={{fontSize:10,color:C.t2,fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:0.7}}>{label}</div>
+    {children}
   </div>
 );
 
@@ -499,16 +540,16 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
           <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: I_Currency</div>
         </div>
-        <div><Lbl>Amount *</Lbl><Inp type="number" value={f.amount} onChange={v=>s("amount",v)} placeholder="0"/></div>
-        <div><Lbl>VAT Base Amount</Lbl><Inp type="number" value={f.vatBase} onChange={v=>s("vatBase",v)} placeholder="0"/></div>
-        <div><Lbl>VAT Amount</Lbl><Inp type="number" value={f.vatAmt} onChange={v=>s("vatAmt",v)} placeholder="0"/></div>
+        <div><Lbl>Amount *</Lbl><AmtInp value={f.amount} onChange={v=>s("amount",v)}/></div>
+        <div><Lbl>VAT Base Amount</Lbl><AmtInp value={f.vatBase} onChange={v=>s("vatBase",v)}/></div>
+        <div><Lbl>VAT Amount</Lbl><AmtInp value={f.vatAmt} onChange={v=>s("vatAmt",v)}/></div>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>WHT Type</Lbl>
           <Sel value={f.whtType} onChange={v=>s("whtType",v)} opts={WHT_TYPES}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: WithholdingTaxType / WithholdingTaxCode</div>
         </div>
-        <div><Lbl>WHT Base Amount</Lbl><Inp type="number" value={f.whtBase} onChange={v=>s("whtBase",v)} placeholder="0"/></div>
-        <div><Lbl>WHT Amount</Lbl><Inp type="number" value={f.whtAmt} onChange={v=>s("whtAmt",v)} placeholder="0"/></div>
+        <div><Lbl>WHT Base Amount</Lbl><AmtInp value={f.whtBase} onChange={v=>s("whtBase",v)}/></div>
+        <div><Lbl>WHT Amount</Lbl><AmtInp value={f.whtAmt} onChange={v=>s("whtAmt",v)}/></div>
         <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
@@ -538,9 +579,30 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
 
 // ── Vendor Invoice ─────────────────────────────────────────────
 const VendorInvoice = ({user,invoices,setInvoices}) => {
-  const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [flt,setFlt]=useState("All");
+  const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null);
+  const emptyF={invoiceNo:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
+  const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
+  const go=()=>setActive({...draft});
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});setRk(r=>r+1);};
+  const clr=k=>{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}));if(k==="dateFrom"||k==="dateTo")setRk(r=>r+1);};
   const v=VENDORS[user.vendorId];
-  const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>flt==="All"||i.status===flt);
+  const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
+    (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
+    (!active.status||i.status===active.status)&&
+    (!active.companyCode||i.companyCode===active.companyCode)&&
+    (!active.currency||i.currency===active.currency)&&
+    (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
+    (!active.dateTo||i.invoiceDate<=active.dateTo)
+  );
+  const tokens=[
+    active.invoiceNo&&{label:"Invoice No.",val:active.invoiceNo,onClear:()=>clr("invoiceNo")},
+    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
+    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
+    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    active.dateFrom&&{label:"Date From",val:fmtDate(active.dateFrom),onClear:()=>clr("dateFrom")},
+    active.dateTo&&{label:"Date To",val:fmtDate(active.dateTo),onClear:()=>clr("dateTo")},
+  ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
   return (
@@ -552,7 +614,14 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
         </div>
         <Btn onClick={()=>{setEd(null);setForm(true);}}>+ Add Invoice</Btn>
       </div>
-      <FilterBar opts={["All","Draft","Submitted","Under Review","Confirmed","Rejected"]} val={flt} onChange={setFlt}/>
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
+        <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
+        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
+        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Draft",l:"Draft"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
+        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
+        <FField label="Invoice Date From"><DateInp key={`df${rk}`} value={draft.dateFrom} onChange={v=>sd("dateFrom",v)}/></FField>
+        <FField label="Invoice Date To"><DateInp key={`dt${rk}`} value={draft.dateTo} onChange={v=>sd("dateTo",v)}/></FField>
+      </FioriBar>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
           <thead><tr>{["Invoice No.","PO Number","Company Code","Date","Due Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
@@ -816,9 +885,32 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const BrmInvoice = ({invoices,setInvoices}) => {
-  const [flt,setFlt]=useState("All"); const [vFlt,setVFlt]=useState("All"); const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState("");
+  const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState("");
+  const emptyF={invoiceNo:"",vendorId:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
+  const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
+  const go=()=>setActive({...draft});
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});setRk(r=>r+1);};
+  const clr=k=>{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}));if(k==="dateFrom"||k==="dateTo")setRk(r=>r+1);};
   const vids=[...new Set(invoices.map(i=>i.vendorId))];
-  const list=invoices.filter(i=>flt==="All"||i.status===flt).filter(i=>vFlt==="All"||i.vendorId===vFlt);
+  const list=invoices.filter(i=>
+    (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
+    (!active.vendorId||i.vendorId===active.vendorId)&&
+    (!active.status||i.status===active.status)&&
+    (!active.companyCode||i.companyCode===active.companyCode)&&
+    (!active.currency||i.currency===active.currency)&&
+    (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
+    (!active.dateTo||i.invoiceDate<=active.dateTo)
+  );
+  const tokens=[
+    active.invoiceNo&&{label:"Invoice No.",val:active.invoiceNo,onClear:()=>clr("invoiceNo")},
+    active.vendorId&&{label:"Vendor",val:VENDORS[active.vendorId]?.name||active.vendorId,onClear:()=>clr("vendorId")},
+    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
+    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
+    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    active.dateFrom&&{label:"Date From",val:fmtDate(active.dateFrom),onClear:()=>clr("dateFrom")},
+    active.dateTo&&{label:"Date To",val:fmtDate(active.dateTo),onClear:()=>clr("dateTo")},
+  ].filter(Boolean);
   const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
@@ -828,10 +920,15 @@ const BrmInvoice = ({invoices,setInvoices}) => {
         <div style={{fontSize:20,fontWeight:800}}>Invoice Management – All Vendors</div>
         <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
       </div>
-      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-        <FilterBar opts={["All","Submitted","Under Review","Confirmed","Rejected"]} val={flt} onChange={setFlt}/>
-        <Sel value={vFlt} onChange={setVFlt} style={{width:200}} opts={[{v:"All",l:"All Vendors"},...vids.map(id=>({v:id,l:VENDORS[id]?.name||id}))]}/>
-      </div>
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
+        <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
+        <FField label="Vendor"><Sel value={draft.vendorId} onChange={v=>sd("vendorId",v)} opts={[{v:"",l:"All Vendors"},...vids.map(id=>({v:id,l:VENDORS[id]?.name||id}))]}/></FField>
+        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
+        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
+        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
+        <FField label="Invoice Date From"><DateInp key={`df${rk}`} value={draft.dateFrom} onChange={v=>sd("dateFrom",v)}/></FField>
+        <FField label="Invoice Date To"><DateInp key={`dt${rk}`} value={draft.dateTo} onChange={v=>sd("dateTo",v)}/></FField>
+      </FioriBar>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
           <thead><tr>{["Invoice No.","Vendor","Company Code","PO No.","Inv. Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
