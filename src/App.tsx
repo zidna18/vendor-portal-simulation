@@ -76,10 +76,35 @@ let STC = buildSTC();
 const applyTheme = mode => { C = mode==="dark"?DARK:LIGHT; STC = buildSTC(); };
 
 // ── Helpers ────────────────────────────────────────────────────
-const idr = n => "IDR " + Number(n||0).toLocaleString("id-ID");
-const CURRENCY_LOCALE = { IDR:"id-ID", USD:"en-US", AUD:"en-AU", CNY:"zh-CN" };
-const fmtAmt = (n, currency = "IDR") =>
-  `${currency} ${Number(n||0).toLocaleString(CURRENCY_LOCALE[currency] || "en-US")}`;
+let SETTINGS = { numFmt:"comma", dateFmt:"YYYY-MM-DD" };
+const applySettings = s => { SETTINGS = {...SETTINGS,...s}; };
+
+const idr = n => {
+  const t = SETTINGS.numFmt==="dot" ? "." : ",";
+  return "IDR " + Math.round(Number(n||0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, t);
+};
+const fmtAmt = (n, currency = "IDR") => {
+  const dec = currency==="IDR" ? 0 : 2;
+  const t = SETTINGS.numFmt==="dot" ? "." : ",";
+  const d = SETTINGS.numFmt==="dot" ? "," : ".";
+  const [ip, dp] = Number(n||0).toFixed(dec).split(".");
+  return `${currency} ${ip.replace(/\B(?=(\d{3})+(?!\d))/g, t)}${dp ? d+dp : ""}`;
+};
+const fmtDate = d => {
+  if (!d) return "—";
+  const p = String(d).split("-");
+  if (p.length !== 3 || p[0].length !== 4) return d;
+  const [y,m,day] = p;
+  switch(SETTINGS.dateFmt) {
+    case "DD/MM/YYYY": return `${day}/${m}/${y}`;
+    case "MM/DD/YYYY": return `${m}/${day}/${y}`;
+    case "DD.MM.YYYY": return `${day}.${m}.${y}`;
+    case "MM.DD.YYYY": return `${m}.${day}.${y}`;
+    case "DD-MM-YYYY": return `${day}-${m}-${y}`;
+    case "YYYY/MM/DD": return `${y}/${m}/${day}`;
+    default: return d;
+  }
+};
 const uid = () => Date.now().toString(36);
 
 const Badge = ({s}) => {
@@ -146,7 +171,7 @@ const Th = ({children}) => <th style={{padding:"9px 12px",textAlign:"left",fontS
 const Td = ({children,style={}}) => <td style={{padding:"9px 12px",fontSize:13,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
 
 // ── Shell Bar ──────────────────────────────────────────────────
-const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme}) => {
+const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSettings}) => {
   const nav = user.role==="vendor"
     ? [{id:"dashboard",l:"🏠 Home"},{id:"profile",l:"👤 Profile"},{id:"invoice",l:"🧾 Invoice"},{id:"quotation",l:"📝 Quotation"}]
     : [{id:"dashboard",l:"🏠 Home"},{id:"brm-invoice",l:"🧾 Invoice Mgmt"},{id:"brm-quotation",l:"📋 Quotation Mgmt"},{id:"brm-rfq",l:"📢 RFQ Mgmt"}];
@@ -168,6 +193,7 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme}) => {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10,marginLeft:10}}>
           <button onClick={onToggleTheme} title={theme==="dark"?"Switch to light mode":"Switch to dark mode"} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{theme==="dark"?"☀️":"🌙"}</button>
+          <button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:12,fontWeight:700}}>{user.name}</div>
             <div style={{fontSize:10,opacity:.65}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div>
@@ -275,7 +301,7 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
         <div style={{fontWeight:700,fontSize:14,marginBottom:14,color:C.t1}}>Recent Invoice Activity</div>
         {mi.length===0?<div style={{color:C.t2,fontSize:13}}>No invoices submitted yet.</div>:mi.slice(0,4).map(inv=>(
           <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
-            <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.desc} · {inv.invoiceDate}</div></div>
+            <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.desc} · {fmtDate(inv.invoiceDate)}</div></div>
             <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
               <div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div>
               <Badge s={inv.status}/>
@@ -306,7 +332,7 @@ const VendorProfile = ({user}) => {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Card>
           <div style={{fontWeight:700,fontSize:13,color:C.primary,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Company Information</div>
-          {[["Business Partner ID",v.id],["Legal Name",v.name],["Tax ID (NPWP)",v.tax],["Category",v.cat],["Vendor Since",v.since],["PIC / Representative",v.rep]].map(([l,val])=>(
+          {[["Business Partner ID",v.id],["Legal Name",v.name],["Tax ID (NPWP)",v.tax],["Category",v.cat],["Vendor Since",fmtDate(v.since)],["PIC / Representative",v.rep]].map(([l,val])=>(
             <div key={l} style={{marginBottom:12}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
           ))}
         </Card>
@@ -403,7 +429,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
             {mine.length===0?<tr><Td colSpan={8} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:mine.map(inv=>(
               <tr key={inv.id}>
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
-                <Td>{inv.poNumber}</Td><Td>{inv.invoiceDate}</Td><Td>{inv.dueDate}</Td>
+                <Td>{inv.poNumber}</Td><Td>{fmtDate(inv.invoiceDate)}</Td><Td>{fmtDate(inv.dueDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
                 <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ {inv.files.length} file(s)</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
@@ -419,7 +445,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",view.submittedAt]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
           </div>
@@ -527,7 +553,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                     <Badge s={rfq.status}/>
                     {q&&<span style={{fontSize:11,color:C.ok,fontWeight:700}}>✓ Quoted · {idr(q.totalAmt)}</span>}
                   </div>
-                  <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {rfq.postedDate} · Closing: <strong>{rfq.closingDate}</strong></div>
+                  <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {fmtDate(rfq.postedDate)} · Closing: <strong>{fmtDate(rfq.closingDate)}</strong></div>
                   <div style={{fontSize:12,color:C.t1,marginBottom:8}}>{rfq.desc}</div>
                   <div style={{fontSize:11,color:C.t2}}>{rfq.items.length} items · Est. {idr(rfq.estVal)}</div>
                 </div>
@@ -555,7 +581,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                 {mineF.length===0?<tr><Td colSpan={7} style={{textAlign:"center",padding:40,color:C.t2}}>No quotations found.</Td></tr>:mineF.map(qt=>(
                   <tr key={qt.id}>
                     <Td><button onClick={()=>setVQ(qt)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{qt.rfqTitle}</button><div style={{fontSize:10,color:C.t2}}>{qt.rfqId}</div></Td>
-                    <Td>{qt.submittedDate||"—"}</Td><Td>{qt.validUntil||"—"}</Td>
+                    <Td>{fmtDate(qt.submittedDate)}</Td><Td>{fmtDate(qt.validUntil)}</Td>
                     <Td style={{fontWeight:700}}>{idr(qt.totalAmt)}</Td>
                     <Td>{qt.files?.length>0?<span style={{color:C.ok,fontSize:12}}>✓ {qt.files.length}</span>:"—"}</Td>
                     <Td><Badge s={qt.status}/></Td>
@@ -573,7 +599,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
       {viewQt&&(
         <Modal title={`Quotation Detail`} onClose={()=>setVQ(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["ID",viewQt.id],["RFQ",viewQt.rfqId],["Submitted",viewQt.submittedDate],["Valid Until",viewQt.validUntil],["Total",idr(viewQt.totalAmt)],["Status",null]].map(([l,val])=>(
+            {[["ID",viewQt.id],["RFQ",viewQt.rfqId],["Submitted",fmtDate(viewQt.submittedDate)],["Valid Until",fmtDate(viewQt.validUntil)],["Total",idr(viewQt.totalAmt)],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={viewQt.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
@@ -621,7 +647,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>⏳ Invoices Awaiting Action</div>
           {pending.length===0?<div style={{color:C.t2,fontSize:13}}>No invoices pending review.</div>:pending.slice(0,5).map(inv=>(
             <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
-              <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.vendorName} · {inv.invoiceDate}</div></div>
+              <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.vendorName} · {fmtDate(inv.invoiceDate)}</div></div>
               <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}><div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div><Badge s={inv.status}/></div>
             </div>
           ))}
@@ -668,7 +694,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
               <tr key={inv.id}>
                 <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
                 <Td><div style={{fontWeight:500}}>{inv.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{inv.vendorId}</div></Td>
-                <Td>{inv.poNumber}</Td><Td>{inv.invoiceDate}</Td>
+                <Td>{inv.poNumber}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
                 <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ Complete</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
@@ -684,7 +710,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["PO Number",view.poNumber],["Invoice Date",view.invoiceDate],["Due Date",view.dueDate],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["PO Number",view.poNumber],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount, view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
@@ -732,7 +758,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
               <tr key={qt.id}>
                 <Td><button onClick={()=>setView(qt)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{qt.rfqTitle}</button><div style={{fontSize:10,color:C.t2}}>{qt.rfqId}</div></Td>
                 <Td><div>{qt.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{qt.vendorId}</div></Td>
-                <Td>{qt.submittedDate||"—"}</Td><Td>{qt.validUntil||"—"}</Td>
+                <Td>{fmtDate(qt.submittedDate)}</Td><Td>{fmtDate(qt.validUntil)}</Td>
                 <Td style={{fontWeight:700}}>{idr(qt.totalAmt)}</Td>
                 <Td><Badge s={qt.status}/></Td>
                 <Td><div style={{display:"flex",gap:5}}>
@@ -747,7 +773,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
       {view&&(
         <Modal title={`Quotation Detail: ${view.rfqTitle}`} onClose={()=>setView(null)} width={720}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["Quotation ID",view.id],["RFQ ID",view.rfqId],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Submitted",view.submittedDate],["Valid Until",view.validUntil],["Total",idr(view.totalAmt)],["Status",null]].map(([l,val])=>(
+            {[["Quotation ID",view.id],["RFQ ID",view.rfqId],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Submitted",fmtDate(view.submittedDate)],["Valid Until",fmtDate(view.validUntil)],["Total",idr(view.totalAmt)],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
@@ -806,7 +832,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                   <Badge s={rfq.status}/>
                   <span style={{fontSize:11,color:C.t2}}>{qts.length} quotation(s) received</span>
                 </div>
-                <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {rfq.postedDate} · Closing: <strong>{rfq.closingDate}</strong> · By: {rfq.postedBy}</div>
+                <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {fmtDate(rfq.postedDate)} · Closing: <strong>{fmtDate(rfq.closingDate)}</strong> · By: {rfq.postedBy}</div>
                 <div style={{fontSize:12,color:C.t1,marginBottom:6}}>{rfq.desc}</div>
                 <div style={{fontSize:11,color:C.t2}}>Vendors: {rfq.targets.map(v=>VENDORS[v]?.name).join(", ")} · Est. {idr(rfq.estVal)}</div>
               </div>
@@ -833,7 +859,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       {view&&(
         <Modal title={`RFQ Detail: ${view.title}`} onClose={()=>setView(null)} width={700}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-            {[["RFQ ID",view.id],["Category",view.cat],["Posted",view.postedDate],["Closing",view.closingDate],["Est. Value",idr(view.estVal)],["Status",null]].map(([l,val])=>(
+            {[["RFQ ID",view.id],["Category",view.cat],["Posted",fmtDate(view.postedDate)],["Closing",fmtDate(view.closingDate)],["Est. Value",idr(view.estVal)],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
@@ -890,12 +916,67 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   );
 };
 
+// ── Settings Modal ─────────────────────────────────────────────
+const SettingsModal = ({settings,onUpdate,onClose}) => {
+  const btnStyle = (active) => ({
+    display:"flex",alignItems:"center",gap:10,padding:"10px 14px",marginBottom:8,
+    borderRadius:6,border:`2px solid ${active?C.primary:C.border}`,
+    background:active?C.infoBg:C.card,cursor:"pointer",width:"100%",textAlign:"left",
+    fontFamily:"inherit",
+  });
+  const NUM_FMTS = [
+    {v:"comma", sample:"1,234,567.89", desc:"Comma — thousand separator, dot — decimal"},
+    {v:"dot",   sample:"1.234.567,89", desc:"Dot — thousand separator, comma — decimal"},
+  ];
+  const DATE_FMTS = [
+    {v:"YYYY-MM-DD", ex:"2025-06-25"},
+    {v:"DD/MM/YYYY", ex:"25/06/2025"},
+    {v:"MM/DD/YYYY", ex:"06/25/2025"},
+    {v:"DD.MM.YYYY", ex:"25.06.2025"},
+    {v:"MM.DD.YYYY", ex:"06.25.2025"},
+    {v:"DD-MM-YYYY", ex:"25-06-2025"},
+    {v:"YYYY/MM/DD", ex:"2025/06/25"},
+  ];
+  return (
+    <Modal title="⚙️ Settings" onClose={onClose} width={520}>
+      <div style={{marginBottom:6,fontWeight:700,fontSize:13,color:C.t1}}>Number Format</div>
+      <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Controls thousand and decimal separators for all amounts.</div>
+      {NUM_FMTS.map(f=>(
+        <button key={f.v} style={btnStyle(settings.numFmt===f.v)} onClick={()=>onUpdate({numFmt:f.v})}>
+          <input type="radio" readOnly checked={settings.numFmt===f.v} style={{accentColor:C.primary,flexShrink:0}}/>
+          <div>
+            <div style={{fontWeight:700,fontSize:14,color:C.t1,fontFamily:"monospace"}}>{f.sample}</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{f.desc}</div>
+          </div>
+        </button>
+      ))}
+      <Sep/>
+      <div style={{marginBottom:6,fontWeight:700,fontSize:13,color:C.t1}}>Date Format</div>
+      <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Controls how dates are displayed across the portal.</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        {DATE_FMTS.map(f=>(
+          <button key={f.v} style={{...btnStyle(settings.dateFmt===f.v),flexDirection:"column",alignItems:"flex-start",gap:2}} onClick={()=>onUpdate({dateFmt:f.v})}>
+            <div style={{display:"flex",alignItems:"center",gap:8,width:"100%"}}>
+              <input type="radio" readOnly checked={settings.dateFmt===f.v} style={{accentColor:C.primary,flexShrink:0}}/>
+              <span style={{fontWeight:700,fontSize:12,color:C.t1,fontFamily:"monospace"}}>{f.v}</span>
+            </div>
+            <div style={{fontSize:11,color:C.t2,paddingLeft:24}}>{f.ex}</div>
+          </button>
+        ))}
+      </div>
+    </Modal>
+  );
+};
+
 // ── App Root ───────────────────────────────────────────────────
 export default function App() {
   const [user,setUser]=useState(null);
   const [section,setSection]=useState("dashboard");
   const [theme,setTheme]=useState("light");
   const toggleTheme=()=>{const n=theme==="dark"?"light":"dark";applyTheme(n);setTheme(n);};
+  const [settings,setSettings]=useState({numFmt:"comma",dateFmt:"YYYY-MM-DD"});
+  const [showSettings,setShowSettings]=useState(false);
+  const updateSettings=s=>{const n={...settings,...s};applySettings(n);setSettings(n);};
   const [invoices,setInvoices]=useState(INIT_INV);
   const [quotations,setQuotations]=useState(INIT_QT);
   const [rfqs,setRfqs]=useState(INIT_RFQS);
@@ -918,7 +999,8 @@ export default function App() {
   };
   return (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13,color:C.t1}}>
-      <Shell user={user} onLogout={logout} section={section} setSection={setSection} theme={theme} onToggleTheme={toggleTheme}/>
+      <Shell user={user} onLogout={logout} section={section} setSection={setSection} theme={theme} onToggleTheme={toggleTheme} onOpenSettings={()=>setShowSettings(true)}/>
+      {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)}/>}
       <div style={{minHeight:"calc(100vh - 46px)"}}>{render()}</div>
       <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>
         BRM Vendor Portal · Powered by SAP BTP & Accenture · © 2025 BRM
