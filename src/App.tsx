@@ -49,9 +49,25 @@ const INIT_INV = [
   { id:"PI-2025-0008", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
 ];
 const INIT_RFQS = [
-  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, desc:"BRM requires 50 laptops and 20 workstations for office expansion.", items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",estPrice:8000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",estPrice:12500000}], status:"Open" },
-  { id:"RFQ-2025-0002", title:"Office Supplies Annual Contract",         postedDate:"2025-06-10", closingDate:"2025-06-30", postedBy:"Siti Rahma",   targets:["10000001"],           cat:"Office Supplies", estVal:150000000, desc:"Annual supply of office stationery and printing consumables.",       items:[{no:1,desc:"A4 Paper 80gsm",qty:1000,uom:"Ream",estPrice:50000},{no:2,desc:"Ink Cartridge (Various)",qty:200,uom:"Pcs",estPrice:300000}],  status:"Open" },
-  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, desc:"Security guard services for Head Office 24/7, 12 months.",           items:[{no:1,desc:"Security Guard Day Shift",qty:12,uom:"Person/Month",estPrice:8000000},{no:2,desc:"Security Guard Night Shift",qty:12,uom:"Person/Month",estPrice:10000000}], status:"Closed" },
+  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
+    items:[
+      {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
+      {no:2, desc:"Workstation Dell XPS",  type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-WKS-002", materialGroup:"IT Hardware",  plant:"PL01", qty:20,  uom:"Unit",         estPrice:12500000, requirementDate:"2025-07-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0002", title:"Office Supplies Annual Contract",         postedDate:"2025-06-10", closingDate:"2025-06-30", postedBy:"Siti Rahma",   targets:["10000001"],           cat:"Office Supplies", estVal:150000000, companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Annual supply of office stationery and printing consumables.", status:"On Process",
+    items:[
+      {no:1, desc:"A4 Paper 80gsm",              type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-PPR-001", materialGroup:"Office Supplies", plant:"PL02", qty:1000, uom:"Ream", estPrice:50000,  requirementDate:"2025-07-01", startDate:"", endDate:""},
+      {no:2, desc:"Ink Cartridge (Various)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-INK-002", materialGroup:"Office Supplies", plant:"PL02", qty:200,  uom:"Pcs",  estPrice:300000, requirementDate:"2025-07-01", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"PO10", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Complete",
+    items:[
+      {no:1, desc:"Security Guard Day Shift",   type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-001", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:8000000,  requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
+      {no:2, desc:"Security Guard Night Shift", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-002", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:10000000, requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
+    ]},
+  { id:"RFQ-2025-0004", title:"HVAC Maintenance Contract",                postedDate:"2025-06-15", closingDate:"2025-07-15", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Services",        estVal:240000000, companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Annual preventive maintenance for HVAC systems across all floors.", status:"Closed",
+    items:[
+      {no:1, desc:"Preventive Maintenance Visit", type:"Service", acctAssign:"K – Cost Center", materialNo:"SVC-HVC-001", materialGroup:"Facility Services", plant:"PL04", qty:12, uom:"Visit", estPrice:20000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-07-31"},
+    ]},
 ];
 const INIT_QT = [
   { id:"QT-2025-0001", rfqId:"RFQ-2025-0001", rfqTitle:"Procurement of Laptops & Workstations", vendorId:"10000001", vendorName:"PT Maju Bersama",   submittedDate:"2025-06-12", validUntil:"2025-07-12", totalAmt:490000000, notes:"Price includes 2-year warranty and free delivery.", status:"Submitted", files:["quotation.pdf"],                    items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",unitPrice:7800000,total:390000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",unitPrice:5000000,total:100000000}] },
@@ -1602,7 +1618,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const save=qt=>{setQuotations(p=>p.find(q=>q.id===qt.id)?p.map(q=>q.id===qt.id?qt:q):[...p,qt]);setQR(null);setEQ(null);};
   const withdraw=id=>{if(window.confirm("Withdraw quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Withdrawn"}:q));};
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:18,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation & RFQ</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ: SAP Purchasing API (A_PurchaseRequisition) · Quotation: Custom CDS Table on BTP</div>
@@ -1862,7 +1878,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const accept=id=>{setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Accepted"}:q));setView(null);};
   const reject=id=>{if(window.confirm("Reject this quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Rejected"}:q));setView(null);};
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Management – All Vendors</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Vendor quotations from Custom CDS Table on BTP · Compare and award to best bidder</div>
@@ -1915,22 +1931,70 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
 };
 
 // ── BRM RFQ Mgmt ───────────────────────────────────────────────
+// Status indicator shape for RFQ
+const RfqStatusIcon = ({s}) => {
+  const map = {
+    "Open":       {shape:"square",  color:"#BB0000"},
+    "On Process": {shape:"triangle",color:"#E9730C"},
+    "Complete":   {shape:"circle",  color:"#188918"},
+    "Closed":     {shape:"circle",  color:"#0070F2"},
+  };
+  const m = map[s]||{shape:"square",color:C.t2};
+  if(m.shape==="triangle") return (
+    <svg width="14" height="14" viewBox="0 0 14 14" style={{flexShrink:0,marginTop:1}}>
+      <polygon points="7,1 13,13 1,13" fill={m.color}/>
+    </svg>
+  );
+  if(m.shape==="circle") return <div style={{width:13,height:13,borderRadius:"50%",background:m.color,flexShrink:0}}/>;
+  return <div style={{width:13,height:13,borderRadius:2,background:m.color,flexShrink:0}}/>;
+};
+
 const BrmRfq = ({rfqs,setRfqs,quotations}) => {
-  const [showForm,setForm]=useState(false); const [view,setView]=useState(null); const [flt,setFlt]=useState("All");
-  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",items:[{no:1,desc:"",qty:1,uom:"Unit",estPrice:0}]});
+  const [showForm,setForm]=useState(false);
+  const [flt,setFlt]=useState("All");
+  const [expanded,setExpanded]=useState({});
+  // Filter state
+  const EMPTY_FLT={company:"",purchOrg:"",plant:"",rfqNo:"",tenderAdmin:""};
+  const [filters,setFilters]=useState(EMPTY_FLT);
+  const [applied,setApplied]=useState(EMPTY_FLT);
+  const sf2=(k,v)=>setFilters(p=>({...p,[k]:v}));
+  const applyFilters=()=>setApplied({...filters});
+  const resetFilters=()=>{setFilters(EMPTY_FLT);setApplied(EMPTY_FLT);};
+  const activeTokens=[
+    applied.company     &&{label:"Company",     val:applied.company,     onClear:()=>{setFilters(p=>({...p,company:""}));    setApplied(p=>({...p,company:""}));}},
+    applied.purchOrg    &&{label:"Purch. Org",  val:applied.purchOrg,    onClear:()=>{setFilters(p=>({...p,purchOrg:""}));   setApplied(p=>({...p,purchOrg:""}));}},
+    applied.plant       &&{label:"Plant",        val:applied.plant,       onClear:()=>{setFilters(p=>({...p,plant:""}));      setApplied(p=>({...p,plant:""}));}},
+    applied.rfqNo       &&{label:"RFQ No",       val:applied.rfqNo,       onClear:()=>{setFilters(p=>({...p,rfqNo:""}));      setApplied(p=>({...p,rfqNo:""}));}},
+    applied.tenderAdmin &&{label:"Tender Admin", val:applied.tenderAdmin, onClear:()=>{setFilters(p=>({...p,tenderAdmin:""}));setApplied(p=>({...p,tenderAdmin:""}));}},
+  ].filter(Boolean);
+
+  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
+    items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   const sf=(k,v)=>setF(p=>({...p,[k]:v}));
-  const list=rfqs.filter(r=>flt==="All"||r.status===flt);
+  const list=rfqs
+    .filter(r=>flt==="All"||r.status===flt)
+    .filter(r=>!applied.company     || r.companyCode?.toLowerCase().includes(applied.company.toLowerCase()))
+    .filter(r=>!applied.purchOrg    || r.purchOrg?.toLowerCase().includes(applied.purchOrg.toLowerCase()))
+    .filter(r=>!applied.plant       || r.plant?.toLowerCase().includes(applied.plant.toLowerCase()))
+    .filter(r=>!applied.rfqNo       || r.id?.toLowerCase().includes(applied.rfqNo.toLowerCase()))
+    .filter(r=>!applied.tenderAdmin || r.postedBy?.toLowerCase().includes(applied.tenderAdmin.toLowerCase()));
   const getQts=rfqId=>quotations.filter(q=>q.rfqId===rfqId);
-  const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",qty:1,uom:"Unit",estPrice:0}]}));
+  const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
+  const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const publish=()=>{
     if(!f.title||!f.closingDate||f.targets.length===0){alert("Please fill title, closing date, and select at least one vendor.");return;}
-    setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Open",estVal:Number(f.estVal),items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
+    setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Open",estVal:Number(f.estVal),
+      items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
     setForm(false);
-    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",items:[{no:1,desc:"",qty:1,uom:"Unit",estPrice:0}]});
+    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",
+      items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   };
+
+  const HDR_COLS = ["","Status","RFQ Number","Description","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant",""];
+
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
@@ -1938,48 +2002,163 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         </div>
         <Btn onClick={()=>setForm(true)}>+ Create RFQ</Btn>
       </div>
-      <FilterBar opts={["All","Open","Closed"]} val={flt} onChange={setFlt}/>
-      {list.map(rfq=>{
-        const qts=getQts(rfq.id);
-        return(
-          <Card key={rfq.id}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,flexWrap:"wrap"}}>
-                  <span style={{fontWeight:700,fontSize:14}}>{rfq.title}</span>
-                  <Badge s={rfq.status}/>
-                  <span style={{fontSize:11,color:C.t2}}>{qts.length} quotation(s) received</span>
+
+      <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters}>
+        <FField label="Company">
+          <Sel value={filters.company} onChange={v=>sf2("company",v)} opts={[{v:"",l:"— All —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+        </FField>
+        <FField label="Purchasing Org">
+          <Sel value={filters.purchOrg} onChange={v=>sf2("purchOrg",v)} opts={[{v:"",l:"— All —"},{v:"PO10",l:"PO10 – Procurement Central"},{v:"PO20",l:"PO20 – Procurement Regional"}]}/>
+        </FField>
+        <FField label="Plant">
+          <Sel value={filters.plant} onChange={v=>sf2("plant",v)} opts={[{v:"",l:"— All —"},{v:"PL01",l:"PL01"},{v:"PL02",l:"PL02"},{v:"PL03",l:"PL03"},{v:"PL04",l:"PL04"}]}/>
+        </FField>
+        <FField label="RFQ Number">
+          <Inp value={filters.rfqNo} onChange={v=>sf2("rfqNo",v)} placeholder="e.g. RFQ-2025-0001"/>
+        </FField>
+        <FField label="Tender Administrator">
+          <Inp value={filters.tenderAdmin} onChange={v=>sf2("tenderAdmin",v)} placeholder="e.g. Ahmad Rizki"/>
+        </FField>
+      </FioriBar>
+      <FilterBar opts={["All","Open","On Process","Complete","Closed"]} val={flt} onChange={setFlt}/>
+
+      {/* Table */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden",background:C.card}}>
+        {/* Header row */}
+        <div style={{display:"grid",gridTemplateColumns:"28px 90px 130px 1fr 100px 110px 120px 130px 80px 70px 36px",background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
+          {HDR_COLS.map((h,i)=>(
+            <div key={i} style={{padding:"8px 10px",fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{h}</div>
+          ))}
+        </div>
+
+        {list.length===0&&<div style={{padding:"28px 16px",textAlign:"center",color:C.t2,fontSize:13}}>No RFQs found.</div>}
+
+        {list.map((rfq,ri)=>{
+          const open=!!expanded[rfq.id];
+          const qts=getQts(rfq.id);
+          const rowBg = ri%2===0 ? C.card : C.subtle;
+          return (
+            <div key={rfq.id} style={{borderBottom:`1px solid ${C.border}`}}>
+              {/* Parent row */}
+              <div
+                onClick={()=>toggle(rfq.id)}
+                style={{display:"grid",gridTemplateColumns:"28px 90px 130px 1fr 100px 110px 120px 130px 80px 70px 36px",background:rowBg,cursor:"pointer",transition:"background .12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.infoBg}
+                onMouseLeave={e=>e.currentTarget.style.background=rowBg}
+              >
+                {/* Expand arrow */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0"}}>
+                  <span style={{fontSize:10,color:C.t2,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                 </div>
-                <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {fmtDate(rfq.postedDate)} · Closing: <strong>{fmtDate(rfq.closingDate)}</strong> · By: {rfq.postedBy}</div>
-                <div style={{fontSize:12,color:C.t1,marginBottom:6}}>{rfq.desc}</div>
-                <div style={{fontSize:11,color:C.t2}}>Vendors: {rfq.targets.map(v=>VENDORS[v]?.name).join(", ")} · Est. {idr(rfq.estVal)}</div>
+                {/* Status */}
+                <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 10px"}}>
+                  <RfqStatusIcon s={rfq.status}/>
+                  <span style={{fontSize:11,fontWeight:600,color:C.t1,whiteSpace:"nowrap"}}>{rfq.status}</span>
+                </div>
+                {/* RFQ Number */}
+                <div style={{padding:"10px 10px",fontSize:12,fontWeight:700,color:C.primary,display:"flex",alignItems:"center"}}>{rfq.id}</div>
+                {/* Description */}
+                <div style={{padding:"10px 10px",fontSize:12,color:C.t1,display:"flex",alignItems:"center",overflow:"hidden"}}>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{rfq.title}</span>
+                </div>
+                {/* Open Date */}
+                <div style={{padding:"10px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{fmtDate(rfq.postedDate)}</div>
+                {/* Closing Date */}
+                <div style={{padding:"10px 10px",fontSize:11,fontWeight:600,color:C.t1,display:"flex",alignItems:"center"}}>{fmtDate(rfq.closingDate)}</div>
+                {/* Tender Admin */}
+                <div style={{padding:"10px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center",overflow:"hidden"}}>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{rfq.postedBy}</span>
+                </div>
+                {/* Budget */}
+                <div style={{padding:"10px 10px",fontSize:11,fontWeight:700,color:C.t1,display:"flex",alignItems:"center"}}>{idr(rfq.estVal)}</div>
+                {/* Company Code */}
+                <div style={{padding:"10px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{rfq.companyCode||"—"}</div>
+                {/* Plant */}
+                <div style={{padding:"10px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{rfq.plant||"—"}</div>
+                {/* Quotation count chip */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 4px"}}>
+                  {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 7px",fontWeight:700}}>{qts.length}</span>}
+                </div>
               </div>
-              <Btn v="ghost" sm onClick={()=>setView(rfq)} style={{marginLeft:12}}>Details</Btn>
-            </div>
-            {qts.length>0&&(
-              <div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${C.border}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:8}}>RECEIVED QUOTATIONS</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {qts.map(qt=>(
-                    <div key={qt.id} style={{padding:"6px 12px",background:C.subtle,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontWeight:600}}>{qt.vendorName}</span>
-                      <span style={{color:C.t2}}>·</span>
-                      <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
-                      <Badge s={qt.status}/>
+
+              {/* Child rows — line items */}
+              {open&&(
+                <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
+                  {/* Child header */}
+                  <div style={{display:"grid",gridTemplateColumns:"28px 40px 1fr 130px 120px 80px 80px 60px 110px",background:"rgba(0,112,242,0.07)",borderBottom:`1px solid ${C.border}`,padding:"0"}}>
+                    {["","#","Material / Service","Mat. No.","Material Group","Plant","Qty","UoM","Date"].map((h,i)=>(
+                      <div key={i} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:C.primary,textTransform:"uppercase",letterSpacing:.4}}>{h}</div>
+                    ))}
+                  </div>
+                  {rfq.items.map((it,ii)=>(
+                    <div key={ii} style={{display:"grid",gridTemplateColumns:"28px 40px 1fr 130px 120px 80px 80px 60px 110px",borderBottom:ii<rfq.items.length-1?`1px solid ${C.border}`:"none",background:ii%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
+                      <div/>
+                      {/* Item No */}
+                      <div style={{padding:"8px 10px",fontSize:11,fontWeight:700,color:C.t2}}>{String(it.no).padStart(3,"0")}</div>
+                      {/* Description + Account Assignment */}
+                      <div style={{padding:"8px 10px"}}>
+                        <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{it.desc}</div>
+                        <div style={{fontSize:10,color:C.t2,marginTop:2}}>
+                          <span style={{background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 6px",fontWeight:700,marginRight:6}}>{it.type}</span>
+                          {it.acctAssign}
+                        </div>
+                      </div>
+                      {/* Material No */}
+                      <div style={{padding:"8px 10px",fontSize:11,fontFamily:"monospace",color:C.t1,display:"flex",alignItems:"center"}}>{it.materialNo||"—"}</div>
+                      {/* Material Group */}
+                      <div style={{padding:"8px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{it.materialGroup||"—"}</div>
+                      {/* Plant */}
+                      <div style={{padding:"8px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{it.plant||"—"}</div>
+                      {/* Qty */}
+                      <div style={{padding:"8px 10px",fontSize:11,fontWeight:600,color:C.t1,display:"flex",alignItems:"center"}}>{it.qty}</div>
+                      {/* UoM */}
+                      <div style={{padding:"8px 10px",fontSize:11,color:C.t2,display:"flex",alignItems:"center"}}>{it.uom}</div>
+                      {/* Date */}
+                      <div style={{padding:"8px 10px",fontSize:10,color:C.t2,display:"flex",alignItems:"center"}}>
+                        {it.type==="Material"
+                          ? <span><span style={{color:C.t2,fontWeight:600}}>Req: </span>{fmtDate(it.requirementDate)||"—"}</span>
+                          : <span><span style={{color:C.t2,fontWeight:600}}>Start: </span>{fmtDate(it.startDate)||"—"}<br/><span style={{color:C.t2,fontWeight:600}}>End: </span>{fmtDate(it.endDate)||"—"}</span>
+                        }
+                      </div>
                     </div>
                   ))}
+                  {/* Quotations sub-section */}
+                  {qts.length>0&&(
+                    <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Received Quotations</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        {qts.map(qt=>(
+                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontWeight:600}}>{qt.vendorName}</span>
+                            <span style={{color:C.t2}}>·</span>
+                            <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
+                            <Badge s={qt.status}/>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Description */}
+                  <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
+                    <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-          </Card>
-        );
-      })}
-      {view&&(
-        <Modal title={`RFQ Detail: ${view.title}`} onClose={()=>setView(null)} width={700}>
-          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            {[["RFQ ID",view.id],["Category",view.cat],["Posted",fmtDate(view.postedDate)],["Closing",fmtDate(view.closingDate)],["Est. Value",idr(view.estVal)],["Status",null]].map(([l,val])=>(
-              <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
-            ))}
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{display:"flex",gap:16,marginTop:12,flexWrap:"wrap"}}>
+        {[["Open","square","#BB0000"],["On Process","triangle","#E9730C"],["Complete","circle","#188918"],["Closed","circle","#0070F2"]].map(([s,sh,col])=>(
+          <div key={s} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:C.t2}}>
+            {sh==="triangle"
+              ?<svg width="11" height="11" viewBox="0 0 14 14"><polygon points="7,1 13,13 1,13" fill={col}/></svg>
+              :<div style={{width:11,height:11,borderRadius:sh==="circle"?"50%":2,background:col}}/>
+            }
+            {s}
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Target Vendors</Lbl>{view.targets.map(v=><div key={v} style={{fontSize:13,display:"flex",alignItems:"center",gap:5}}><SapIcon name="factory" size={13} color={C.t2}/>{VENDORS[v]?.name} ({v})</div>)}</div>
@@ -1991,12 +2170,21 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         </Modal>
       )}
       {showForm&&(
-        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={760}>
+        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={800}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
             <div style={{gridColumn:"1/-1"}}><Lbl>RFQ Title *</Lbl><Inp value={f.title} onChange={v=>sf("title",v)} placeholder="e.g. Procurement of Office Chairs"/></div>
             <div><Lbl>Category *</Lbl><Inp value={f.cat} onChange={v=>sf("cat",v)} placeholder="e.g. Furniture"/></div>
             <div><Lbl>Closing Date *</Lbl><DateInp value={f.closingDate} onChange={v=>sf("closingDate",v)}/></div>
-            <div style={{gridColumn:"1/-1"}}><Lbl>Estimated Value (IDR)</Lbl><Inp type="number" value={f.estVal} onChange={v=>sf("estVal",v)}/></div>
+            <div>
+              <Lbl>Company Code</Lbl>
+              <Sel value={f.companyCode} onChange={v=>sf("companyCode",v)} opts={[{v:"",l:"— Select —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+            </div>
+            <div><Lbl>Plant</Lbl><Inp value={f.plant} onChange={v=>sf("plant",v)} placeholder="e.g. PL01"/></div>
+            <div>
+              <Lbl>Purchasing Org</Lbl>
+              <Sel value={f.purchOrg} onChange={v=>sf("purchOrg",v)} opts={[{v:"",l:"— Select —"},{v:"PO10",l:"PO10 – Procurement Central"},{v:"PO20",l:"PO20 – Procurement Regional"}]}/>
+            </div>
+            <div style={{gridColumn:"1/-1"}}><Lbl>Estimated Budget (IDR)</Lbl><AmtInp value={f.estVal} onChange={v=>sf("estVal",v)}/></div>
           </div>
           <div style={{marginBottom:12}}><Lbl>Description / Scope</Lbl><TA value={f.desc} onChange={v=>sf("desc",v)} placeholder="Describe the requirement…"/></div>
           <div style={{marginBottom:12}}>
@@ -2016,11 +2204,27 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
               <Btn v="ghost" sm onClick={addItem}>+ Add Item</Btn>
             </div>
             {f.items.map((it,i)=>(
-              <div key={i} style={{display:"grid",gridTemplateColumns:mob()?"1fr 1fr":"3fr 1fr 1fr 2fr",gap:8,marginBottom:8}}>
-                <Inp value={it.desc} onChange={v=>updItem(i,"desc",v)} placeholder="Item description"/>
-                <Inp type="number" value={it.qty} onChange={v=>updItem(i,"qty",v)} placeholder="Qty"/>
-                <Inp value={it.uom} onChange={v=>updItem(i,"uom",v)} placeholder="UoM"/>
-                <Inp type="number" value={it.estPrice} onChange={v=>updItem(i,"estPrice",v)} placeholder="Est. Unit Price"/>
+              <div key={i} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",marginBottom:10,background:C.subtle}}>
+                <div style={{display:"grid",gridTemplateColumns:mob()?"1fr":"2fr 1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                  <div><Lbl>Description</Lbl><Inp value={it.desc} onChange={v=>updItem(i,"desc",v)} placeholder="Item description"/></div>
+                  <div><Lbl>Type</Lbl><Sel value={it.type} onChange={v=>updItem(i,"type",v)} opts={[{v:"Material",l:"Material"},{v:"Service",l:"Service"}]}/></div>
+                  <div><Lbl>Qty</Lbl><AmtInp value={it.qty} onChange={v=>updItem(i,"qty",v)}/></div>
+                  <div><Lbl>UoM</Lbl><Inp value={it.uom} onChange={v=>updItem(i,"uom",v)} placeholder="Unit"/></div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:mob()?"1fr":"1fr 1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                  <div><Lbl>Acct Assignment</Lbl><Inp value={it.acctAssign} onChange={v=>updItem(i,"acctAssign",v)} placeholder="K – Cost Center"/></div>
+                  <div><Lbl>Material / Svc No.</Lbl><Inp value={it.materialNo} onChange={v=>updItem(i,"materialNo",v)} placeholder="MAT-001"/></div>
+                  <div><Lbl>Material Group</Lbl><Inp value={it.materialGroup} onChange={v=>updItem(i,"materialGroup",v)} placeholder="IT Hardware"/></div>
+                  <div><Lbl>Plant</Lbl><Inp value={it.plant} onChange={v=>updItem(i,"plant",v)} placeholder="PL01"/></div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:mob()?"1fr":"1fr 1fr 1fr",gap:8}}>
+                  <div><Lbl>Est. Unit Price (IDR)</Lbl><AmtInp value={it.estPrice} onChange={v=>updItem(i,"estPrice",v)}/></div>
+                  {it.type==="Material"
+                    ?<div><Lbl>Requirement Date</Lbl><DateInp value={it.requirementDate} onChange={v=>updItem(i,"requirementDate",v)}/></div>
+                    :<><div><Lbl>Start Date</Lbl><DateInp value={it.startDate} onChange={v=>updItem(i,"startDate",v)}/></div>
+                      <div><Lbl>End Date</Lbl><DateInp value={it.endDate} onChange={v=>updItem(i,"endDate",v)}/></div></>
+                  }
+                </div>
               </div>
             ))}
           </div>
