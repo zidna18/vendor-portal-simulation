@@ -985,20 +985,287 @@ const DocFlow = ({inv}) => {
   );
 };
 
+// ── SAP Multi-Value Input (sap.m.MultiInput) ───────────────────
+type Cond = {op:string,v1:string,v2:string};
+const INCL_OPS = ["contains","equal to","between","starts with","ends with","less than","less than or equal to","greater than","greater than or equal to","empty"];
+const EXCL_OPS = ["does not contain","not equal to","not between","does not start with","does not end with","not less than","not less than or equal to","not greater than","not greater than or equal to","not empty"];
+const NO_VAL_OPS  = new Set(["empty","not empty"]);
+const BETWEEN_OPS = new Set(["between","not between"]);
+
+const evalCond = (val:string, c:Cond):boolean => {
+  const v=val.toLowerCase(), c1=c.v1.toLowerCase(), c2=c.v2.toLowerCase();
+  switch(c.op){
+    case "contains":                return v.includes(c1);
+    case "equal to":                return v===c1;
+    case "between":                 return v>=c1&&v<=c2;
+    case "starts with":             return v.startsWith(c1);
+    case "ends with":               return v.endsWith(c1);
+    case "less than":               return v<c1;
+    case "less than or equal to":   return v<=c1;
+    case "greater than":            return v>c1;
+    case "greater than or equal to":return v>=c1;
+    case "empty":                   return !val.trim();
+    case "does not contain":        return !v.includes(c1);
+    case "not equal to":            return v!==c1;
+    case "not between":             return !(v>=c1&&v<=c2);
+    case "does not start with":     return !v.startsWith(c1);
+    case "does not end with":       return !v.endsWith(c1);
+    case "not less than":           return !(v<c1);
+    case "not less than or equal to":return !(v<=c1);
+    case "not greater than":        return !(v>c1);
+    case "not greater than or equal to":return !(v>=c1);
+    case "not empty":               return !!val.trim();
+    default: return true;
+  }
+};
+
+const condLabel = (c:Cond):string => {
+  if(NO_VAL_OPS.has(c.op)) return c.op;
+  if(BETWEEN_OPS.has(c.op)) return `${c.op} ${c.v1} and ${c.v2}`;
+  return `${c.op==="contains"||c.op==="equal to"?"":c.op+" "}${c.v1}`;
+};
+
+const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:string,conditions:Cond[],onSave:(c:Cond[])=>void,onClose:()=>void}) => {
+  const [conds,setConds]=useState<Cond[]>([...conditions]);
+  const [op,setOp]=useState("contains");
+  const [v1,setV1]=useState("");
+  const [v2,setV2]=useState("");
+  const [pasteInput,setPasteInput]=useState("");
+  const noVal=NO_VAL_OPS.has(op);
+  const isBetween=BETWEEN_OPS.has(op);
+
+  const addCond = (extraConds?:Cond[]) => {
+    if(extraConds){setConds(p=>[...p,...extraConds]);return;}
+    if(!noVal&&!v1.trim()) return;
+    setConds(p=>[...p,{op,v1:noVal?"":v1.trim(),v2:isBetween?v2.trim():""}]);
+    setV1("");setV2("");
+  };
+
+  const handleV1Paste=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>1){
+      e.preventDefault();
+      addCond(lines.map((l:string)=>({op,v1:l,v2:""})));
+    }
+  };
+
+  const handlePasteInput=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>0){
+      e.preventDefault();
+      addCond(lines.map((l:string)=>({op:"equal to",v1:l,v2:""})));
+      setPasteInput("");
+    }
+  };
+
+  const inpStyle:any={
+    flex:1,padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#32363a",
+    border:"1px solid #89919a",borderRadius:2,background:"#fff",outline:"none",
+    boxSizing:"border-box" as const,
+  };
+  const opSelStyle:any={
+    padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#0a6ed1",
+    border:"1px solid #0a6ed1",borderRadius:2,background:"#fff",outline:"none",
+    minWidth:200,cursor:"pointer",
+  };
+
+  return(
+    <Modal title={`Define Conditions: ${title}`} onClose={onClose} width={700}>
+      {/* Condition builder row */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+        {/* Operator dropdown */}
+        <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
+          <optgroup label="Include" style={{fontWeight:700,color:"#32363a"}}>
+            {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+          </optgroup>
+          <optgroup label="Exclude" style={{fontWeight:700,color:"#32363a"}}>
+            {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+          </optgroup>
+        </select>
+
+        {/* Value 1 */}
+        {!noVal&&(
+          <input style={inpStyle} value={v1} onChange={e=>setV1(e.target.value)}
+            onPaste={handleV1Paste}
+            onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+            placeholder="Value" aria-label="Value"/>
+        )}
+        {/* Value 2 for between */}
+        {isBetween&&(
+          <>
+            <span style={{fontSize:13,color:"#6a6d70",flexShrink:0}}>and</span>
+            <input style={inpStyle} value={v2} onChange={e=>setV2(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+              placeholder="Value" aria-label="Second Value"/>
+          </>
+        )}
+        {/* Clear value */}
+        {!noVal&&(
+          <button onClick={()=>{setV1("");setV2("");}}
+            style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
+            ×
+          </button>
+        )}
+        {/* Add Condition button — right-aligned */}
+        <button onClick={()=>addCond()}
+          style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0,marginLeft:"auto"}}>
+          Add Condition
+        </button>
+      </div>
+
+      {/* Conditions list */}
+      <div style={{minHeight:220,border:"1px solid #e5e5e5",borderRadius:2,padding:12,marginBottom:12,background:"#fff",overflowY:"auto"}}>
+        {conds.length===0?(
+          <div style={{color:"#0a6ed1",fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
+        ):(
+          <div>
+            {conds.map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?"1px solid #f2f2f2":"none",fontSize:13,color:"#32363a"}}>
+                <span style={{color:"#6a6d70",minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
+                <span style={{flex:1,fontWeight:NO_VAL_OPS.has(c.op)?400:600}}>
+                  {NO_VAL_OPS.has(c.op)?"—":BETWEEN_OPS.has(c.op)?`${c.v1}  –  ${c.v2}`:c.v1}
+                </span>
+                <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))}
+                  style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Paste multi-value input (SAP token paste area) */}
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
+        <input value={pasteInput} onChange={e=>setPasteInput(e.target.value)}
+          onPaste={handlePasteInput}
+          placeholder="Paste multiple values here (one per line = one condition each)"
+          style={{...inpStyle,fontSize:12,color:"#6a6d70"}}/>
+        {pasteInput&&(
+          <button onClick={()=>setPasteInput("")}
+            style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+        )}
+      </div>
+
+      {/* Footer: condition count + OK/Cancel */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:"1px solid #e5e5e5"}}>
+        <span style={{fontSize:12,color:"#6a6d70"}}>{conds.length>0?`${conds.length} condition${conds.length!==1?"s":""} defined`:""}</span>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose}
+            style={{background:"#fff",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:400,cursor:"pointer"}}>
+            Cancel
+          </button>
+          <button onClick={()=>onSave(conds)}
+            style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
+            OK
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:string,conditions:Cond[],onChange:(c:Cond[])=>void}) => {
+  const [showModal,setShowModal]=useState(false);
+  const [quickVal,setQuickVal]=useState("");
+
+  const addQuick=()=>{
+    if(!quickVal.trim()) return;
+    onChange([...conditions,{op:"contains",v1:quickVal.trim(),v2:""}]);
+    setQuickVal("");
+  };
+
+  const handlePaste=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>1){
+      e.preventDefault();
+      onChange([...conditions,...lines.map((l:string)=>({op:"contains",v1:l,v2:""}))]);
+      setQuickVal("");
+    }
+  };
+
+  return(
+    <>
+      <div style={{
+        display:"flex",flexWrap:"wrap",alignItems:"center",gap:4,
+        border:"1px solid #89919a",borderRadius:2,background:"#fff",
+        minHeight:34,padding:"3px 30px 3px 6px",position:"relative",
+        boxSizing:"border-box" as const,cursor:"text",
+      }}
+        onClick={e=>{(e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();}}>
+
+        {/* Token chips */}
+        {conditions.map((c,i)=>(
+          <span key={i} style={{
+            display:"inline-flex",alignItems:"center",gap:3,
+            background:"#e8f2fb",border:"1px solid #0a6ed1",borderRadius:4,
+            padding:"1px 4px 1px 6px",fontSize:11,color:"#0a6ed1",
+            lineHeight:1.6,flexShrink:0,maxWidth:160,overflow:"hidden",
+          }}>
+            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {condLabel(c)}
+            </span>
+            <button onClick={e=>{e.stopPropagation();onChange(conditions.filter((_,j)=>j!==i));}}
+              style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:13,padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
+          </span>
+        ))}
+
+        {/* Inline quick-input */}
+        <input
+          type="text"
+          value={quickVal}
+          onChange={e=>setQuickVal(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")addQuick();}}
+          onPaste={handlePaste}
+          placeholder={conditions.length===0?"INV/MJB/2025/001":""}
+          aria-haspopup="dialog"
+          aria-roledescription="Multi Value Input"
+          style={{
+            flex:1,minWidth:60,border:"none",outline:"none",
+            background:"transparent",fontSize:14,padding:0,
+            fontFamily:"inherit",color:"#32363a",
+          }}/>
+
+        {/* Value-help button (SAP style: circle with grid) */}
+        <button
+          onClick={e=>{e.stopPropagation();setShowModal(true);}}
+          title="Define Conditions"
+          style={{
+            position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",
+            background:"none",border:"none",cursor:"pointer",
+            color:"#6a6d70",padding:"2px 3px",lineHeight:1,
+            display:"flex",alignItems:"center",justifyContent:"center",
+          }}>
+          <SapIcon name="value-help" size={16} color="#6a6d70"/>
+        </button>
+      </div>
+
+      {showModal&&(
+        <DefineConditionsModal
+          title={fieldTitle}
+          conditions={conditions}
+          onSave={c=>{onChange(c);setShowModal(false);}}
+          onClose={()=>setShowModal(false)}/>
+      )}
+    </>
+  );
+};
+
 // ── Vendor Invoice ─────────────────────────────────────────────
 const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
-  const emptyF={invoiceNo:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const emptyF={invoiceNoConds:[] as Cond[],status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
-  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
   const v=VENDORS[user.vendorId];
   const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
-    (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
+    (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
     (!active.status||i.status===active.status)&&
     (!active.companyCode||i.companyCode===active.companyCode)&&
     (!active.currency||i.currency===active.currency)&&
@@ -1006,7 +1273,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
     (!active.dateTo||i.invoiceDate<=active.dateTo)
   );
   const tokens=[
-    active.invoiceNo&&{label:"Invoice No.",val:active.invoiceNo,onClear:()=>clr("invoiceNo")},
+    active.invoiceNoConds.length>0&&{label:"Invoice No.",val:active.invoiceNoConds.length===1?condLabel(active.invoiceNoConds[0]):`${active.invoiceNoConds.length} conditions`,onClear:()=>clr("invoiceNoConds")},
     active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
     active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
     active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
@@ -1044,7 +1311,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
 
       {/* SAP Fiori Compact Filter Bar — all fields equal width, no span */}
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
-        <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
+        <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
         <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
         <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Draft",l:"Draft"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
