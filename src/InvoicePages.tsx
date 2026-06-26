@@ -620,12 +620,91 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
   );
 };
 
+// ── Column Settings Popup ──────────────────────────────────────
+const COL_DEFS = [
+  {key:"invoiceNo",  label:"Invoice No.",   defW:200},
+  {key:"poNumber",   label:"PO Number",     defW:140},
+  {key:"compCode",   label:"Company Code",  defW:150},
+  {key:"invDate",    label:"Invoice Date",  defW:100},
+  {key:"dueDate",    label:"Due Date",      defW:100},
+  {key:"amount",     label:"Amount",        defW:120},
+  {key:"attach",     label:"Attachments",   defW:100},
+  {key:"status",     label:"Status",        defW:100},
+  {key:"actions",    label:"Actions",       defW:90},
+];
+const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidth,onClose}:any) => {
+  const [w,setW]=useState(width);
+  const clamp=(n:number)=>Math.max(48,Math.min(2560,n));
+  const seg=[{title:"No Sorting",icon:"sort"},  {title:"Ascending",icon:"sort-ascending"},{title:"Descending",icon:"sort-descending"}];
+  const vals=["none","asc","desc"];
+  return(
+    <>
+      <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:499}}/>
+      <div style={{position:"fixed",left:Math.min(x,window.innerWidth-270),top:Math.min(y,window.innerHeight-320),zIndex:500,background:"#fff",border:"1px solid #e5e5e5",borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.18)",width:260,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13}}>
+        {/* Title */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px 8px",borderBottom:"1px solid #e5e5e5"}}>
+          <span style={{fontWeight:700,fontSize:14,color:"#32363a"}}>Column Settings</span>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#6a6d70",padding:"0 2px",lineHeight:1}}>×</button>
+        </div>
+        {/* Sort By */}
+        <div style={{padding:"10px 14px 8px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Sort By</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:"#32363a",fontSize:13}}>{col}</span>
+            <div style={{display:"flex",border:"1px solid #bfbfbf",borderRadius:4,overflow:"hidden"}}>
+              {seg.map((s,i)=>(
+                <button key={s.title} title={s.title} onClick={()=>onSort(vals[i])}
+                  style={{width:32,height:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",borderRight:i<2?"1px solid #bfbfbf":"none",cursor:"pointer",background:sort===vals[i]?"#0a6ed1":"#fff",padding:0}}>
+                  <SapIcon name={s.icon} size={14} color={sort===vals[i]?"#fff":"#6a6d70"}/>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{height:1,background:"#e5e5e5",margin:"0 14px"}}/>
+        {/* Group By */}
+        <div style={{padding:"10px 14px 8px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Group By</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:"#32363a",fontSize:13}}>{col}</span>
+            <div onClick={()=>onGroupBy(!groupBy)} style={{width:40,height:22,borderRadius:11,background:groupBy?"#0a6ed1":"#bfbfbf",cursor:"pointer",position:"relative",transition:"background .15s"}}>
+              <div style={{position:"absolute",top:3,left:groupBy?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+            </div>
+          </div>
+        </div>
+        <div style={{height:1,background:"#e5e5e5",margin:"0 14px"}}/>
+        {/* More Column Settings */}
+        <div style={{padding:"10px 14px 12px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>More Column Settings</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:"#32363a",fontSize:13}}>Resize column width (pixel)</span>
+            <div style={{display:"flex",alignItems:"center",border:"1px solid #bfbfbf",borderRadius:4,overflow:"hidden",height:28}}>
+              <button onClick={()=>{const n=clamp(w-1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:"#f5f5f5",border:"none",borderRight:"1px solid #bfbfbf",cursor:"pointer",fontSize:16,color:"#32363a",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
+              <input type="text" value={w} onChange={e=>{const n=parseInt(e.target.value)||w;setW(n);}} onBlur={()=>{const n=clamp(w);setW(n);onWidth(n);}}
+                style={{width:42,textAlign:"center",border:"none",outline:"none",fontSize:13,fontFamily:"inherit",background:"#fff",height:"100%",padding:0}}/>
+              <button onClick={()=>{const n=clamp(w+1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:"#f5f5f5",border:"none",borderLeft:"1px solid #bfbfbf",cursor:"pointer",fontSize:16,color:"#32363a",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
+            </div>
+          </div>
+        </div>
+        {/* Gear icon row */}
+        <div style={{padding:"4px 14px 10px",display:"flex",justifyContent:"flex-end"}}>
+          <SapIcon name="action-settings" size={16} color="#6a6d70"/>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ── Vendor Invoice ─────────────────────────────────────────────
 export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
   const [vhOpen,setVhOpen]=useState<null|"companyCode"|"status"|"currency">(null);
+  const [colSort,setColSort]=useState<Record<string,string>>({});
+  const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS.map(c=>[c.key,c.defW])));
+  const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
+  const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
   const emptyF={invoiceNoConds:[] as Cond[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
@@ -645,7 +724,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     a.download=`invoices_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();URL.revokeObjectURL(a.href);
   };
-  const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
+  const mineFiltered=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
     (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
     (active.statuses.length===0||active.statuses.includes(i.status))&&
     (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
@@ -653,6 +732,20 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
     (!active.dateTo||i.invoiceDate<=active.dateTo)
   );
+  const SORT_FIELDS:Record<string,(i:any)=>any>={
+    invoiceNo:i=>i.invoiceNo, poNumber:i=>fmtPOs(i), compCode:i=>i.companyCode,
+    invDate:i=>i.invoiceDate, dueDate:i=>i.dueDate, amount:i=>Number(i.amount||0),
+    attach:i=>i.files?.length||0, status:i=>i.status, actions:i=>i.status,
+  };
+  const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
+  const mine=[...mineFiltered].sort((a,b)=>{
+    if(!activeSort)return 0;
+    const [key,dir]=activeSort;
+    const fn=SORT_FIELDS[key]||(()=>"");
+    const va=fn(a),vb=fn(b);
+    const cmp=typeof va==="number"?va-vb:String(va).localeCompare(String(vb));
+    return dir==="asc"?cmp:-cmp;
+  });
   const tokens=[
     active.invoiceNoConds.length>0&&{label:"Invoice No.",val:active.invoiceNoConds.length===1?condLabel(active.invoiceNoConds[0]):`${active.invoiceNoConds.length} conditions`,onClear:()=>clr("invoiceNoConds")},
     active.statuses.length>0&&{label:"Status",val:active.statuses.length===1?active.statuses[0]:`${active.statuses.length} selected`,onClear:()=>clr("statuses")},
@@ -750,15 +843,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:900,tableLayout:"fixed",fontSize:FS.sm}}>
             <colgroup>
               <col style={{width:32}}/>
-              <col style={{width:"18%"}}/>
-              <col style={{width:"13%"}}/>
-              <col style={{width:"14%"}}/>
-              <col style={{width:"9%"}}/>
-              <col style={{width:"9%"}}/>
-              <col style={{width:"11%"}}/>
-              <col style={{width:"9%"}}/>
-              <col style={{width:"9%"}}/>
-              <col style={{width:"8%"}}/>
+              {COL_DEFS.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
             </colgroup>
 
@@ -767,24 +852,19 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                 <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
                   <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                 </th>
-                {[
-                  {l:"Invoice No.",    align:"left"},
-                  {l:"PO Number",      align:"left"},
-                  {l:"Company Code",   align:"left"},
-                  {l:"Invoice Date",   align:"left"},
-                  {l:"Due Date",       align:"left"},
-                  {l:"Amount",         align:"right"},
-                  {l:"Attachments",    align:"left"},
-                  {l:"Status",         align:"left"},
-                  {l:"Actions",        align:"left"},
-                ].map(h=>(
-                  <th key={h.l} style={{
-                    padding:"0 0.5rem",textAlign:h.align as any,
-                    fontSize:FS.sm,fontWeight:700,color:TK.hdrText,
-                    borderBottom:`1px solid ${TK.hdrBorder}`,
-                    whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,
-                  }}>{h.l}</th>
-                ))}
+                {COL_DEFS.map((col,ci)=>{
+                  const sortVal=colSort[col.key]||"none";
+                  const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
+                  const isRight=col.key==="amount";
+                  return(
+                    <th key={col.key}
+                      onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
+                      style={{padding:"0 0.5rem",textAlign:isRight?"right":"left",fontSize:FS.sm,fontWeight:700,color:TK.hdrText,borderBottom:`1px solid ${TK.hdrBorder}`,whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,cursor:"pointer",position:"relative"}}
+                      title={`Click to configure ${col.label}`}>
+                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:"#0a6ed1"}}>{sortIcon}</span>}
+                    </th>
+                  );
+                })}
                 <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:32}}/>
               </tr>
             </thead>
@@ -920,6 +1000,17 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
       )}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
+      {colMenu&&(
+        <ColumnSettingsPopup
+          col={colMenu.label} x={colMenu.x} y={colMenu.y}
+          sort={colSort[colMenu.key]||"none"}
+          onSort={v=>{setColSort(p=>({...p,[colMenu.key]:v}));}}
+          groupBy={!!colGroup[colMenu.key]}
+          onGroupBy={v=>setColGroup(p=>({...p,[colMenu.key]:v}))}
+          width={colWidth[colMenu.key]}
+          onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
+          onClose={()=>setColMenu(null)}/>
+      )}
     </div>
   );
 };
