@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
+declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any } } }
 
 // ── Mock Data ──────────────────────────────────────────────────
 const USERS = [
@@ -160,7 +161,7 @@ const tab = () => VP.w < 1024;
 const g2  = () => mob() ? "1fr" : "1fr 1fr";
 const g3  = () => mob() ? "1fr" : tab() ? "1fr 1fr" : "repeat(3,1fr)";
 const g4  = () => mob() ? "1fr" : tab() ? "repeat(2,1fr)" : "repeat(4,1fr)";
-const pg  = () => mob() ? "12px 10px" : 24;
+const pg  = () => mob() ? "12px 16px" : "16px 32px";
 
 // SAP Fiori Avatar – 10 accent color variants (Quartz Light design tokens)
 const AVT_ACCENTS = [
@@ -184,11 +185,12 @@ const Card = ({children,style={}}) => (
 
 const Btn = ({children,onClick,v="primary",sm,disabled,style={}}) => {
   const VS = {
-    primary:{background:C.primary,color:"#fff",border:`1px solid ${C.primary}`},
-    ghost:  {background:"transparent",color:C.primaryDk,border:`1px solid ${C.primaryDk}`},
-    danger: {background:C.err,color:"#fff",border:`1px solid ${C.err}`},
-    success:{background:C.ok,color:"#fff",border:`1px solid ${C.ok}`},
-    neutral:{background:C.card,color:C.t1,border:`1px solid ${C.border}`},
+    primary:    {background:C.primary,   color:"#fff",  border:`1px solid ${C.primary}`},
+    ghost:      {background:"transparent",color:C.primaryDk,border:`1px solid ${C.primaryDk}`},
+    danger:     {background:C.err,       color:"#fff",  border:`1px solid ${C.err}`},
+    success:    {background:C.ok,        color:"#fff",  border:`1px solid ${C.ok}`},
+    neutral:    {background:C.card,      color:C.t1,    border:`1px solid ${C.border}`},
+    transparent:{background:"transparent",color:C.t1,   border:"1px solid transparent"},
   };
   return <button onClick={onClick} disabled={disabled} style={{...VS[v],borderRadius:4,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,fontSize:sm?12:14,padding:sm?"4px 12px":"7px 16px",opacity:disabled?.5:1,transition:"background .12s,opacity .15s",lineHeight:"20px",...style}}>{children}</button>;
 };
@@ -226,14 +228,22 @@ const Lbl = ({children}) => <div style={{fontSize:12,color:C.t2,marginBottom:4,f
 const Val = ({children}) => <div style={{fontSize:14,color:C.t1,lineHeight:1.5}}>{children||"—"}</div>;
 const Sep = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
 
-const Modal = ({title,onClose,children,width=640}) => (
+const Modal = ({title,onClose,children,footer,width=640}) => (
   <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}>
-    <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
-      <div style={{padding:"14px 20px",borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
+    <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
+      {/* SAP Fiori Dialog Header */}
+      <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,borderRadius:"6px 6px 0 0",background:C.card}}>
         <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{title}</span>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
       </div>
-      <div style={{padding:mob()?14:20}}>{children}</div>
+      {/* Scrollable Body */}
+      <div style={{padding:mob()?14:20,overflowY:"auto",flex:1}}>{children}</div>
+      {/* SAP Fiori Dialog Footer — right-aligned action buttons */}
+      {footer&&(
+        <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:8,padding:"10px 20px",borderTop:`1px solid ${C.border}`,background:C.card,flexShrink:0,borderRadius:"0 0 6px 6px"}}>
+          {footer}
+        </div>
+      )}
     </div>
   </div>
 );
@@ -283,6 +293,10 @@ const FField = ({label,children,style={}}) => (
     {children}
   </div>
 );
+const SapIcon = ({name,size=16,color="",style={}}:{name:string,size?:number,color?:string,style?:any}) => (
+  <ui5-icon name={name} style={{width:size,height:size,display:"inline-block",verticalAlign:"middle",...(color?{color}:{}),...style}}/>
+);
+
 const DateRangePicker = ({from,to,onChange}) => {
   const [open,setOpen]=useState(false);
   const [hov,setHov]=useState<string|null>(null);
@@ -344,7 +358,7 @@ const DateRangePicker = ({from,to,onChange}) => {
       <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box"}}>
         <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
         {disp&&<button onClick={e=>{e.stopPropagation();clrPick();onChange("","");}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
-        <span style={{color:C.t2,fontSize:13,flexShrink:0}}>📅</span>
+        <SapIcon name="calendar" size={14} color={C.t2}/>
       </div>
       {open&&(
         <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",padding:16,minWidth:isMob?240:490}}>
@@ -379,6 +393,30 @@ const DateRangePicker = ({from,to,onChange}) => {
 const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
 const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
 
+// SAP UI5 Quartz Light CheckBox
+const Checkbox = ({checked,onChange,label=null,disabled=false}:{checked:boolean,onChange:(v:boolean)=>void,label?:any,disabled?:boolean}) => {
+  const [hov,setHov]=useState(false);
+  const [foc,setFoc]=useState(false);
+  const bg=checked?(hov?C.primaryDk:C.primary):C.field;
+  const bdr=checked?(hov?C.primaryDk:C.primary):(hov?C.primary:C.fieldBorder);
+  return(
+    <label style={{display:"inline-flex",alignItems:"center",gap:8,cursor:disabled?"not-allowed":"pointer",userSelect:"none" as const,opacity:disabled?.4:1}}
+      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
+      <span style={{position:"relative",width:16,height:16,flexShrink:0,display:"inline-flex"}}>
+        <input type="checkbox" checked={checked} disabled={disabled} onChange={e=>onChange(e.target.checked)}
+          onFocus={()=>setFoc(true)} onBlur={()=>setFoc(false)}
+          style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",margin:0,cursor:disabled?"not-allowed":"pointer"}}/>
+        <span style={{width:16,height:16,border:`1px solid ${bdr}`,borderRadius:0,background:bg,boxSizing:"border-box" as const,
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,pointerEvents:"none",
+          boxShadow:foc?`0 0 0 1px ${C.primary}`:"none"}}>
+          {checked&&<span style={{width:3,height:7,borderRight:`2px solid #fff`,borderBottom:`2px solid #fff`,display:"block",transform:"rotate(45deg)",marginBottom:2}}/>}
+        </span>
+      </span>
+      {label!=null&&<span style={{fontSize:14,color:C.t1}}>{label}</span>}
+    </label>
+  );
+};
+
 // ── Shell Bar ──────────────────────────────────────────────────
 const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSettings}) => {
   const [menuOpen,setMenuOpen]=useState(false);
@@ -392,7 +430,7 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
     <div style={{background:C.shell,color:"#fff",position:"sticky",top:0,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
       <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:48}}>
         <div style={{fontWeight:800,fontSize:isMob?13:15,marginRight:isMob?10:24,whiteSpace:"nowrap",letterSpacing:.2,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{color:"rgba(255,255,255,0.65)",fontSize:18,lineHeight:1}}>⊞</span>
+          <SapIcon name="grid" size={18} color="rgba(255,255,255,0.65)"/>
           <span style={{color:"#fff",fontWeight:700}}>{isMob?"BRM Portal":"BRM Vendor Portal"}</span>
         </div>
         {!isMob&&(
@@ -409,8 +447,7 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
           </div>
         )}
         <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
-          <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{theme==="dark"?"☀️":"🌙"}</button>
-          {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>}
+          <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name={theme==="dark"?"brightness-high":"night-mode"} size={14} color="#fff"/></button>
           {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
           <div style={{position:"relative"}}>
             <button onClick={()=>setAvatarOpen(o=>!o)} title={user.name} aria-label={`User menu: ${user.name}`} aria-expanded={avatarOpen} style={{width:36,height:36,borderRadius:"50%",background:ac.bg,border:`2px solid ${avatarOpen?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.35)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:ac.fg,cursor:"pointer",padding:0,outline:"none",flexShrink:0,transition:"border-color .15s,box-shadow .15s",boxShadow:avatarOpen?"0 0 0 3px rgba(255,255,255,0.22)":"none"}}>{ini}</button>
@@ -428,7 +465,7 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
                 </div>
                 <div style={{padding:"6px 0"}}>
                   <button onClick={()=>{setAvatarOpen(false);onOpenSettings();}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.t1,fontFamily:"inherit"}}>
-                    <span style={{fontSize:15}}>⚙️</span><span>Settings</span>
+                    <SapIcon name="action-settings" size={15} style={{flexShrink:0}}/><span>Settings</span>
                   </button>
                   <div style={{margin:"4px 18px",borderTop:`1px solid ${C.border}`}}/>
                   <button onClick={()=>{setAvatarOpen(false);onLogout();}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.err,fontFamily:"inherit"}}>
@@ -449,7 +486,6 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",borderTop:"1px solid rgba(255,255,255,0.12)",marginTop:4}}>
             <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":"BRM"}</span>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{onOpenSettings();setMenuOpen(false);}} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>
               <button onClick={onLogout} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>
             </div>
           </div>
@@ -461,54 +497,89 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
 
 // ── Login ──────────────────────────────────────────────────────
 const Login = ({onLogin}) => {
-  const [username,setU]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [loading,setL]=useState(false); const [role,setRole]=useState("vendor");
+  const [u,setU]=useState(""); const [pw,setPw]=useState(""); const [showPw,setShowPw]=useState(false);
+  const [err,setErr]=useState(""); const [loading,setL]=useState(false); const [fld,setFld]=useState(null);
   const go=()=>{
+    if(!u.trim()||!pw.trim()){setErr("Please enter your user name and password.");return;}
     setL(true);setErr("");
     setTimeout(()=>{
-      const u=USERS.find(x=>x.username===username&&x.password===pw&&x.role===role);
-      u?onLogin(u):(setErr("Invalid credentials. Please try again."),setL(false));
+      const usr=USERS.find(x=>x.username===u&&x.password===pw);
+      usr?onLogin(usr):(setErr("Incorrect user name or password. Please try again."),setL(false));
     },700);
   };
+  const iBase={width:"100%",height:"2rem",background:"#f5f6f7",border:"none",borderBottom:"1px solid #89919a",borderRadius:"0.375rem",padding:"0.3125rem 0.5rem",fontSize:"0.875rem",color:"#1a2733",boxSizing:"border-box" as const,fontFamily:"inherit",outline:"none",transition:"all 150ms ease-in"};
+  const iFoc={background:"#fff",boxShadow:"0 0 0 0.125rem #0070f2",borderBottomColor:"transparent"};
+  const iS=(n)=>({...iBase,...(fld===n?iFoc:{})});
   return (
-    <div style={{minHeight:"100vh",background:"linear-gradient(150deg,#1a2a3d 0%,#354a5f 50%,#2c4a6a 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
-      {/* SAP-style header bar above card */}
-      <div style={{marginBottom:32,textAlign:"center",color:"#fff"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>
-          <span style={{color:"rgba(255,255,255,0.6)",fontSize:22}}>⊞</span>
-          <span style={{fontSize:12,letterSpacing:3,color:"rgba(255,255,255,0.5)",fontWeight:600,textTransform:"uppercase"}}>SAP BTP · Accenture</span>
+    <div style={{minHeight:"100vh",background:"#f7f7f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:'"72","72full",Arial,Helvetica,sans-serif',fontSize:"0.875rem"}}>
+      <main style={{width:mob()?"92vw":"30rem",maxWidth:"30rem",background:"#fff",borderRadius:"1rem",overflow:"hidden",boxShadow:"0 0 2px rgba(91,115,139,.16),0 32px 64px rgba(91,115,139,.16)",display:"flex",flexDirection:"column",minHeight:"43rem"}}>
+
+        <div style={{padding:"2rem 2rem 0",marginBottom:"1.5rem"}}>
+          <div style={{fontSize:"1.0625rem",fontWeight:900,color:"#000",lineHeight:1,letterSpacing:"-0.3px"}}>
+            SAP<sup style={{fontSize:"0.5rem",fontWeight:400,verticalAlign:"super"}}>®</sup> ID
+          </div>
+          <div style={{marginTop:"1.25rem"}}>
+            <h1 style={{fontSize:"1.5rem",fontWeight:900,lineHeight:"1.875rem",margin:0,color:"#1a2733"}}>Sign In</h1>
+          </div>
         </div>
-        <div style={{fontSize:28,fontWeight:700,letterSpacing:.3,color:"#fff"}}>BRM Vendor Portal</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginTop:6}}>End-to-end digital collaboration platform</div>
-      </div>
-      <div style={{background:"#fff",borderRadius:8,padding:mob()?"20px 24px":"32px 36px",width:mob()?"92%":400,maxWidth:400,boxShadow:"0 24px 64px rgba(0,0,0,0.4)"}}>
-        <div style={{fontSize:20,fontWeight:700,color:"#1d2d3e",marginBottom:4}}>Sign In</div>
-        <div style={{fontSize:13,color:"#6a6d70",marginBottom:22}}>Select your role and enter credentials</div>
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Login As</div>
+
+        <div style={{padding:"0 2rem 2rem",flexGrow:1}}>
+          <div style={{marginTop:"4rem"}}>
+            {err&&<div style={{background:"#ffeaea",border:"1px solid #e60000",borderRadius:4,padding:"0.625rem 0.75rem",marginBottom:"1rem",fontSize:"0.875rem",color:"#bb0000"}}>{err}</div>}
+
+            <div style={{marginBottom:"1rem"}}>
+              <label style={{display:"block",fontSize:"0.875rem",color:"#5b738b",marginBottom:"0.125rem"}}>E-Mail, User ID or Login Name</label>
+              <input type="text" value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="E-Mail, User ID or Login Name" style={iS("u")} onFocus={()=>setFld("u")} onBlur={()=>setFld(null)} autoComplete="off"/>
+            </div>
+
+            <div style={{marginBottom:"1.5rem"}}>
+              <label style={{display:"block",fontSize:"0.875rem",color:"#5b738b",marginBottom:"0.125rem"}}>Password</label>
+              <div style={{position:"relative"}}>
+                <input type={showPw?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Password" style={{...iS("pw"),paddingRight:"2rem"}} onFocus={()=>setFld("pw")} onBlur={()=>setFld(null)} autoComplete="off"/>
+                <button onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:"0.45rem",top:"0.35rem",background:"none",border:"none",cursor:"pointer",padding:0,color:"#475e75",display:"flex",alignItems:"center"}} title={showPw?"Hide Password":"Show Password"}>
+                  {showPw
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><line x1="2" y1="2" x2="22" y2="22" stroke="#475e75" strokeWidth="2" strokeLinecap="round"/><path d="M9.5 4.6C10.3 4.2 11.1 4 12 4c4 0 7.7 2.9 9.9 7.5" stroke="#475e75" strokeWidth="2" strokeLinecap="round"/><path d="M17.5 17.5C15.7 18.8 13.9 20 12 20c-4 0-7.7-2.9-9.9-7.5C3.1 10.5 4.3 8.9 5.8 7.5" stroke="#475e75" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="12" r="3" stroke="#475e75" strokeWidth="2"/></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="#475e75" strokeWidth="2"/><path d="M2 12C4.1 7.3 7.7 4 12 4s7.9 3.3 10 8c-2.1 4.7-5.7 8-10 8S4.1 16.7 2 12z" stroke="#475e75" strokeWidth="2"/></svg>
+                  }
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <Checkbox checked={false} onChange={()=>{}} label="Keep me signed in"/>
+              <a href="#" onClick={e=>e.preventDefault()} style={{fontSize:"0.875rem",fontWeight:"bold",color:"#0070f2",textDecoration:"none"}}>Forgot password?</a>
+            </div>
+          </div>
+        </div>
+
+        <div style={{background:"#F5F6F7",padding:"1.25rem 2rem"}}>
           <div style={{display:"flex",gap:8}}>
-            {[["vendor","🏭 Vendor"],["brm","🏢 BRM Employee"]].map(([r,l])=>(
-              <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"9px 0",borderRadius:4,cursor:"pointer",border:`2px solid ${role===r?"#0a6ed1":"#d9d9d9"}`,background:role===r?"#dff0fd":"#fff",color:role===r?"#0854a0":"#6a6d70",fontWeight:700,fontSize:13,fontFamily:"inherit",transition:"border-color .15s"}}>{l}</button>
+            <div style={{flex:1}}/>
+            <div style={{flex:1}}>
+              <button onClick={go} disabled={loading} style={{width:"100%",height:"2rem",background:loading?"#89919a":"#0070f2",color:"#fff",border:"none",borderRadius:"0.375rem",fontSize:"0.875rem",fontWeight:"bold",fontFamily:"inherit",cursor:loading?"default":"pointer",boxShadow:"0 0 2px rgba(27,144,255,.16),0 4px 8px rgba(27,144,255,.16)"}}>
+                {loading?"Signing in…":"Continue"}
+              </button>
+            </div>
+          </div>
+          <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid #d9d9d9"}}>
+            <div style={{fontSize:11,color:"#5b738b",fontWeight:700,marginBottom:8,letterSpacing:.5,textTransform:"uppercase" as const}}>Quick Demo Access</div>
+            {[["vendor1","PT Maju Bersama (Vendor)"],["vendor2","CV Sukses Mandiri (Vendor)"],["brm.user","Ahmad Rizki – Procurement Mgr"]].map(([un,l])=>(
+              <button key={un} onClick={()=>onLogin(USERS.find(x=>x.username===un))} style={{display:"block",width:"100%",textAlign:"left" as const,padding:"6px 10px",marginBottom:6,borderRadius:4,border:"1px solid #d9d9d9",background:"#fff",cursor:"pointer",fontSize:"0.875rem",fontFamily:"inherit",color:"#1a2733"}}>{l}</button>
             ))}
           </div>
         </div>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Username</div>
-          <Inp value={username} onChange={setU} placeholder="Enter username"/>
-        </div>
-        <div style={{marginBottom:20}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Password</div>
-          <Inp value={pw} onChange={setPw} placeholder="Enter password" type="password"/>
-        </div>
-        {err&&<div style={{color:"#bb0000",fontSize:13,marginBottom:16,padding:"10px 12px",background:"#ffebeb",borderRadius:4,border:"1px solid #bb000030"}}>{err}</div>}
-        <Btn onClick={go} disabled={loading} style={{width:"100%",padding:"10px 0",justifyContent:"center",fontSize:14,display:"flex",alignItems:"center",gap:6}}>{loading?"Signing in…":"Sign In"}</Btn>
-        <div style={{marginTop:24,paddingTop:18,borderTop:"1px solid #d9d9d9"}}>
-          <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:10,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
-          {[["vendor1","🏭 PT Maju Bersama"],["vendor2","🏭 CV Sukses Mandiri"],["brm.user","🏢 Ahmad Rizki – Procurement Mgr"]].map(([u,l])=>(
-            <button key={u} onClick={()=>onLogin(USERS.find(x=>x.username===u))} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 12px",marginBottom:6,borderRadius:4,border:"1px solid #d9d9d9",background:"#f7f7f7",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:"#1d2d3e",transition:"background .12s"}}>{l}</button>
+
+      </main>
+
+      <footer style={{textAlign:"center" as const}}>
+        <ul style={{background:"#fff",display:"inline-flex",justifyContent:"center",alignItems:"center",padding:"1rem",margin:"1.75rem 0",borderRadius:"4.375rem",listStyle:"none" as const,paddingLeft:0,boxShadow:"0 0 2px rgba(91,115,139,.16),0 4px 8px rgba(91,115,139,.16)"}}>
+          {["Privacy Policy","Legal Disclosure","Cookie Statement"].map(l=>(
+            <li key={l} style={{padding:"0 0.5rem"}}>
+              <a href="#" onClick={e=>e.preventDefault()} style={{fontSize:"0.875rem",color:"#0070f2",textDecoration:"none"}}>{l}</a>
+            </li>
           ))}
-        </div>
-      </div>
-      <div style={{color:"rgba(255,255,255,0.3)",fontSize:12,marginTop:24,letterSpacing:.3}}>© 2025 BRM · Accenture · SAP BTP Public Cloud</div>
+        </ul>
+      </footer>
     </div>
   );
 };
@@ -520,18 +591,18 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
   const mq=quotations.filter(q=>q.vendorId===user.vendorId);
   const mr=rfqs.filter(r=>r.targets.includes(user.vendorId));
   const stats=[
-    {l:"Total Invoices",n:mi.length,sub:`${mi.filter(i=>i.status==="Confirmed").length} Confirmed`,c:C.primary,ico:"📄"},
-    {l:"Pending Review",n:mi.filter(i=>["Submitted","Under Review"].includes(i.status)).length,sub:"Awaiting BRM action",c:C.warn,ico:"⏳"},
-    {l:"Open RFQs",n:mr.filter(r=>r.status==="Open").length,sub:"Pending your quotation",c:C.ok,ico:"📋"},
-    {l:"My Quotations",n:mq.length,sub:`${mq.filter(q=>q.status==="Accepted").length} Accepted`,c:C.gold,ico:"✅"},
+    {l:"Total Invoices",n:mi.length,sub:`${mi.filter(i=>i.status==="Confirmed").length} Confirmed`,c:C.primary,ico:"document"},
+    {l:"Pending Review",n:mi.filter(i=>["Submitted","Under Review"].includes(i.status)).length,sub:"Awaiting BRM action",c:C.warn,ico:"time-entry-request"},
+    {l:"Open RFQs",n:mr.filter(r=>r.status==="Open").length,sub:"Pending your quotation",c:C.ok,ico:"request-for-quotation"},
+    {l:"My Quotations",n:mq.length,sub:`${mq.filter(q=>q.status==="Accepted").length} Accepted`,c:C.gold,ico:"accept"},
   ];
   const tiles=[
-    {id:"profile",  ico:"👤", t:"Vendor Profile",    d:"View company info, bank details, and tax registration sourced from SAP Business Partner API", accent:C.info},
-    {id:"invoice",  ico:"🧾", t:"Invoice Submission", d:"Submit invoices with mandatory legal documents. Track status from submission to SAP posting.",  accent:C.ok},
-    {id:"quotation",ico:"📝", t:"Quotation & RFQ",    d:"View RFQs sent by BRM and submit competitive quotations with pricing and commercial terms.",     accent:C.warn},
+    {id:"profile",  ico:"employee", t:"Vendor Profile",    d:"View company info, bank details, and tax registration sourced from SAP Business Partner API", accent:C.info},
+    {id:"invoice",  ico:"document-text", t:"Invoice Submission", d:"Submit invoices with mandatory legal documents. Track status from submission to SAP posting.",  accent:C.ok},
+    {id:"quotation",ico:"notes", t:"Quotation & RFQ",    d:"View RFQs sent by BRM and submit competitive quotations with pricing and commercial terms.",     accent:C.warn},
   ];
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:22,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:22,fontWeight:700,color:C.t1}}>Welcome, {v.name}</div>
         <div style={{fontSize:13,color:C.t2,marginTop:4}}>Vendor ID: {user.vendorId} · {v.cat} · Status: <span style={{color:C.ok,fontWeight:600}}>Active</span></div>
@@ -545,7 +616,7 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
                 <div style={{fontSize:32,fontWeight:700,color:s.c,lineHeight:1}}>{s.n}</div>
                 <div style={{fontSize:12,color:C.t2,marginTop:6}}>{s.sub}</div>
               </div>
-              <span style={{fontSize:24,opacity:0.75}}>{s.ico}</span>
+              <SapIcon name={s.ico} size={24} color={s.c}/>
             </div>
           </div>
         ))}
@@ -553,7 +624,7 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
       <div style={{display:"grid",gridTemplateColumns:g3(),gap:16,marginBottom:18}}>
         {tiles.map(t=>(
           <div key={t.id} onClick={()=>setSection(t.id)} style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:22,cursor:"pointer",transition:"box-shadow .2s,transform .15s",borderTop:`3px solid ${t.accent}`}}>
-            <div style={{fontSize:28,marginBottom:12}}>{t.ico}</div>
+            <div style={{marginBottom:12}}><SapIcon name={t.ico} size={28} color={t.accent}/></div>
             <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:8}}>{t.t}</div>
             <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{t.d}</div>
             <div style={{marginTop:16,color:t.accent,fontSize:13,fontWeight:600}}>Open →</div>
@@ -582,9 +653,9 @@ const VendorProfile = ({user}) => {
   const [loading,setL]=useState(true);
   useEffect(()=>{setTimeout(()=>setL(false),700);},[]);
   const v=VENDORS[user.vendorId];
-  if(loading) return <div style={{padding:60,textAlign:"center",color:C.t2,fontSize:14}}>⏳ Fetching data from SAP Business Partner API (A_BusinessPartner)…</div>;
+  if(loading) return <div style={{padding:60,textAlign:"center",color:C.t2,fontSize:14}}><SapIcon name="time-entry-request" size={14} style={{marginRight:4}}/>Fetching data from SAP Business Partner API (A_BusinessPartner)…</div>;
   return (
-    <div style={{padding:pg(),maxWidth:960,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Vendor Profile</div>
@@ -632,7 +703,8 @@ const PoValueHelp = ({values,onConfirm,onClose}) => {
     catch{alert("Clipboard access denied. Please paste manually into the field.");}
   };
   return (
-    <Modal title="PO Number – Value Help" onClose={onClose} width={500}>
+    <Modal title="PO Number – Value Help" onClose={onClose} width={500}
+      footer={<><Btn v="transparent" onClick={onClose}>Cancel</Btn><Btn v="primary" onClick={()=>onConfirm(items)}>Confirm ({items.length} PO{items.length!==1?"s":""})</Btn></>}>
       <div style={{fontSize:10,color:C.t2,marginBottom:12}}>📡 SAP API: A_PurchaseOrder (OData v4) · Separate entries by newline, comma, or semicolon</div>
       <Lbl>Paste or type PO numbers</Lbl>
       <div style={{display:"flex",gap:8,marginBottom:6}}>
@@ -653,10 +725,6 @@ const PoValueHelp = ({values,onConfirm,onClose}) => {
             <button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12,padding:"0 4px"}}>✕</button>
           </div>
         ))}
-      </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
-        <Btn v="primary" onClick={()=>onConfirm(items)}>Confirm ({items.length} PO{items.length!==1?"s":""})</Btn>
       </div>
     </Modal>
   );
@@ -679,7 +747,8 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
     onSave(obj);
   };
   return (
-    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
+    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}
+      footer={<><Btn v="transparent" onClick={onClose}>Cancel</Btn><Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn><Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn></>}>
       <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
@@ -724,11 +793,11 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
       <div style={{padding:14,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
-        <div style={{fontWeight:700,fontSize:12,marginBottom:6}}>📎 Mandatory Attachments</div>
+        <div style={{fontWeight:700,fontSize:12,marginBottom:6,display:"flex",alignItems:"center",gap:4}}><SapIcon name="attachment" size={12}/>Mandatory Attachments</div>
         <div style={{fontSize:11,color:C.t2,marginBottom:10}}>Both Invoice PDF and Faktur Pajak PDF are required before submission.</div>
         {(f.files||[]).map((a,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:C.card,borderRadius:4,marginBottom:6,border:`1px solid ${C.border}`,fontSize:12}}>
-            <span>📄 {a}</span>
+            <span style={{display:"flex",alignItems:"center",gap:4}}><SapIcon name="document" size={13}/>{a}</span>
             <button onClick={()=>rmFile(i)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:11}}>Remove</button>
           </div>
         ))}
@@ -736,11 +805,6 @@ const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
           {!f.files?.includes("invoice.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("invoice.pdf")}>+ Upload Invoice PDF</Btn>}
           {!f.files?.includes("faktur_pajak.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("faktur_pajak.pdf")}>+ Upload Faktur Pajak PDF</Btn>}
         </div>
-      </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
-        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
-        <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
-        <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
       </div>
       {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
     </Modal>
@@ -825,7 +889,7 @@ const PdfViewer = ({filename,inv,onClose}) => {
       <div style={{background:C.card,borderRadius:8,width:680,maxWidth:"95vw",maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.3)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,borderRadius:"8px 8px 0 0",flexShrink:0}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:13,fontWeight:700,color:C.t1}}>📄 {filename}</span>
+            <span style={{fontSize:13,fontWeight:700,color:C.t1,display:"flex",alignItems:"center",gap:4}}><SapIcon name="document" size={13}/>{filename}</span>
             <span style={{fontSize:10,color:C.t2,padding:"1px 8px",border:`1px solid ${C.border}`,borderRadius:10}}>Demo Preview</span>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -865,11 +929,11 @@ const DocFlow = ({inv}) => {
   const allGRs = chains.flatMap(c=>c.grNos);
 
   const stages = [
-    {ico:"📋", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
+    {ico:"request-for-quotation", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
     ...(allSQs.length>0?[{ico:"💬", badge:"SQ", label:"Supplier\nQuotation", docs:allSQs, status:"Completed", api:"A_SupplierQuotation"}]:[]),
-    {ico:"📄", badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
+    {ico:"document", badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
     {ico:"📦", badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
-    {ico:"🧾", badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
+    {ico:"document-text", badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
     ...(sapAccNo?[{ico:"🏦", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
   ];
 
@@ -901,7 +965,7 @@ const DocFlow = ({inv}) => {
                       {stIco(st.status)}
                     </div>
                     <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:22,marginBottom:5}}>{st.ico}</div>
+                      <div style={{marginBottom:5}}><SapIcon name={st.ico} size={22}/></div>
                       <div style={{fontSize:9,fontWeight:800,color:C.t2,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{st.badge}</div>
                       <div style={{fontSize:10,fontWeight:700,color:C.t1,marginBottom:7,lineHeight:1.4,minHeight:28}}>
                         {st.label.split("\n").map((l,j)=><div key={j}>{l}</div>)}
@@ -942,7 +1006,7 @@ const DocFlow = ({inv}) => {
                 {/* Node row */}
                 <div style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 12px",position:"relative",boxShadow:"0 1px 4px rgba(0,0,0,0.07)"}}>
                   <div style={{position:"absolute",top:-7,right:-7,width:16,height:16,borderRadius:"50%",background:color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{stIco(st.status)}</div>
-                  <span style={{fontSize:22,flexShrink:0}}>{st.ico}</span>
+                  <SapIcon name={st.ico} size={22} style={{flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
                       <span style={{fontSize:9,fontWeight:800,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 5px",letterSpacing:.5}}>{st.badge}</span>
@@ -1007,7 +1071,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management</div>
@@ -1033,7 +1097,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
                 <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
                 <Td>{fmtDate(inv.invoiceDate)}</Td><Td>{fmtDate(inv.dueDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
-                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ {inv.files.length} file(s)</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
+                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12,display:"flex",alignItems:"center",gap:3}}><SapIcon name="accept" size={12}/>{inv.files.length} file(s)</span>:<span style={{color:C.warn,fontSize:12,display:"flex",alignItems:"center",gap:3}}><SapIcon name="warning" size={12}/>Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
                 <Td><div style={{display:"flex",gap:5}}>
                   {["Draft","Rejected"].includes(inv.status)&&<Btn v="ghost" sm onClick={()=>{setEd(inv);setForm(true);}}>Edit</Btn>}
@@ -1067,11 +1131,11 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
           <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
-            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}>📄 {a}</button>)}
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}><SapIcon name="document" size={13}/>{a}</button>)}
             {!view.files?.length&&<Val/>}</div>
           <DocFlow inv={view}/>
           {view.rejReason&&<div style={{padding:10,background:C.errBg,borderRadius:4,fontSize:12,color:C.err,marginTop:12}}><strong>Rejection Reason:</strong> {view.rejReason}</div>}
-          {view.status==="Confirmed"&&<div style={{padding:10,background:C.okBg,borderRadius:4,fontSize:12,color:C.ok,marginTop:12}}>✓ Invoice confirmed by BRM. SAP Supplier Invoice created via <code>API_SUPPLIERINVOICE_PROCESS_SRV</code>. Flexible Workflow initiated for payment approval.</div>}
+          {view.status==="Confirmed"&&<div style={{padding:10,background:C.okBg,borderRadius:4,fontSize:12,color:C.ok,marginTop:12}}><SapIcon name="accept" size={12} style={{marginRight:4}}/>Invoice confirmed by BRM. SAP Supplier Invoice created via <code>API_SUPPLIERINVOICE_PROCESS_SRV</code>. Flexible Workflow initiated for payment approval.</div>}
         </Modal>
       )}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name}/>}
@@ -1096,7 +1160,8 @@ const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
     onSave({...f,id:f.id||`QT-${uid()}`,status:draft?"Draft":"Submitted",submittedDate:draft?"":new Date().toISOString().split("T")[0],files:f.files.length===0&&!draft?["quotation.pdf"]:f.files});
   };
   return (
-    <Modal title={qt?`Edit Quotation: ${rfq.title}`:`Submit Quotation: ${rfq.title}`} onClose={onClose} width={740}>
+    <Modal title={qt?`Edit Quotation: ${rfq.title}`:`Submit Quotation: ${rfq.title}`} onClose={onClose} width={740}
+      footer={<><Btn v="transparent" onClick={onClose}>Cancel</Btn><Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn><Btn v="primary" onClick={()=>save(false)}>Submit Quotation</Btn></>}>
       <div style={{padding:"8px 12px",background:C.infoBg,borderRadius:4,marginBottom:14,fontSize:12}}>
         <strong>RFQ:</strong> {rfq.id} · Closing: {rfq.closingDate} · Est. Value: {idr(rfq.estVal)}
       </div>
@@ -1125,16 +1190,11 @@ const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
         <Lbl>Attachments</Lbl>
         {(f.files||[]).map((a,i)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",background:C.card,borderRadius:4,marginBottom:5,border:`1px solid ${C.border}`,fontSize:12}}>
-            📄 {a}
+            <><SapIcon name="document" size={13} style={{marginRight:4}}/>{a}</>
             <button onClick={()=>s("files",f.files.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:11}}>Remove</button>
           </div>
         ))}
         <Btn v="neutral" sm onClick={()=>s("files",[...f.files,`quotation_doc_${uid()}.pdf`])}>+ Upload Document</Btn>
-      </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
-        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
-        <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
-        <Btn v="primary" onClick={()=>save(false)}>Submit Quotation</Btn>
       </div>
     </Modal>
   );
@@ -1150,7 +1210,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const save=qt=>{setQuotations(p=>p.find(q=>q.id===qt.id)?p.map(q=>q.id===qt.id?qt:q):[...p,qt]);setQR(null);setEQ(null);};
   const withdraw=id=>{if(window.confirm("Withdraw quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Withdrawn"}:q));};
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:18,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation & RFQ</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ: SAP Purchasing API (A_PurchaseRequisition) · Quotation: Custom CDS Table on BTP</div>
@@ -1170,7 +1230,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,flexWrap:"wrap"}}>
                     <span style={{fontWeight:700,fontSize:14}}>{rfq.title}</span>
                     <Badge s={rfq.status}/>
-                    {q&&<span style={{fontSize:11,color:C.ok,fontWeight:700}}>✓ Quoted · {idr(q.totalAmt)}</span>}
+                    {q&&<span style={{fontSize:11,color:C.ok,fontWeight:700}}><SapIcon name="accept" size={11} style={{marginRight:3}}/>Quoted · {idr(q.totalAmt)}</span>}
                   </div>
                   <div style={{fontSize:11,color:C.t2,marginBottom:6}}>{rfq.id} · {rfq.cat} · Posted: {fmtDate(rfq.postedDate)} · Closing: <strong>{fmtDate(rfq.closingDate)}</strong></div>
                   <div style={{fontSize:12,color:C.t1,marginBottom:8}}>{rfq.desc}</div>
@@ -1202,7 +1262,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                     <Td><button onClick={()=>setVQ(qt)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{qt.rfqTitle}</button><div style={{fontSize:10,color:C.t2}}>{qt.rfqId}</div></Td>
                     <Td>{fmtDate(qt.submittedDate)}</Td><Td>{fmtDate(qt.validUntil)}</Td>
                     <Td style={{fontWeight:700}}>{idr(qt.totalAmt)}</Td>
-                    <Td>{qt.files?.length>0?<span style={{color:C.ok,fontSize:12}}>✓ {qt.files.length}</span>:"—"}</Td>
+                    <Td>{qt.files?.length>0?<span style={{color:C.ok,fontSize:12,display:"flex",alignItems:"center",gap:3}}><SapIcon name="accept" size={12}/>{qt.files.length}</span>:"—"}</Td>
                     <Td><Badge s={qt.status}/></Td>
                     <Td><div style={{display:"flex",gap:5}}>
                       {["Draft","Submitted"].includes(qt.status)&&<Btn v="ghost" sm onClick={()=>{setEQ(qt);setQR(rfqs.find(r=>r.id===qt.rfqId));}}>Edit</Btn>}
@@ -1241,13 +1301,13 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
   const confirmed=invoices.filter(i=>i.status==="Confirmed");
   const pendingQt=quotations.filter(q=>q.status==="Submitted");
   const stats=[
-    {l:"Invoices Pending",n:pending.length,c:C.warn,ico:"⏳",s:"brm-invoice"},
-    {l:"Invoices Confirmed",n:confirmed.length,c:C.ok,ico:"✅",s:"brm-invoice"},
-    {l:"Quotations to Evaluate",n:pendingQt.length,c:C.primary,ico:"📋",s:"brm-quotation"},
+    {l:"Invoices Pending",n:pending.length,c:C.warn,ico:"time-entry-request",s:"brm-invoice"},
+    {l:"Invoices Confirmed",n:confirmed.length,c:C.ok,ico:"accept",s:"brm-invoice"},
+    {l:"Quotations to Evaluate",n:pendingQt.length,c:C.primary,ico:"request-for-quotation",s:"brm-quotation"},
     {l:"Open RFQs",n:rfqs.filter(r=>r.status==="Open").length,c:C.gold,ico:"📢",s:"brm-rfq"},
   ];
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:22,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:22,fontWeight:700,color:C.t1}}>Procurement Dashboard</div>
         <div style={{fontSize:13,color:C.t2,marginTop:4}}>Welcome, {user.name} · {user.title} · SAP S/4HANA Public Cloud (BTP Vendor Portal)</div>
@@ -1257,7 +1317,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           <div key={s.l} onClick={()=>setSection(s.s)} style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:"16px 18px",cursor:"pointer",borderLeft:`4px solid ${s.c}`,transition:"box-shadow .15s"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{fontSize:12,color:C.t2,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>{s.l}</div>
-              <span style={{fontSize:22,opacity:0.7}}>{s.ico}</span>
+              <SapIcon name={s.ico} size={22} color={s.c}/>
             </div>
             <div style={{fontSize:32,fontWeight:700,color:s.c,lineHeight:1,marginBottom:8}}>{s.n}</div>
             <div style={{fontSize:12,color:C.primary,fontWeight:600}}>View →</div>
@@ -1266,7 +1326,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
       </div>
       <div style={{display:"grid",gridTemplateColumns:g2(),gap:16}}>
         <Card>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>⏳ Invoices Awaiting Action</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1,display:"flex",alignItems:"center",gap:6}}><SapIcon name="time-entry-request" size={15}/>Invoices Awaiting Action</div>
           {pending.length===0?<div style={{color:C.t2,fontSize:14}}>No invoices pending review.</div>:pending.slice(0,5).map(inv=>(
             <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
               <div><div style={{fontWeight:600,fontSize:14}}>{inv.invoiceNo}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{inv.vendorName} · {fmtDate(inv.invoiceDate)}</div></div>
@@ -1276,7 +1336,7 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           {pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{marginTop:12,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,fontWeight:600,padding:0}}>View all {pending.length} pending →</button>}
         </Card>
         <Card>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>📋 Quotations to Evaluate</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1,display:"flex",alignItems:"center",gap:6}}><SapIcon name="request-for-quotation" size={15}/>Quotations to Evaluate</div>
           {pendingQt.length===0?<div style={{color:C.t2,fontSize:14}}>No quotations awaiting evaluation.</div>:pendingQt.slice(0,5).map(qt=>(
             <div key={qt.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
               <div><div style={{fontWeight:600,fontSize:14,maxWidth:180,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{qt.rfqTitle}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{qt.vendorName}</div></div>
@@ -1321,7 +1381,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management – All Vendors</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
@@ -1345,7 +1405,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
                 <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
                 <Td>{fmtPOs(inv)}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
                 <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
-                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12}}>✓ Complete</span>:<span style={{color:C.warn,fontSize:12}}>⚠ Incomplete</span>}</Td>
+                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12,display:"flex",alignItems:"center",gap:3}}><SapIcon name="accept" size={12}/>Complete</span>:<span style={{color:C.warn,fontSize:12,display:"flex",alignItems:"center",gap:3}}><SapIcon name="warning" size={12}/>Incomplete</span>}</Td>
                 <Td><Badge s={inv.status}/></Td>
                 <Td><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                   {inv.status==="Submitted"&&<><Btn v="neutral" sm onClick={()=>setUR(inv.id)}>Review</Btn><Btn v="success" sm onClick={()=>accept(inv.id)}>Accept</Btn><Btn v="danger" sm onClick={()=>setRejM(inv)}>Reject</Btn></>}
@@ -1357,7 +1417,8 @@ const BrmInvoice = ({invoices,setInvoices}) => {
         </table>
       </Card>
       {view&&(
-        <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
+        <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}
+          footer={["Submitted","Under Review"].includes(view.status)?<><Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn><Btn v="success" onClick={()=>accept(view.id)}>Accept & Create SAP Invoice</Btn></>:undefined}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
             {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
@@ -1378,24 +1439,18 @@ const BrmInvoice = ({invoices,setInvoices}) => {
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
-            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}>📄 {a}</button>)}
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"block",background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}><SapIcon name="document" size={13}/>{a}</button>)}
             {!view.files?.length&&<Val/>}</div>
           <DocFlow inv={view}/>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
             <strong>SAP Integration:</strong> Accepting will call <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> to park the Supplier Invoice in SAP S/4HANA Public Cloud and trigger Flexible Workflow for posting approval.
           </div>
-          {["Submitted","Under Review"].includes(view.status)&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn>
-              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Create SAP Invoice</Btn>
-            </div>
-          )}
         </Modal>
       )}
       {rejModal&&(
-        <Modal title={`Reject Invoice: ${rejModal.invoiceNo}`} onClose={()=>{setRejM(null);setRejR("");}} width={480}>
+        <Modal title={`Reject Invoice: ${rejModal.invoiceNo}`} onClose={()=>{setRejM(null);setRejR("");}} width={480}
+          footer={<><Btn v="transparent" onClick={()=>{setRejM(null);setRejR("");}}>Cancel</Btn><Btn v="danger" onClick={reject}>Confirm Rejection</Btn></>}>
           <div style={{marginBottom:14}}><Lbl>Rejection Reason *</Lbl><TA value={rejR} onChange={setRejR} placeholder="Explain clearly to the vendor why the invoice is rejected…" rows={4}/></div>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="neutral" onClick={()=>{setRejM(null);setRejR("");}}>Cancel</Btn><Btn v="danger" onClick={reject}>Confirm Rejection</Btn></div>
         </Modal>
       )}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
@@ -1410,7 +1465,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const accept=id=>{setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Accepted"}:q));setView(null);};
   const reject=id=>{if(window.confirm("Reject this quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Rejected"}:q));setView(null);};
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Management – All Vendors</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Vendor quotations from Custom CDS Table on BTP · Compare and award to best bidder</div>
@@ -1437,7 +1492,8 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
         </table>
       </Card>
       {view&&(
-        <Modal title={`Quotation Detail: ${view.rfqTitle}`} onClose={()=>setView(null)} width={720}>
+        <Modal title={`Quotation Detail: ${view.rfqTitle}`} onClose={()=>setView(null)} width={720}
+          footer={view.status==="Submitted"?<><Btn v="danger" onClick={()=>reject(view.id)}>Reject Quotation</Btn><Btn v="success" onClick={()=>accept(view.id)}>Accept & Award Contract</Btn></>:undefined}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
             {[["Quotation ID",view.id],["RFQ ID",view.rfqId],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Submitted",fmtDate(view.submittedDate)],["Valid Until",fmtDate(view.validUntil)],["Total",idr(view.totalAmt)],["Status",null]].map(([l,val])=>(
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
@@ -1449,13 +1505,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
             <tbody>{view.items.map((it,i)=><tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"6px 10px"}}>{it.desc}</td><td style={{padding:"6px 10px"}}>{it.qty}</td><td style={{padding:"6px 10px"}}>{it.uom}</td><td style={{padding:"6px 10px"}}>{idr(it.unitPrice)}</td><td style={{padding:"6px 10px",fontWeight:700}}>{idr(it.total)}</td></tr>)}</tbody>
           </table>
           {view.notes&&<div style={{marginBottom:12}}><Lbl>Notes / Commercial Terms</Lbl><Val>{view.notes}</Val></div>}
-          {view.files?.length>0&&<div style={{marginBottom:14}}><Lbl>Attachments</Lbl>{view.files.map(a=><div key={a} style={{fontSize:13,color:C.primary}}>📄 {a}</div>)}</div>}
-          {view.status==="Submitted"&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end",borderTop:`1px solid ${C.border}`,paddingTop:14}}>
-              <Btn v="danger" onClick={()=>reject(view.id)}>Reject Quotation</Btn>
-              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Award Contract</Btn>
-            </div>
-          )}
+          {view.files?.length>0&&<div style={{marginBottom:14}}><Lbl>Attachments</Lbl>{view.files.map(a=><div key={a} style={{fontSize:13,color:C.primary,display:"flex",alignItems:"center",gap:4}}><SapIcon name="document" size={13}/>{a}</div>)}</div>}
         </Modal>
       )}
     </div>
@@ -1478,7 +1528,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",items:[{no:1,desc:"",qty:1,uom:"Unit",estPrice:0}]});
   };
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+    <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
@@ -1530,7 +1580,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             ))}
           </div>
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-          <div style={{marginBottom:12}}><Lbl>Target Vendors</Lbl>{view.targets.map(v=><div key={v} style={{fontSize:13}}>🏭 {VENDORS[v]?.name} ({v})</div>)}</div>
+          <div style={{marginBottom:12}}><Lbl>Target Vendors</Lbl>{view.targets.map(v=><div key={v} style={{fontSize:13}}><SapIcon name="factory" size={13} style={{marginRight:4}}/>{VENDORS[v]?.name} ({v})</div>)}</div>
           <Lbl>Line Items</Lbl>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,margin:"6px 0"}}>
             <thead><tr style={{background:C.subtle}}>{["Description","Qty","UoM","Est. Price","Total Est."].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>)}</tr></thead>
@@ -1539,7 +1589,8 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         </Modal>
       )}
       {showForm&&(
-        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={760}>
+        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={760}
+          footer={<><Btn v="transparent" onClick={()=>setForm(false)}>Cancel</Btn><Btn v="primary" onClick={publish}>Publish RFQ to Vendors</Btn></>}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
             <div style={{gridColumn:"1/-1"}}><Lbl>RFQ Title *</Lbl><Inp value={f.title} onChange={v=>sf("title",v)} placeholder="e.g. Procurement of Office Chairs"/></div>
             <div><Lbl>Category *</Lbl><Inp value={f.cat} onChange={v=>sf("cat",v)} placeholder="e.g. Furniture"/></div>
@@ -1551,10 +1602,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             <Lbl>Target Vendors *</Lbl>
             <div style={{display:"flex",gap:14,marginTop:6}}>
               {Object.keys(VENDORS).map(vid=>(
-                <label key={vid} style={{display:"flex",alignItems:"center",gap:6,fontSize:13,cursor:"pointer"}}>
-                  <input type="checkbox" checked={f.targets.includes(vid)} onChange={e=>sf("targets",e.target.checked?[...f.targets,vid]:f.targets.filter(v=>v!==vid))}/>
-                  {VENDORS[vid].name}
-                </label>
+                <Checkbox key={vid} checked={f.targets.includes(vid)} onChange={chk=>sf("targets",chk?[...f.targets,vid]:f.targets.filter(v=>v!==vid))} label={VENDORS[vid].name}/>
               ))}
             </div>
           </div>
@@ -1571,10 +1619,6 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 <Inp type="number" value={it.estPrice} onChange={v=>updItem(i,"estPrice",v)} placeholder="Est. Unit Price"/>
               </div>
             ))}
-          </div>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <Btn v="neutral" onClick={()=>setForm(false)}>Cancel</Btn>
-            <Btn v="primary" onClick={publish}>Publish RFQ to Vendors</Btn>
           </div>
         </Modal>
       )}
@@ -1604,7 +1648,7 @@ const SettingsModal = ({settings,onUpdate,onClose}) => {
     {v:"YYYY/MM/DD", ex:"2025/06/25"},
   ];
   return (
-    <Modal title="⚙️ Settings" onClose={onClose} width={520}>
+    <Modal title="Settings" onClose={onClose} width={520} footer={<Btn v="transparent" onClick={onClose}>Close</Btn>}>
       <div style={{marginBottom:6,fontWeight:700,fontSize:14,color:C.t1}}>Number Format</div>
       <div style={{fontSize:13,color:C.t2,marginBottom:12}}>Controls thousand and decimal separators for all amounts.</div>
       {NUM_FMTS.map(f=>(
