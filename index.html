@@ -11,10 +11,8 @@
     <link rel="manifest" href="/manifest.json"/>
     <title>BRM Vendor Portal</title>
     <script type="module">
-      try {
-        await import("https://esm.sh/@ui5/webcomponents@2/dist/Icon.js");
-        await import("https://esm.sh/@ui5/webcomponents-icons@2/dist/AllIcons.js");
-      } catch(e) { console.warn("UI5 icons failed to load:", e); }
+      import("https://esm.sh/@ui5/webcomponents@2/dist/Icon.js").catch(()=>{});
+      import("https://esm.sh/@ui5/webcomponents-icons@2/dist/AllIcons.js").catch(()=>{});
     </script>
   </head>
   <body>
