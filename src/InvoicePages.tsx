@@ -622,6 +622,18 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
   const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
   const v=VENDORS[user.vendorId];
+  const exportCSV=()=>{
+    const rows=selRows.size>0?mine.filter(i=>selRows.has(i.id)):mine;
+    if(rows.length===0){alert("No invoices to export.");return;}
+    const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
+    const hdr=["Pre-Invoice ID","Invoice No.","Company Code","Invoice Date","Due Date","PO Numbers","Currency","Amount","VAT Base","VAT Amount","WHT Type","WHT Amount","Net Amount","Status","Description","Vendor ID","Vendor Name"];
+    const data=rows.map(i=>[i.id,i.invoiceNo,i.companyCode,i.invoiceDate,i.dueDate,fmtPOs(i),i.currency,i.amount,i.vatBase,i.vatAmt,i.whtType,i.whtAmt,Number(i.amount||0)+Number(i.vatAmt||0)-Number(i.whtAmt||0),i.status,i.desc,i.vendorId,i.vendorName].map(esc).join(","));
+    const csv=[hdr.join(","),...data].join("\r\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+    a.download=`invoices_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();URL.revokeObjectURL(a.href);
+  };
   const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
     (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
     (!active.status||i.status===active.status)&&
@@ -680,7 +692,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400}}>({mine.length})</span>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <button style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
               <SapIcon name="excel-attachment" size={13} color="#32363a"/> Export
             </button>
             <div style={{width:1,height:20,background:"#d9d9d9",margin:"0 2px"}}/>
