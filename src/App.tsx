@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ── Mock Data ──────────────────────────────────────────────────
 const USERS = [
@@ -266,12 +266,104 @@ const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
   </div>
 );
 // Compact filter field label wrapper (Fiori style)
-const FField = ({label,children}) => (
-  <div>
+const FField = ({label,children,style={}}) => (
+  <div style={style}>
     <div style={{fontSize:11,color:C.t2,fontWeight:700,marginBottom:5,textTransform:"uppercase",letterSpacing:0.6}}>{label}</div>
     {children}
   </div>
 );
+const DateRangePicker = ({from,to,onChange}) => {
+  const [open,setOpen]=useState(false);
+  const [hov,setHov]=useState<string|null>(null);
+  const [tf,setTf]=useState(from||"");
+  const [tt,setTt]=useState(to||"");
+  const todayStr=new Date().toISOString().split("T")[0];
+  const [lm,setLm]=useState(()=>{const d=from?new Date(from+"T00:00"):new Date();return{y:d.getFullYear(),m:d.getMonth()};});
+  const ref=useRef<HTMLDivElement>(null);
+  useEffect(()=>{setTf(from||"");},[from]);
+  useEffect(()=>{setTt(to||"");},[to]);
+  useEffect(()=>{
+    if(!open)return;
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[open]);
+  const rm=lm.m===11?{y:lm.y+1,m:0}:{y:lm.y,m:lm.m+1};
+  const prev=()=>setLm(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1});
+  const next=()=>setLm(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1});
+  const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DN=["Su","Mo","Tu","We","Th","Fr","Sa"];
+  const mk=(y:number,m:number,d:number)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const clickDay=(ds:string)=>{if(!tf||(tf&&tt)){setTf(ds);setTt("");}else{if(ds<tf){setTt(tf);setTf(ds);}else setTt(ds);}};
+  const effEnd=(!tt&&hov)?hov:tt;
+  const inR=(ds:string)=>{if(!tf||!effEnd)return false;const[a,b]=tf<=effEnd?[tf,effEnd]:[effEnd,tf];return ds>a&&ds<b;};
+  const isS=(ds:string)=>ds===tf;
+  const isE=(ds:string)=>!!effEnd&&ds===effEnd;
+  const renderMon=(y:number,m:number)=>{
+    const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),picking=!!(tf&&!tt);
+    return(
+      <div style={{flex:1}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",textAlign:"center"}}>
+          {DN.map(d=><div key={d} style={{fontSize:11,color:C.t2,fontWeight:700,padding:"4px 0"}}>{d}</div>)}
+          {Array.from({length:fd},(_,i)=><div key={`e${i}`}/>)}
+          {Array.from({length:dim},(_,i)=>{
+            const d=i+1,ds=mk(y,m,d),s=isS(ds),e=isE(ds),ir=inR(ds),isT=ds===todayStr;
+            const bg=s||e?C.primary:ir?C.infoBg:"transparent";
+            const col=s||e?"#fff":C.t1;
+            const br=s||e?"50%":ir?"0%":"50%";
+            return(
+              <div key={d} onMouseEnter={()=>{if(picking)setHov(ds);}} onMouseLeave={()=>setHov(null)} onClick={()=>clickDay(ds)}
+                style={{display:"flex",alignItems:"center",justifyContent:"center",height:30,cursor:"pointer",fontSize:12,
+                  fontWeight:s||e?700:400,userSelect:"none" as const,background:bg,borderRadius:br,color:col,
+                  ...(isT&&!s&&!e?{outline:`1.5px solid ${C.primary}`,outlineOffset:"-1px",borderRadius:"50%"}:{})
+                }}
+              >{d}</div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const apply=()=>{onChange(tf,tt);setOpen(false);};
+  const cancel=()=>{setTf(from||"");setTt(to||"");setHov(null);setOpen(false);};
+  const clrPick=()=>{setTf("");setTt("");setHov(null);};
+  const disp=from&&to?`${fmtDate(from)} – ${fmtDate(to)}`:from?`${fmtDate(from)} – …`:"";
+  const isMob=mob();
+  return(
+    <div ref={ref} style={{position:"relative"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box"}}>
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
+        {disp&&<button onClick={e=>{e.stopPropagation();clrPick();onChange("","");}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
+        <span style={{color:C.t2,fontSize:13,flexShrink:0}}>📅</span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",padding:16,minWidth:isMob?240:490}}>
+          <div style={{display:"flex",alignItems:"center",marginBottom:10,gap:8}}>
+            <button onClick={prev} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>‹</button>
+            <div style={{display:"flex",flex:1,justifyContent:"space-around"}}>
+              <span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[lm.m]} {lm.y}</span>
+              {!isMob&&<span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[rm.m]} {rm.y}</span>}
+            </div>
+            <button onClick={next} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>›</button>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            {renderMon(lm.y,lm.m)}
+            {!isMob&&<><div style={{width:1,background:C.border,margin:"0 4px",alignSelf:"stretch"}}/>{renderMon(rm.y,rm.m)}</>}
+          </div>
+          <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+            <div style={{fontSize:12,color:C.t2}}>
+              {tf?<><span style={{fontWeight:700,color:C.t1}}>{fmtDate(tf)}</span><span style={{margin:"0 5px"}}>–</span>{tt?<span style={{fontWeight:700,color:C.t1}}>{fmtDate(tt)}</span>:<span style={{fontStyle:"italic"}}>pick end date</span>}</>:<span>Click a start date</span>}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <Btn v="neutral" sm onClick={clrPick}>Clear</Btn>
+              <Btn v="neutral" sm onClick={cancel}>Cancel</Btn>
+              <Btn v="primary" sm onClick={apply}>Apply</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
 const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
@@ -854,11 +946,11 @@ const DocFlow = ({inv}) => {
 const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const emptyF={invoiceNo:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
-  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
-  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});setRk(r=>r+1);};
-  const clr=k=>{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}));if(k==="dateFrom"||k==="dateTo")setRk(r=>r+1);};
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
   const v=VENDORS[user.vendorId];
   const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
     (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
@@ -873,8 +965,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
     active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
     active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
     active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
-    active.dateFrom&&{label:"Date From",val:fmtDate(active.dateFrom),onClear:()=>clr("dateFrom")},
-    active.dateTo&&{label:"Date To",val:fmtDate(active.dateTo),onClear:()=>clr("dateTo")},
+    (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
   ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
@@ -892,8 +983,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
         <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
         <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Draft",l:"Draft"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
-        <FField label="Invoice Date From"><DateInp key={`df${rk}`} value={draft.dateFrom} onChange={v=>sd("dateFrom",v)}/></FField>
-        <FField label="Invoice Date To"><DateInp key={`dt${rk}`} value={draft.dateTo} onChange={v=>sd("dateTo",v)}/></FField>
+        <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
@@ -1167,11 +1257,11 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
 const BrmInvoice = ({invoices,setInvoices}) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const emptyF={invoiceNo:"",vendorId:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
-  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF}); const [rk,setRk]=useState(0);
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
-  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});setRk(r=>r+1);};
-  const clr=k=>{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}));if(k==="dateFrom"||k==="dateTo")setRk(r=>r+1);};
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
   const vids=[...new Set(invoices.map(i=>i.vendorId))];
   const list=invoices.filter(i=>
     (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
@@ -1188,8 +1278,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
     active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
     active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
     active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
-    active.dateFrom&&{label:"Date From",val:fmtDate(active.dateFrom),onClear:()=>clr("dateFrom")},
-    active.dateTo&&{label:"Date To",val:fmtDate(active.dateTo),onClear:()=>clr("dateTo")},
+    (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
   ].filter(Boolean);
   const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
@@ -1206,8 +1295,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
         <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
         <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
-        <FField label="Invoice Date From"><DateInp key={`df${rk}`} value={draft.dateFrom} onChange={v=>sd("dateFrom",v)}/></FField>
-        <FField label="Invoice Date To"><DateInp key={`dt${rk}`} value={draft.dateTo} onChange={v=>sd("dateTo",v)}/></FField>
+        <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
       <Card style={{padding:0,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>

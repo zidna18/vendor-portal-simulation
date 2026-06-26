@@ -4,11 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A **single-file React prototype** of the "BRM Vendor Portal" — a UI simulation of a SAP BTP / S/4HANA vendor collaboration platform (Accenture demo). The entire app lives in `src/App.tsx` (~1535 lines). All data is in-memory mock data and all "SAP integration" is cosmetic copy (OData/API endpoint strings shown in the UI are illustrative, not real calls).
+A **single-file React + TypeScript prototype** of the "BRM Vendor Portal" — a UI simulation of a SAP BTP / S/4HANA vendor collaboration platform (Accenture demo). The entire app lives in `src/App.tsx` (~1553 lines). All data is in-memory mock data and all "SAP integration" is cosmetic copy (OData/API endpoint strings shown in the UI are illustrative, not real calls).
 
-`BRM Vendor Portal_V.1.00.tsx` at the repo root is a standalone artifact-drop copy of the same app (for embedding in canvas/artifact runners). The live Vite project uses `src/App.tsx`. Keep both in sync when making changes, or note which target the user wants.
+`BRM Vendor Portal_V.1.00.tsx` at the repo root is a **legacy standalone artifact-drop copy** intended for embedding in canvas/artifact runners. It is significantly lighter (~922 lines) and is no longer in sync with `src/App.tsx`. Default to editing `src/App.tsx` only; update the artifact copy only if the user explicitly requests it.
 
-The only runtime dependency is `react` (`useState`, `useEffect`).
+**TypeScript note:** TypeScript is present (strict mode off) but typing is intentionally loose — most components and handlers use implicit `any`. Do not add type annotations or refactor toward stricter types unless asked.
+
+**Reference material:** The untracked `Reference/` folder contains local saved copies of SAP S/4HANA Cloud screens for design reference. Use them to match SAP Fiori UI patterns when implementing new features.
+
+Runtime dependencies are `react` and `react-dom`. The app uses only `useState` and `useEffect` from React; `react-dom` mounts via `src/main.tsx` → `createRoot`. There is no router, state library, or UI component library.
 
 ## Running / iterating
 
@@ -18,12 +22,12 @@ npm run build    # production build
 npm run preview  # preview the production build locally
 ```
 
-There is no test suite.
+There is no test suite. Entry point is `src/main.tsx` (standard Vite React bootstrap). `public/manifest.json` declares PWA metadata (standalone display, `BRM Vendor Portal` app name).
 
 ## File organization (top to bottom in `src/App.tsx`)
 
 1. **Mock data** — `USERS`, `VENDORS` (static keyed map), `COMPANY_CODES`, `CURRENCIES`, `WHT_TYPES`, `INIT_INV`, `INIT_RFQS`, `INIT_QT`, helper `ccName()`
-2. **Theme** — `LIGHT`/`DARK` palette objects, mutable `C`/`STC` bindings, `applyTheme()`
+2. **Theme** — `LIGHT` (SAP Fiori Quartz Light) / `DARK` (SAP Fiori Horizon Dark) palette objects, mutable `C`/`STC` bindings, `applyTheme()`
 3. **Helpers** — `SETTINGS` / `applySettings()`, `idr()`, `fmtAmt()`, `fmtDate()`, `parseToISO()`, `uid()`, `fmtPOs()`, responsive helpers (`VP`, `mob()`, `tab()`, `g2/g3/g4/pg()`)
 4. **UI primitives** — `Badge`, `Card`, `Btn`, `Inp`, `AmtInp`, `DateInp`, `Sel`, `TA`, `Lbl`, `Val`, `Sep`, `Modal`, `FilterBar`, `FioriBar`, `FField`, `Th`/`Td`
 5. **Shell** (sticky nav bar), **Login** (pre-auth, fixed dark-gradient)
