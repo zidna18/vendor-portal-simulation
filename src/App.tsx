@@ -93,53 +93,114 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
 
 // ── Login ──────────────────────────────────────────────────────
 const Login = ({onLogin}) => {
-  const [username,setU]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [loading,setL]=useState(false); const [role,setRole]=useState("vendor");
+  const [username,setU]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [loading,setL]=useState(false); const [role,setRole]=useState("vendor"); const [showPw,setShowPw]=useState(false); const [keepMe,setKeep]=useState(false);
   const go=()=>{
+    if(!username.trim()){setErr("Please enter a User ID or Login Name.");return;}
+    if(!pw){setErr("Please enter your password.");return;}
     setL(true);setErr("");
     setTimeout(()=>{
-      const u=USERS.find(x=>x.username===username&&x.password===pw&&x.role===role);
-      u?onLogin(u):(setErr("Invalid credentials. Please try again."),setL(false));
+      const u=USERS.find(x=>x.username===username&&x.password===pw);
+      u?onLogin(u):(setErr("The user name or password you entered is incorrect. Please try again."),setL(false));
     },700);
   };
+  const quickLogin=(uname)=>onLogin(USERS.find(x=>x.username===uname));
+  const F:any={fontFamily:"'72','72full',Arial,Helvetica,sans-serif"};
   return (
-    <div style={{minHeight:"100vh",background:"linear-gradient(150deg,#1a2a3d 0%,#354a5f 50%,#2c4a6a 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
-      <div style={{marginBottom:32,textAlign:"center",color:"#fff"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>
-          <SapIcon name="grid" size={22} color="rgba(255,255,255,0.6)"/>
-          <span style={{fontSize:12,letterSpacing:3,color:"rgba(255,255,255,0.5)",fontWeight:600,textTransform:"uppercase"}}>SAP BTP · Accenture</span>
-        </div>
-        <div style={{fontSize:28,fontWeight:700,letterSpacing:.3,color:"#fff"}}>BRM Vendor Portal</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginTop:6}}>End-to-end digital collaboration platform</div>
-      </div>
-      <div style={{background:"#fff",borderRadius:8,padding:mob()?"20px 24px":"32px 36px",width:mob()?"92%":400,maxWidth:400,boxShadow:"0 24px 64px rgba(0,0,0,0.4)"}}>
-        <div style={{fontSize:20,fontWeight:700,color:"#1d2d3e",marginBottom:4}}>Sign In</div>
-        <div style={{fontSize:13,color:"#6a6d70",marginBottom:22}}>Select your role and enter credentials</div>
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Login As</div>
-          <div style={{display:"flex",gap:8}}>
-            {[["vendor","factory","Vendor"],["brm","building","BRM Employee"]].map(([r,ico,lbl])=>(
-              <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"9px 0",borderRadius:4,cursor:"pointer",border:`2px solid ${role===r?"#0a6ed1":"#d9d9d9"}`,background:role===r?"#dff0fd":"#fff",color:role===r?"#0854a0":"#6a6d70",fontWeight:700,fontSize:13,fontFamily:"inherit",transition:"border-color .15s",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><SapIcon name={ico} size={14} color={role===r?"#0854a0":"#6a6d70"}/>{lbl}</button>
-            ))}
+    <div style={{...F,minHeight:"100vh",background:"#f3f4f5",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
+      {/* Card */}
+      <div style={{background:"#fff",borderRadius:4,width:"100%",maxWidth:380,boxShadow:"0 2px 16px rgba(0,0,0,0.12)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        {/* Card body */}
+        <div style={{padding:"32px 40px 0 40px",flex:1}}>
+          {/* Logo row */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <img src="/tenant_logo.png" alt="BRM" style={{height:26,width:"auto"}} onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+              <span style={{fontSize:11,color:"#6a6d70",fontWeight:400,letterSpacing:.2}}>SAP<sup style={{fontSize:8}}>®</sup> ID</span>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <h1 style={{fontSize:28,fontWeight:700,color:"#1d2d3e",margin:"0 0 28px 0",lineHeight:1.2}}>Sign In</h1>
+
+          {/* Role selector — kept for demo, styled subtly */}
+          <div style={{marginBottom:20}}>
+            <div style={{display:"flex",gap:0,border:"1px solid #d9d9d9",borderRadius:4,overflow:"hidden"}}>
+              {[["vendor","Vendor / Supplier"],["brm","BRM Employee"]].map(([r,lbl],i)=>(
+                <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"7px 0",border:"none",borderRight:i===0?"1px solid #d9d9d9":"none",background:role===r?"#0a6ed1":"#fff",color:role===r?"#fff":"#6a6d70",fontSize:12,fontWeight:role===r?700:400,fontFamily:"inherit",cursor:"pointer",transition:"background .15s"}}>{lbl}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Username field */}
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",fontSize:13,color:"#6a6d70",marginBottom:4}}>User ID or Login Name</label>
+            <div style={{position:"relative"}}>
+              <input
+                value={username} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}
+                placeholder="User ID or Login Name"
+                style={{width:"100%",boxSizing:"border-box",padding:"8px 0",fontSize:14,color:"#1d2d3e",background:"transparent",border:"none",borderBottom:"1px dotted #8c8c8c",outline:"none",fontFamily:"inherit"}}
+              />
+            </div>
+          </div>
+
+          {/* Password field */}
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",fontSize:13,color:"#6a6d70",marginBottom:4}}>Password</label>
+            <div style={{position:"relative",border:"1px solid #0a6ed1",borderRadius:4,display:"flex",alignItems:"center"}}>
+              <input
+                value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}
+                type={showPw?"text":"password"} placeholder="Password"
+                style={{flex:1,padding:"8px 10px",fontSize:14,color:"#1d2d3e",background:"transparent",border:"none",outline:"none",fontFamily:"inherit"}}
+              />
+              <button onClick={()=>setShowPw(p=>!p)} title={showPw?"Hide Password":"Show Password"}
+                style={{background:"none",border:"none",cursor:"pointer",padding:"0 10px",display:"flex",alignItems:"center",color:"#6a6d70"}}>
+                <SapIcon name={showPw?"hide":"show"} size={16} color="#6a6d70"/>
+              </button>
+            </div>
+          </div>
+
+          {/* Error */}
+          {err&&<div style={{fontSize:13,color:"#bb0000",marginBottom:12,padding:"8px 10px",background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:3}}>{err}</div>}
+
+          {/* Keep me signed in + Forgot password */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"#32363a",cursor:"pointer"}}>
+              <input type="checkbox" checked={keepMe} onChange={e=>setKeep(e.target.checked)} style={{width:13,height:13,cursor:"pointer",accentColor:"#0a6ed1"}}/>
+              Keep me signed in
+            </label>
+            <a style={{fontSize:13,color:"#0a6ed1",fontWeight:700,textDecoration:"none",cursor:"pointer"}}>Forgot password?</a>
+          </div>
+
+          {/* Quick demo access */}
+          <div style={{marginBottom:20,padding:"12px 0",borderTop:"1px solid #e5e5e5"}}>
+            <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:8,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"]].map(([u,name,roleLabel])=>(
+                <button key={u} onClick={()=>quickLogin(u)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"7px 10px",borderRadius:3,border:"1px solid #e5e5e5",background:"#fafafa",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:"#1d2d3e"}}>
+                  <SapIcon name={roleLabel==="Vendor"?"factory":"employee"} size={12} color="#6a6d70"/>
+                  <span style={{fontWeight:600}}>{name}</span>
+                  <span style={{color:"#8c8c8c",marginLeft:"auto",fontSize:11}}>{roleLabel}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Username</div>
-          <Inp value={username} onChange={setU} placeholder="Enter username"/>
-        </div>
-        <div style={{marginBottom:20}}>
-          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Password</div>
-          <Inp value={pw} onChange={setPw} placeholder="Enter password" type="password"/>
-        </div>
-        {err&&<div style={{color:"#bb0000",fontSize:13,marginBottom:16,padding:"10px 12px",background:"#ffebeb",borderRadius:4,border:"1px solid #bb000030"}}>{err}</div>}
-        <Btn onClick={go} disabled={loading} style={{width:"100%",padding:"10px 0",justifyContent:"center",fontSize:14,display:"flex",alignItems:"center",gap:6}}>{loading?"Signing in…":"Sign In"}</Btn>
-        <div style={{marginTop:24,paddingTop:18,borderTop:"1px solid #d9d9d9"}}>
-          <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:10,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
-          {[["vendor1","factory","PT Maju Bersama"],["vendor2","factory","CV Sukses Mandiri"],["brm.user","building","Ahmad Rizki – Procurement Mgr"]].map(([u,ico,lbl])=>(
-            <button key={u} onClick={()=>onLogin(USERS.find(x=>x.username===u))} style={{display:"flex",alignItems:"center",gap:7,width:"100%",textAlign:"left",padding:"8px 12px",marginBottom:6,borderRadius:4,border:"1px solid #d9d9d9",background:"#f7f7f7",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:"#1d2d3e",transition:"background .12s"}}><SapIcon name={ico} size={13} color="#6a6d70"/>{lbl}</button>
-          ))}
+
+        {/* Card footer with Continue button */}
+        <div style={{padding:"16px 40px 24px 40px",display:"flex",justifyContent:"flex-end",borderTop:"1px solid #f0f0f0"}}>
+          <button onClick={go} disabled={loading}
+            style={{background:loading?"#b3d3f5":"#0a6ed1",color:"#fff",border:"none",borderRadius:4,padding:"9px 24px",fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:loading?"not-allowed":"pointer",minWidth:110,transition:"background .15s"}}>
+            {loading?"Signing in…":"Continue"}
+          </button>
         </div>
       </div>
-      <div style={{color:"rgba(255,255,255,0.3)",fontSize:12,marginTop:24,letterSpacing:.3}}>© 2025 BRM · Accenture · SAP BTP Public Cloud</div>
+
+      {/* Page footer */}
+      <div style={{marginTop:20,background:"#fff",borderRadius:24,padding:"10px 28px",display:"flex",gap:20,alignItems:"center"}}>
+        {["Privacy Policy","Legal Disclosure","Cookie Statement"].map(l=>(
+          <a key={l} style={{fontSize:12,color:"#0a6ed1",textDecoration:"none",cursor:"pointer"}}>{l}</a>
+        ))}
+      </div>
     </div>
   );
 };
