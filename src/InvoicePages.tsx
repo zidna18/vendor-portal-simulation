@@ -697,6 +697,44 @@ const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidt
   );
 };
 
+// ── Group-by helpers ───────────────────────────────────────────
+const GRP_KEY:Record<string,(i:any)=>string>={
+  invoiceNo: i=>i.invoiceNo[0]?.toUpperCase()||"?",
+  vendor:    i=>i.vendorName||i.vendorId||"Unknown",
+  poNumber:  i=>fmtPOs(i)||"—",
+  compCode:  i=>i.companyCode?`${i.companyCode} – ${ccName(i.companyCode)}`:"No Company Code",
+  invDate:   i=>(i.invoiceDate||"").slice(0,7)||"Unknown Date",
+  dueDate:   i=>(i.dueDate||"").slice(0,7)||"Unknown Due",
+  amount:    i=>i.currency||"Unknown Currency",
+  attach:    i=>(i.files?.length>=2)?"Attachments Complete":"Attachments Incomplete",
+  status:    i=>i.status||"Unknown",
+  actions:   i=>i.status||"Unknown",
+};
+const GRP_ICON:Record<string,string>={
+  status:"flag",compCode:"building",vendor:"employee",invDate:"calendar",dueDate:"calendar",
+  amount:"currency",attach:"attachment","default":"group",
+};
+function buildGroups(list:any[], colGroup:Record<string,boolean>, fields:string[]):
+  {mode:"flat",rows:any[]}|{mode:"grouped",key:string,groupKey:string,rows:any[]}[] {
+  const activeGrp=fields.find(k=>colGroup[k]);
+  if(!activeGrp)return {mode:"flat",rows:list};
+  const fn=GRP_KEY[activeGrp]||(i=>String(i[activeGrp]||""));
+  const order:string[]=[]; const map:Record<string,any[]>={};
+  list.forEach(i=>{const k=fn(i);if(!map[k]){order.push(k);map[k]=[];}map[k].push(i);});
+  return order.map(k=>({mode:"grouped" as const,key:activeGrp,groupKey:k,rows:map[k]}));
+}
+const GroupHeaderRow=({colSpan,label,count,icon}:any)=>(
+  <tr>
+    <td colSpan={colSpan} style={{padding:"0 0.75rem",height:30,background:"#f7f7f7",borderBottom:"1px solid #e5e5e5",borderTop:"2px solid #0a6ed1",verticalAlign:"middle"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <SapIcon name={icon||"group"} size={13} color="#0a6ed1"/>
+        <span style={{fontSize:12,fontWeight:700,color:"#0a6ed1"}}>{label}</span>
+        <span style={{fontSize:11,color:"#6a6d70",marginLeft:2}}>({count} item{count!==1?"s":""})</span>
+      </div>
+    </td>
+  </tr>
+);
+
 // ── Vendor Invoice ─────────────────────────────────────────────
 export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
@@ -879,7 +917,11 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                     <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
                   </div>
                 </td></tr>
-              ):mine.map(inv=>{
+              ):((grpResult=>grpResult.mode==="flat"
+                  ?grpResult.rows
+                  :grpResult.flatMap((g:any)=>[{__grpHdr:true,key:g.key,groupKey:g.groupKey,count:g.rows.length},...g.rows])
+                )(buildGroups(mine,colGroup,COL_DEFS.map(c=>c.key)))).map((inv:any)=>{
+                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={11} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id);
                 const isHov=hovRow===inv.id;
                 const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
@@ -1211,7 +1253,11 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                     <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
                   </div>
                 </td></tr>
-              ):list.map(inv=>{
+              ):((grpResult=>grpResult.mode==="flat"
+                  ?grpResult.rows
+                  :grpResult.flatMap((g:any)=>[{__grpHdr:true,key:g.key,groupKey:g.groupKey,count:g.rows.length},...g.rows])
+                )(buildGroups(list,colGroup,COL_DEFS_BRM.map(c=>c.key)))).map((inv:any)=>{
+                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={COL_DEFS_BRM.length+2} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id); const isHov=hovRow===inv.id;
                 const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
                 const cs:any={padding:"0 0.5rem",height:36,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle"};
