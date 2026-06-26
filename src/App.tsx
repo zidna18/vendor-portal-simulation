@@ -988,6 +988,7 @@ const DocFlow = ({inv}) => {
 // ── Vendor Invoice ─────────────────────────────────────────────
 const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
+  const [hovRow,setHovRow]=useState<string|null>(null);
   const emptyF={invoiceNo:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
@@ -1012,15 +1013,44 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
   ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
+
+  // SAP Fiori Quartz Light table tokens (from sapList_* design tokens)
+  const TK={
+    hdrBg:"#f2f2f2", hdrBorder:"#e5e5e5", hdrText:"#232629",
+    rowBg:"#ffffff",  rowBorder:"#e5e5e5",  rowText:"#232629",
+    altBg:"#f2f2f2",  hovBg:"#ededed",
+    selBg:"#e5f0fa",  selBorder:"#0854a0",
+    link:"#0a6ed1",   footerBg:"#fafafa",
+  };
+  const COLS=[
+    {k:"invoiceNo", l:"Invoice No.",   w:"16%"},
+    {k:"poNumbers", l:"PO Number",     w:"12%"},
+    {k:"companyCode",l:"Company Code", w:"14%"},
+    {k:"invoiceDate",l:"Invoice Date", w:"9%"},
+    {k:"dueDate",   l:"Due Date",      w:"9%"},
+    {k:"amount",    l:"Amount",        w:"12%", align:"right"},
+    {k:"files",     l:"Attachments",   w:"10%"},
+    {k:"status",    l:"Status",        w:"10%"},
+    {k:"actions",   l:"Actions",       w:"8%"},
+  ];
+
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:mob()?"12px 10px":"20px 24px"}}>
+      {/* Page header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
-          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management</div>
-          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1,letterSpacing:0.1}}>Invoice Management</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+            <SapIcon name="connected" size={12} color={C.t2}/>
+            Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow
+          </div>
         </div>
-        <Btn onClick={()=>{setEd(null);setForm(true);}}>+ Add Invoice</Btn>
+        <Btn onClick={()=>{setEd(null);setForm(true);}} style={{display:"flex",alignItems:"center",gap:6}}>
+          <SapIcon name="add" size={14} color="#fff"/> Add Invoice
+        </Btn>
       </div>
+
+      {/* SAP Fiori Compact Filter Bar */}
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
         <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
         <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
@@ -1028,28 +1058,113 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
         <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
-      <Card style={{padding:0,overflow:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
-          <thead><tr>{["Invoice No.","PO Number","Company Code","Date","Due Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
-          <tbody>
-            {mine.length===0?<tr><Td colSpan={9} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:mine.map(inv=>(
-              <tr key={inv.id}>
-                <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
-                <Td>{fmtPOs(inv)}</Td>
-                <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
-                <Td>{fmtDate(inv.invoiceDate)}</Td><Td>{fmtDate(inv.dueDate)}</Td>
-                <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
-                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="accept" size={12} color={C.ok}/>{inv.files.length} file(s)</span>:<span style={{color:C.warn,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="warning" size={12} color={C.warn}/>Incomplete</span>}</Td>
-                <Td><Badge s={inv.status}/></Td>
-                <Td><div style={{display:"flex",gap:5}}>
-                  {["Draft","Rejected"].includes(inv.status)&&<Btn v="ghost" sm onClick={()=>{setEd(inv);setForm(true);}}>Edit</Btn>}
-                  {inv.status==="Submitted"&&<Btn v="neutral" sm onClick={()=>withdraw(inv.id)}>Withdraw</Btn>}
-                </div></Td>
+
+      {/* SAP SmartTable container */}
+      <div style={{border:`1px solid ${TK.hdrBorder}`,borderRadius:0,background:TK.rowBg,overflow:"hidden"}}>
+
+        {/* SAP Table Toolbar */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 1rem",height:44,background:TK.rowBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14,fontWeight:700,color:TK.rowText}}>Invoices</span>
+            <span style={{background:"#e5e5e5",color:"#232629",borderRadius:10,fontSize:11,fontWeight:700,padding:"1px 8px",lineHeight:"18px"}}>{mine.length}</span>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"4px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:30,display:"flex",alignItems:"center",gap:5}}>
+              <SapIcon name="excel-attachment" size={14} color="#0854a0"/> Export
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:860,tableLayout:"fixed"}}>
+            <colgroup>{COLS.map(c=><col key={c.k} style={{width:c.w}}/>)}</colgroup>
+            <thead>
+              <tr style={{background:TK.hdrBg}}>
+                {COLS.map(c=>(
+                  <th key={c.k} style={{
+                    padding:"0 1rem",height:36,textAlign:(c.align||"left") as any,
+                    fontSize:12,fontWeight:700,color:TK.hdrText,
+                    borderBottom:`1px solid ${TK.hdrBorder}`,
+                    textTransform:"uppercase",letterSpacing:0.5,
+                    whiteSpace:"nowrap",userSelect:"none" as const,
+                  }}>{c.l}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {mine.length===0?(
+                <tr><td colSpan={9} style={{textAlign:"center",padding:"40px 0",color:TK.hdrText,fontSize:14,borderBottom:`1px solid ${TK.rowBorder}`}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,opacity:0.5}}>
+                    <SapIcon name="document" size={32} color={TK.hdrText}/>
+                    <span>No invoices found matching the current filters.</span>
+                  </div>
+                </td></tr>
+              ):mine.map((inv,idx)=>{
+                const isHov=hovRow===inv.id;
+                const rowBg=isHov?TK.hovBg:(idx%2===1?TK.altBg:TK.rowBg);
+                const cellStyle:any={padding:"0 1rem",height:44,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:13,color:TK.rowText,verticalAlign:"middle",background:"inherit"};
+                return(
+                  <tr key={inv.id} onMouseEnter={()=>setHovRow(inv.id)} onMouseLeave={()=>setHovRow(null)}
+                    style={{background:rowBg,transition:"background .1s"}}>
+                    {/* Invoice No. */}
+                    <td style={{...cellStyle}}>
+                      <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:13,padding:0,textAlign:"left",lineHeight:1.4,textDecoration:isHov?"underline":"none"}}>
+                        {inv.invoiceNo}
+                      </button>
+                      <div style={{fontSize:11,color:"#6a6d70",marginTop:1}}>{inv.id}</div>
+                    </td>
+                    {/* PO Number */}
+                    <td style={{...cellStyle}}>
+                      <span style={{fontFamily:"'Courier New',monospace",fontSize:12,color:TK.rowText}}>{fmtPOs(inv)}</span>
+                    </td>
+                    {/* Company Code */}
+                    <td style={{...cellStyle}}>
+                      <span style={{display:"inline-block",background:"#e8f2fb",color:"#0854a0",borderRadius:3,padding:"1px 7px",fontSize:11,fontWeight:700,fontFamily:"'Courier New',monospace",marginBottom:2}}>{inv.companyCode||"—"}</span>
+                      <div style={{fontSize:11,color:"#6a6d70"}}>{ccName(inv.companyCode)}</div>
+                    </td>
+                    {/* Date */}
+                    <td style={{...cellStyle}}><span style={{fontSize:12}}>{fmtDate(inv.invoiceDate)}</span></td>
+                    {/* Due Date */}
+                    <td style={{...cellStyle}}><span style={{fontSize:12}}>{fmtDate(inv.dueDate)}</span></td>
+                    {/* Amount */}
+                    <td style={{...cellStyle,textAlign:"right"}}>
+                      <span style={{fontWeight:700,fontSize:13,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(inv.amount, inv.currency)}</span>
+                    </td>
+                    {/* Attachments */}
+                    <td style={{...cellStyle}}>
+                      {inv.files?.length>=2
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:5,color:"#107e3e",fontSize:12}}><SapIcon name="accept" size={13} color="#107e3e"/><span style={{fontWeight:600}}>{inv.files.length} file(s)</span></span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:5,color:"#df6e0c",fontSize:12}}><SapIcon name="alert" size={13} color="#df6e0c"/><span>Incomplete</span></span>
+                      }
+                    </td>
+                    {/* Status */}
+                    <td style={{...cellStyle}}><Badge s={inv.status}/></td>
+                    {/* Actions */}
+                    <td style={{...cellStyle}}>
+                      <div style={{display:"flex",gap:4}}>
+                        {["Draft","Rejected"].includes(inv.status)&&(
+                          <button onClick={()=>{setEd(inv);setForm(true);}} style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"3px 11px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>Edit</button>
+                        )}
+                        {inv.status==="Submitted"&&(
+                          <button onClick={()=>withdraw(inv.id)} style={{background:"#fff",border:"1px solid #d9d9d9",color:"#232629",borderRadius:4,padding:"3px 11px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>Withdraw</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Table footer */}
+        {mine.length>0&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 1rem",background:TK.footerBg,borderTop:`1px solid ${TK.hdrBorder}`}}>
+            <span style={{fontSize:12,color:"#6a6d70"}}>{mine.length} item{mine.length!==1?"s":""}</span>
+          </div>
+        )}
+      </div>
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
