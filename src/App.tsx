@@ -60,29 +60,33 @@ const INIT_QT = [
 ];
 
 // ── Theme ──────────────────────────────────────────────────────
+// SAP Fiori Quartz Light — exact design tokens from quartzlight.css
 const LIGHT = {
-  shell:"#1D2D3E", shellHov:"rgba(255,255,255,0.12)",
-  primary:"#0070F2", primaryDk:"#0854A0",
-  bg:"#F5F6F7", card:"#FFF", field:"#FFF", subtle:"#F4F4F4", border:"#D9D9D9",
-  t1:"#32363A", t2:"#6A6D70",
-  ok:"#188918", okBg:"#F1FDF6",
-  warn:"#E9730C", warnBg:"#FEF7F1",
-  err:"#BB0000", errBg:"#FFF2F2",
-  info:"#0070F2", infoBg:"#EBF5FB",
-  draft:"#6A6D70", draftBg:"#F4F4F4",
-  gold:"#C87941",
+  shell:"#354a5f", shellHov:"rgba(255,255,255,0.15)",
+  primary:"#0a6ed1", primaryDk:"#0854a0",
+  bg:"#f7f7f7", card:"#ffffff", field:"#ffffff", subtle:"#f2f2f2", border:"#d9d9d9", fieldBorder:"#89919a",
+  t1:"#1d2d3e", t2:"#6a6d70",
+  ok:"#107e3e", okBg:"#f1fdf6",
+  warn:"#df6e0c", warnBg:"#fef7f1",
+  err:"#bb0000", errBg:"#ffebeb",
+  info:"#0a6ed1", infoBg:"#dff0fd",
+  draft:"#6a6d70", draftBg:"#f4f4f4",
+  gold:"#c87941",
+  hover:"#ededed", selection:"#e8f2fb",
 };
+// SAP Fiori Horizon Dark
 const DARK = {
-  shell:"#0B1622", shellHov:"rgba(255,255,255,0.14)",
-  primary:"#4DA3FF", primaryDk:"#0854A0",
-  bg:"#16191D", card:"#24282E", field:"#2C3137", subtle:"#2A2E34", border:"#3A3F46",
-  t1:"#E4E6E8", t2:"#A2A6AB",
-  ok:"#4CC15A", okBg:"#16301C",
-  warn:"#F0913D", warnBg:"#36281A",
-  err:"#FF6B6B", errBg:"#3A2020",
-  info:"#4DA3FF", infoBg:"#16293A",
-  draft:"#A2A6AB", draftBg:"#2A2E34",
-  gold:"#D8945C",
+  shell:"#1b2534", shellHov:"rgba(255,255,255,0.14)",
+  primary:"#64b5f6", primaryDk:"#4da3ff",
+  bg:"#16191d", card:"#1c2128", field:"#23292f", subtle:"#252c36", border:"#3d444d", fieldBorder:"#56616d",
+  t1:"#d1e4f4", t2:"#8696a9",
+  ok:"#4cc15a", okBg:"#16301c",
+  warn:"#f0913d", warnBg:"#36281a",
+  err:"#ff6b6b", errBg:"#3a1e1e",
+  info:"#64b5f6", infoBg:"#162338",
+  draft:"#8696a9", draftBg:"#252c36",
+  gold:"#d8945c",
+  hover:"#2d3540", selection:"#1a2d42",
 };
 // C and STC are mutable bindings reassigned by applyTheme; every component
 // reads them from module scope at render time, so a re-render picks up the swap.
@@ -160,32 +164,32 @@ const pg  = () => mob() ? "12px 10px" : 24;
 
 const Badge = ({s}) => {
   const x = STC[s]||{c:C.draft,bg:C.draftBg};
-  return <span style={{display:"inline-block",padding:"2px 9px",borderRadius:4,fontSize:11,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}33`}}>{s}</span>;
+  return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
 };
 
 const Card = ({children,style={}}) => (
-  <div style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:20,marginBottom:14,...style}}>{children}</div>
+  <div style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:20,marginBottom:14,...style}}>{children}</div>
 );
 
 const Btn = ({children,onClick,v="primary",sm,disabled,style={}}) => {
   const VS = {
-    primary:{background:C.primary,color:"#fff",border:"none"},
-    ghost:  {background:"transparent",color:C.primary,border:`1px solid ${C.primary}`},
-    danger: {background:C.err,color:"#fff",border:"none"},
-    success:{background:C.ok,color:"#fff",border:"none"},
-    neutral:{background:C.subtle,color:C.t1,border:`1px solid ${C.border}`},
+    primary:{background:C.primary,color:"#fff",border:`1px solid ${C.primary}`},
+    ghost:  {background:"transparent",color:C.primaryDk,border:`1px solid ${C.primaryDk}`},
+    danger: {background:C.err,color:"#fff",border:`1px solid ${C.err}`},
+    success:{background:C.ok,color:"#fff",border:`1px solid ${C.ok}`},
+    neutral:{background:C.card,color:C.t1,border:`1px solid ${C.border}`},
   };
-  return <button onClick={onClick} disabled={disabled} style={{...VS[v],borderRadius:4,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,fontSize:sm?12:13,padding:sm?"3px 10px":"7px 14px",opacity:disabled?.5:1,transition:"opacity .15s",...style}}>{children}</button>;
+  return <button onClick={onClick} disabled={disabled} style={{...VS[v],borderRadius:4,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,fontSize:sm?12:14,padding:sm?"4px 12px":"7px 16px",opacity:disabled?.5:1,transition:"background .12s,opacity .15s",lineHeight:"20px",...style}}>{children}</button>;
 };
 
 const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
   <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-    style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
 );
 // Positive-only amount input — no spinner buttons, rejects negative/non-numeric input
 const AmtInp = ({value,onChange,placeholder="0",style={}}) => (
   <input type="text" inputMode="decimal" value={value} onChange={e=>{const v=e.target.value;if(v===""||/^\d*\.?\d*$/.test(v))onChange(v);}} placeholder={placeholder}
-    style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
 );
 const DateInp = ({value, onChange, style={}}) => {
   const [raw, setRaw] = useState(value ? fmtDate(value) : "");
@@ -199,26 +203,26 @@ const DateInp = ({value, onChange, style={}}) => {
 };
 const Sel = ({value,onChange,opts,style={}}) => (
   <select value={value} onChange={e=>onChange(e.target.value)}
-    style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,outline:"none",boxSizing:"border-box",background:C.field,...style}}>
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,outline:"none",boxSizing:"border-box",background:C.field,...style}}>
     {opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
   </select>
 );
 const TA = ({value,onChange,placeholder="",rows=3}) => (
   <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
-    style={{width:"100%",padding:"7px 9px",borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",resize:"vertical"}}/>
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",resize:"vertical"}}/>
 );
-const Lbl = ({children}) => <div style={{fontSize:11,color:C.t2,marginBottom:3,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>{children}</div>;
-const Val = ({children}) => <div style={{fontSize:13,color:C.t1}}>{children||"—"}</div>;
+const Lbl = ({children}) => <div style={{fontSize:12,color:C.t2,marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;
+const Val = ({children}) => <div style={{fontSize:14,color:C.t1,lineHeight:1.5}}>{children||"—"}</div>;
 const Sep = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
 
 const Modal = ({title,onClose,children,width=640}) => (
   <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}>
-    <div style={{background:C.card,borderRadius:8,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 12px 40px rgba(0,0,0,0.25)"}}>
-      <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
-        <span style={{fontWeight:700,fontSize:15,color:C.t1}}>{title}</span>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2,lineHeight:1}}>✕</button>
+    <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
+      <div style={{padding:"14px 20px",borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
+        <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{title}</span>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
       </div>
-      <div style={{padding:mob()?12:18}}>{children}</div>
+      <div style={{padding:mob()?14:20}}>{children}</div>
     </div>
   </div>
 );
@@ -226,7 +230,7 @@ const Modal = ({title,onClose,children,width=640}) => (
 const FilterBar = ({opts,val,onChange}) => (
   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
     {opts.map(f=>(
-      <button key={f} onClick={()=>onChange(f)} style={{padding:"4px 13px",borderRadius:14,cursor:"pointer",fontSize:12,border:`1px solid ${val===f?C.primary:C.border}`,background:val===f?C.infoBg:C.card,color:val===f?C.primary:C.t2,fontWeight:val===f?700:400,fontFamily:"inherit"}}>
+      <button key={f} onClick={()=>onChange(f)} style={{padding:"5px 14px",borderRadius:16,cursor:"pointer",fontSize:12,border:`1px solid ${val===f?C.primary:C.border}`,background:val===f?C.selection:C.card,color:val===f?C.primary:C.t2,fontWeight:val===f?700:400,fontFamily:"inherit",transition:"background .12s"}}>
         {f}
       </button>
     ))}
@@ -234,27 +238,27 @@ const FilterBar = ({opts,val,onChange}) => (
 );
 // SAP Fiori-style compact filter bar
 const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
-  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,marginBottom:16,overflow:"hidden"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:13,fontWeight:700,color:C.t1,letterSpacing:0.2}}>Filters</span>
-        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 8px",fontWeight:700}}>{activeTokens.length}</span>}
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
+        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
       </div>
-      <div style={{display:"flex",gap:6}}>
-        <Btn v="ghost" sm onClick={onReset}>Reset</Btn>
+      <div style={{display:"flex",gap:8}}>
+        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
         <Btn v="primary" sm onClick={onGo}>Go</Btn>
       </div>
     </div>
-    <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:g4(),gap:"10px 16px"}}>
+    <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
       {children}
     </div>
     {activeTokens.length>0&&(
-      <div style={{padding:"6px 16px 10px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
-        <span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:2}}>Active:</span>
+      <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+        <span style={{fontSize:12,color:C.t2,fontWeight:600,marginRight:4}}>Active filters:</span>
         {activeTokens.map((t,i)=>(
-          <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}`,borderRadius:12,padding:"2px 10px 2px 8px",fontSize:11,color:C.info}}>
-            <span style={{fontWeight:600}}>{t.label}:</span>{t.val}
-            <button onClick={t.onClear} style={{background:"none",border:"none",cursor:"pointer",color:C.info,fontSize:13,padding:"0 0 0 2px",lineHeight:1}}>×</button>
+          <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:14,padding:"3px 10px 3px 10px",fontSize:12,color:C.info}}>
+            <span style={{fontWeight:600}}>{t.label}:</span><span>{t.val}</span>
+            <button onClick={t.onClear} style={{background:"none",border:"none",cursor:"pointer",color:C.info,fontSize:14,padding:"0 0 0 4px",lineHeight:1}}>×</button>
           </span>
         ))}
       </div>
@@ -264,13 +268,13 @@ const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
 // Compact filter field label wrapper (Fiori style)
 const FField = ({label,children}) => (
   <div>
-    <div style={{fontSize:10,color:C.t2,fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:0.7}}>{label}</div>
+    <div style={{fontSize:11,color:C.t2,fontWeight:700,marginBottom:5,textTransform:"uppercase",letterSpacing:0.6}}>{label}</div>
     {children}
   </div>
 );
 
-const Th = ({children}) => <th style={{padding:"9px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.4,whiteSpace:"nowrap"}}>{children}</th>;
-const Td = ({children,style={}}) => <td style={{padding:"9px 12px",fontSize:13,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
+const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
+const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
 
 // ── Shell Bar ──────────────────────────────────────────────────
 const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSettings}) => {
@@ -281,29 +285,31 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
   const isMob=mob();
   return (
     <div style={{background:C.shell,color:"#fff",position:"sticky",top:0,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
-      <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:46}}>
-        <div style={{fontWeight:800,fontSize:isMob?13:15,marginRight:isMob?8:20,whiteSpace:"nowrap",letterSpacing:.3,flexShrink:0}}>
-          <span style={{color:"#F0A500"}}>▣ </span>{isMob?"BRM Portal":"BRM Vendor Portal"}
+      <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:48}}>
+        <div style={{fontWeight:800,fontSize:isMob?13:15,marginRight:isMob?10:24,whiteSpace:"nowrap",letterSpacing:.2,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{color:"rgba(255,255,255,0.65)",fontSize:18,lineHeight:1}}>⊞</span>
+          <span style={{color:"#fff",fontWeight:700}}>{isMob?"BRM Portal":"BRM Vendor Portal"}</span>
         </div>
         {!isMob&&(
-          <div style={{display:"flex",gap:2,flex:1}}>
+          <div style={{display:"flex",gap:0,flex:1}}>
             {nav.map(n=>(
               <button key={n.id} onClick={()=>setSection(n.id)} style={{
                 background:section===n.id?C.shellHov:"transparent",
-                color:"#fff",border:"none",cursor:"pointer",padding:"0 13px",height:46,fontFamily:"inherit",
-                fontSize:12,fontWeight:section===n.id?700:400,whiteSpace:"nowrap",
-                borderBottom:`2px solid ${section===n.id?"#F0A500":"transparent"}`,
+                color:section===n.id?"#fff":"rgba(255,255,255,0.75)",border:"none",cursor:"pointer",padding:"0 16px",height:48,fontFamily:"inherit",
+                fontSize:13,fontWeight:section===n.id?600:400,whiteSpace:"nowrap",
+                borderBottom:`2px solid ${section===n.id?"rgba(255,255,255,0.9)":"transparent"}`,
+                transition:"background .15s,color .15s",
               }}>{n.l}</button>
             ))}
           </div>
         )}
         <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
-          <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{theme==="dark"?"☀️":"🌙"}</button>
-          {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>}
-          {!isMob&&<div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:700}}>{user.name}</div><div style={{fontSize:10,opacity:.65}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
-          <div style={{width:30,height:30,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,flexShrink:0}}>{user.name[0]}</div>
-          {!isMob&&<button onClick={onLogout} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>Sign Out</button>}
-          {isMob&&<button onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>}
+          <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{theme==="dark"?"☀️":"🌙"}</button>
+          {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>}
+          {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
+          <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.25)",border:"2px solid rgba(255,255,255,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,flexShrink:0,color:"#fff"}}>{user.name[0]}</div>
+          {!isMob&&<button onClick={onLogout} style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>}
+          {isMob&&<button onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>}
         </div>
       </div>
       {isMob&&menuOpen&&(
@@ -335,35 +341,45 @@ const Login = ({onLogin}) => {
     },700);
   };
   return (
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0D1B2A 0%,#1D2D3E 55%,#2C3E50 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-      <div style={{marginBottom:28,textAlign:"center",color:"#fff"}}>
-        <div style={{fontSize:13,letterSpacing:3,color:"#F0A500",fontWeight:700,marginBottom:8}}>SAP BTP · ACCENTURE</div>
-        <div style={{fontSize:30,fontWeight:800,letterSpacing:.5}}>BRM Vendor Portal</div>
-        <div style={{fontSize:13,opacity:.55,marginTop:5}}>End-to-end digital collaboration platform</div>
+    <div style={{minHeight:"100vh",background:"linear-gradient(150deg,#1a2a3d 0%,#354a5f 50%,#2c4a6a 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
+      {/* SAP-style header bar above card */}
+      <div style={{marginBottom:32,textAlign:"center",color:"#fff"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>
+          <span style={{color:"rgba(255,255,255,0.6)",fontSize:22}}>⊞</span>
+          <span style={{fontSize:12,letterSpacing:3,color:"rgba(255,255,255,0.5)",fontWeight:600,textTransform:"uppercase"}}>SAP BTP · Accenture</span>
+        </div>
+        <div style={{fontSize:28,fontWeight:700,letterSpacing:.3,color:"#fff"}}>BRM Vendor Portal</div>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginTop:6}}>End-to-end digital collaboration platform</div>
       </div>
-      <div style={{background:"#fff",borderRadius:12,padding:mob()?20:32,width:mob()?"90%":370,maxWidth:370,boxShadow:"0 20px 60px rgba(0,0,0,0.35)"}}>
-        <div style={{fontSize:18,fontWeight:800,color:C.t1,marginBottom:4}}>Sign In</div>
-        <div style={{fontSize:12,color:C.t2,marginBottom:20}}>Select your role and enter credentials</div>
-        <div style={{marginBottom:14}}>
-          <Lbl>Login As</Lbl>
-          <div style={{display:"flex",gap:8,marginTop:4}}>
+      <div style={{background:"#fff",borderRadius:8,padding:mob()?"20px 24px":"32px 36px",width:mob()?"92%":400,maxWidth:400,boxShadow:"0 24px 64px rgba(0,0,0,0.4)"}}>
+        <div style={{fontSize:20,fontWeight:700,color:"#1d2d3e",marginBottom:4}}>Sign In</div>
+        <div style={{fontSize:13,color:"#6a6d70",marginBottom:22}}>Select your role and enter credentials</div>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Login As</div>
+          <div style={{display:"flex",gap:8}}>
             {[["vendor","🏭 Vendor"],["brm","🏢 BRM Employee"]].map(([r,l])=>(
-              <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"8px 0",borderRadius:4,cursor:"pointer",border:`2px solid ${role===r?C.primary:C.border}`,background:role===r?"#EBF5FB":"#fff",color:role===r?C.primary:C.t2,fontWeight:700,fontSize:12,fontFamily:"inherit"}}>{l}</button>
+              <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"9px 0",borderRadius:4,cursor:"pointer",border:`2px solid ${role===r?"#0a6ed1":"#d9d9d9"}`,background:role===r?"#dff0fd":"#fff",color:role===r?"#0854a0":"#6a6d70",fontWeight:700,fontSize:13,fontFamily:"inherit",transition:"border-color .15s"}}>{l}</button>
             ))}
           </div>
         </div>
-        <div style={{marginBottom:12}}><Lbl>Username</Lbl><Inp value={username} onChange={setU} placeholder="username"/></div>
-        <div style={{marginBottom:18}}><Lbl>Password</Lbl><Inp value={pw} onChange={setPw} placeholder="password" type="password"/></div>
-        {err&&<div style={{color:C.err,fontSize:12,marginBottom:14,padding:"8px 10px",background:C.errBg,borderRadius:4}}>{err}</div>}
-        <Btn onClick={go} disabled={loading} style={{width:"100%",padding:"9px 0",justifyContent:"center"}}>{loading?"Signing in…":"Sign In"}</Btn>
-        <div style={{marginTop:22,paddingTop:16,borderTop:`1px solid ${C.border}`}}>
-          <div style={{fontSize:11,color:C.t2,fontWeight:700,marginBottom:8,letterSpacing:.5}}>QUICK DEMO ACCESS</div>
-          {[["vendor1","🏭 PT Maju Bersama (Vendor)"],["vendor2","🏭 CV Sukses Mandiri (Vendor)"],["brm.user","🏢 Ahmad Rizki – Procurement Manager"]].map(([u,l])=>(
-            <button key={u} onClick={()=>onLogin(USERS.find(x=>x.username===u))} style={{display:"block",width:"100%",textAlign:"left",padding:"7px 10px",marginBottom:5,borderRadius:4,border:`1px solid ${C.border}`,background:"#F9F9F9",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:C.t1}}>{l}</button>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Username</div>
+          <Inp value={username} onChange={setU} placeholder="Enter username"/>
+        </div>
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,color:"#6a6d70",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Password</div>
+          <Inp value={pw} onChange={setPw} placeholder="Enter password" type="password"/>
+        </div>
+        {err&&<div style={{color:"#bb0000",fontSize:13,marginBottom:16,padding:"10px 12px",background:"#ffebeb",borderRadius:4,border:"1px solid #bb000030"}}>{err}</div>}
+        <Btn onClick={go} disabled={loading} style={{width:"100%",padding:"10px 0",justifyContent:"center",fontSize:14,display:"flex",alignItems:"center",gap:6}}>{loading?"Signing in…":"Sign In"}</Btn>
+        <div style={{marginTop:24,paddingTop:18,borderTop:"1px solid #d9d9d9"}}>
+          <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:10,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
+          {[["vendor1","🏭 PT Maju Bersama"],["vendor2","🏭 CV Sukses Mandiri"],["brm.user","🏢 Ahmad Rizki – Procurement Mgr"]].map(([u,l])=>(
+            <button key={u} onClick={()=>onLogin(USERS.find(x=>x.username===u))} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 12px",marginBottom:6,borderRadius:4,border:"1px solid #d9d9d9",background:"#f7f7f7",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:"#1d2d3e",transition:"background .12s"}}>{l}</button>
           ))}
         </div>
       </div>
-      <div style={{color:"rgba(255,255,255,0.3)",fontSize:11,marginTop:20}}>© 2025 BRM · Accenture · SAP BTP Public Cloud</div>
+      <div style={{color:"rgba(255,255,255,0.3)",fontSize:12,marginTop:24,letterSpacing:.3}}>© 2025 BRM · Accenture · SAP BTP Public Cloud</div>
     </div>
   );
 };
@@ -381,52 +397,52 @@ const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
     {l:"My Quotations",n:mq.length,sub:`${mq.filter(q=>q.status==="Accepted").length} Accepted`,c:C.gold,ico:"✅"},
   ];
   const tiles=[
-    {id:"profile", ico:"👤", t:"Vendor Profile",     d:"View company info, bank details, and tax registration sourced from SAP Business Partner API",  bg:C.infoBg},
-    {id:"invoice", ico:"🧾", t:"Invoice Submission",  d:"Submit invoices with mandatory legal documents. Track status from submission to SAP posting.",   bg:C.okBg},
-    {id:"quotation",ico:"📝",t:"Quotation & RFQ",     d:"View RFQs sent by BRM and submit competitive quotations with pricing and commercial terms.",      bg:C.warnBg},
+    {id:"profile",  ico:"👤", t:"Vendor Profile",    d:"View company info, bank details, and tax registration sourced from SAP Business Partner API", accent:C.info},
+    {id:"invoice",  ico:"🧾", t:"Invoice Submission", d:"Submit invoices with mandatory legal documents. Track status from submission to SAP posting.",  accent:C.ok},
+    {id:"quotation",ico:"📝", t:"Quotation & RFQ",    d:"View RFQs sent by BRM and submit competitive quotations with pricing and commercial terms.",     accent:C.warn},
   ];
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{marginBottom:20}}>
-        <div style={{fontSize:22,fontWeight:800,color:C.t1}}>Welcome, {v.name}</div>
-        <div style={{fontSize:12,color:C.t2,marginTop:3}}>Vendor ID: {user.vendorId} · {v.cat} · Status: <span style={{color:C.ok,fontWeight:700}}>Active</span></div>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:22,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.t1}}>Welcome, {v.name}</div>
+        <div style={{fontSize:13,color:C.t2,marginTop:4}}>Vendor ID: {user.vendorId} · {v.cat} · Status: <span style={{color:C.ok,fontWeight:600}}>Active</span></div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:g4(),gap:14,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:g4(),gap:16,marginBottom:22}}>
         {stats.map(s=>(
-          <Card key={s.l} style={{padding:16}}>
+          <div key={s.l} style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:"16px 18px",borderLeft:`4px solid ${s.c}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
-                <div style={{fontSize:11,color:C.t2,fontWeight:600}}>{s.l}</div>
-                <div style={{fontSize:30,fontWeight:800,color:s.c,margin:"4px 0"}}>{s.n}</div>
-                <div style={{fontSize:11,color:C.t2}}>{s.sub}</div>
+                <div style={{fontSize:12,color:C.t2,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>{s.l}</div>
+                <div style={{fontSize:32,fontWeight:700,color:s.c,lineHeight:1}}>{s.n}</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:6}}>{s.sub}</div>
               </div>
-              <span style={{fontSize:22}}>{s.ico}</span>
+              <span style={{fontSize:24,opacity:0.75}}>{s.ico}</span>
             </div>
-          </Card>
+          </div>
         ))}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:g3(),gap:14,marginBottom:14}}>
+      <div style={{display:"grid",gridTemplateColumns:g3(),gap:16,marginBottom:18}}>
         {tiles.map(t=>(
-          <div key={t.id} onClick={()=>setSection(t.id)} style={{background:t.bg,borderRadius:8,border:`1px solid ${C.border}`,padding:22,cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",transition:"box-shadow .2s"}}>
-            <div style={{fontSize:28,marginBottom:10}}>{t.ico}</div>
-            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:7}}>{t.t}</div>
-            <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>{t.d}</div>
-            <div style={{marginTop:14,color:C.primary,fontSize:12,fontWeight:700}}>Open →</div>
+          <div key={t.id} onClick={()=>setSection(t.id)} style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:22,cursor:"pointer",transition:"box-shadow .2s,transform .15s",borderTop:`3px solid ${t.accent}`}}>
+            <div style={{fontSize:28,marginBottom:12}}>{t.ico}</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:8}}>{t.t}</div>
+            <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{t.d}</div>
+            <div style={{marginTop:16,color:t.accent,fontSize:13,fontWeight:600}}>Open →</div>
           </div>
         ))}
       </div>
       <Card>
-        <div style={{fontWeight:700,fontSize:14,marginBottom:14,color:C.t1}}>Recent Invoice Activity</div>
-        {mi.length===0?<div style={{color:C.t2,fontSize:13}}>No invoices submitted yet.</div>:mi.slice(0,4).map(inv=>(
-          <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
-            <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.desc} · {fmtDate(inv.invoiceDate)}</div></div>
-            <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-              <div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>Recent Invoice Activity</div>
+        {mi.length===0?<div style={{color:C.t2,fontSize:14}}>No invoices submitted yet.</div>:mi.slice(0,4).map(inv=>(
+          <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+            <div><div style={{fontWeight:600,fontSize:14}}>{inv.invoiceNo}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{inv.desc} · {fmtDate(inv.invoiceDate)}</div></div>
+            <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
+              <div style={{fontSize:13,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div>
               <Badge s={inv.status}/>
             </div>
           </div>
         ))}
-        <button onClick={()=>setSection("invoice")} style={{marginTop:10,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}>View all invoices →</button>
+        <button onClick={()=>setSection("invoice")} style={{marginTop:12,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,fontWeight:600,padding:0}}>View all invoices →</button>
       </Card>
     </div>
   );
@@ -439,32 +455,32 @@ const VendorProfile = ({user}) => {
   const v=VENDORS[user.vendorId];
   if(loading) return <div style={{padding:60,textAlign:"center",color:C.t2,fontSize:14}}>⏳ Fetching data from SAP Business Partner API (A_BusinessPartner)…</div>;
   return (
-    <div style={{padding:pg(),maxWidth:900,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+    <div style={{padding:pg(),maxWidth:960,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
-          <div style={{fontSize:20,fontWeight:800}}>Vendor Profile</div>
-          <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 OData: /sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner('{v.id}')</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Vendor Profile</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 OData: /sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner('{v.id}')</div>
         </div>
         <Badge s={v.status}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:g2(),gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:g2(),gap:16}}>
         <Card>
-          <div style={{fontWeight:700,fontSize:13,color:C.primary,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Company Information</div>
+          <div style={{fontWeight:700,fontSize:14,color:C.primary,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>Company Information</div>
           {[["Business Partner ID",v.id],["Legal Name",v.name],["Tax ID (NPWP)",v.tax],["Category",v.cat],["Vendor Since",fmtDate(v.since)],["PIC / Representative",v.rep]].map(([l,val])=>(
-            <div key={l} style={{marginBottom:12}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
+            <div key={l} style={{marginBottom:14}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
           ))}
         </Card>
         <div>
           <Card>
-            <div style={{fontWeight:700,fontSize:13,color:C.primary,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Contact & Address</div>
+            <div style={{fontWeight:700,fontSize:14,color:C.primary,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>Contact & Address</div>
             {[["Registered Address",v.addr],["Phone",v.phone],["Email",v.email]].map(([l,val])=>(
-              <div key={l} style={{marginBottom:12}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
+              <div key={l} style={{marginBottom:14}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
           </Card>
           <Card>
-            <div style={{fontWeight:700,fontSize:13,color:C.primary,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Bank Account</div>
+            <div style={{fontWeight:700,fontSize:14,color:C.primary,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>Bank Account</div>
             {[["Bank Name",v.bank.name],["Account Number",v.bank.acc],["Account Holder",v.bank.aname]].map(([l,val])=>(
-              <div key={l} style={{marginBottom:12}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
+              <div key={l} style={{marginBottom:14}}><Lbl>{l}</Lbl><Val>{val}</Val></div>
             ))}
           </Card>
         </div>
@@ -863,11 +879,11 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
-          <div style={{fontSize:20,fontWeight:800}}>Invoice Management</div>
-          <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow</div>
         </div>
         <Btn onClick={()=>{setEd(null);setForm(true);}}>+ Add Invoice</Btn>
       </div>
@@ -1007,14 +1023,14 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const save=qt=>{setQuotations(p=>p.find(q=>q.id===qt.id)?p.map(q=>q.id===qt.id?qt:q):[...p,qt]);setQR(null);setEQ(null);};
   const withdraw=id=>{if(window.confirm("Withdraw quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Withdrawn"}:q));};
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:20,fontWeight:800}}>Quotation & RFQ</div>
-        <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 RFQ: SAP Purchasing API (A_PurchaseRequisition) · Quotation: Custom CDS Table on BTP</div>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:18,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation & RFQ</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ: SAP Purchasing API (A_PurchaseRequisition) · Quotation: Custom CDS Table on BTP</div>
       </div>
       <div style={{display:"flex",gap:0,marginBottom:18,borderBottom:`1px solid ${C.border}`}}>
         {[{id:"rfq",l:`Open RFQs (${myRfqs.filter(r=>r.status==="Open").length})`},{id:"my",l:`My Quotations (${mine.length})`}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",cursor:"pointer",border:"none",background:"none",fontFamily:"inherit",fontSize:13,fontWeight:tab===t.id?700:400,color:tab===t.id?C.primary:C.t2,borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`}}>{t.l}</button>
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",cursor:"pointer",border:"none",background:"none",fontFamily:"inherit",fontSize:14,fontWeight:tab===t.id?700:400,color:tab===t.id?C.primary:C.t2,borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`}}>{t.l}</button>
         ))}
       </div>
       {tab==="rfq"&&(
@@ -1104,40 +1120,43 @@ const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
     {l:"Open RFQs",n:rfqs.filter(r=>r.status==="Open").length,c:C.gold,ico:"📢",s:"brm-rfq"},
   ];
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{marginBottom:22}}>
-        <div style={{fontSize:22,fontWeight:800}}>Procurement Dashboard</div>
-        <div style={{fontSize:12,color:C.t2,marginTop:3}}>Welcome, {user.name} · {user.title} · SAP S/4HANA Public Cloud (BTP Vendor Portal)</div>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:22,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.t1}}>Procurement Dashboard</div>
+        <div style={{fontSize:13,color:C.t2,marginTop:4}}>Welcome, {user.name} · {user.title} · SAP S/4HANA Public Cloud (BTP Vendor Portal)</div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:g4(),gap:14,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:g4(),gap:16,marginBottom:22}}>
         {stats.map(s=>(
-          <div key={s.l} onClick={()=>setSection(s.s)} style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.07)",padding:16,cursor:"pointer"}}>
-            <div style={{display:"flex",justifyContent:"space-between"}}><div style={{fontSize:11,color:C.t2,fontWeight:600}}>{s.l}</div><span style={{fontSize:20}}>{s.ico}</span></div>
-            <div style={{fontSize:30,fontWeight:800,color:s.c,margin:"6px 0"}}>{s.n}</div>
-            <div style={{fontSize:12,color:C.primary}}>View →</div>
+          <div key={s.l} onClick={()=>setSection(s.s)} style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:"16px 18px",cursor:"pointer",borderLeft:`4px solid ${s.c}`,transition:"box-shadow .15s"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div style={{fontSize:12,color:C.t2,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>{s.l}</div>
+              <span style={{fontSize:22,opacity:0.7}}>{s.ico}</span>
+            </div>
+            <div style={{fontSize:32,fontWeight:700,color:s.c,lineHeight:1,marginBottom:8}}>{s.n}</div>
+            <div style={{fontSize:12,color:C.primary,fontWeight:600}}>View →</div>
           </div>
         ))}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:g2(),gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:g2(),gap:16}}>
         <Card>
-          <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>⏳ Invoices Awaiting Action</div>
-          {pending.length===0?<div style={{color:C.t2,fontSize:13}}>No invoices pending review.</div>:pending.slice(0,5).map(inv=>(
-            <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
-              <div><div style={{fontWeight:600,fontSize:13}}>{inv.invoiceNo}</div><div style={{fontSize:11,color:C.t2}}>{inv.vendorName} · {fmtDate(inv.invoiceDate)}</div></div>
-              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}><div style={{fontSize:12,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div><Badge s={inv.status}/></div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>⏳ Invoices Awaiting Action</div>
+          {pending.length===0?<div style={{color:C.t2,fontSize:14}}>No invoices pending review.</div>:pending.slice(0,5).map(inv=>(
+            <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+              <div><div style={{fontWeight:600,fontSize:14}}>{inv.invoiceNo}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{inv.vendorName} · {fmtDate(inv.invoiceDate)}</div></div>
+              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}><div style={{fontSize:13,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div><Badge s={inv.status}/></div>
             </div>
           ))}
-          {pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{marginTop:10,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}>View all {pending.length} pending →</button>}
+          {pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{marginTop:12,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,fontWeight:600,padding:0}}>View all {pending.length} pending →</button>}
         </Card>
         <Card>
-          <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>📋 Quotations to Evaluate</div>
-          {pendingQt.length===0?<div style={{color:C.t2,fontSize:13}}>No quotations awaiting evaluation.</div>:pendingQt.slice(0,5).map(qt=>(
-            <div key={qt.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
-              <div><div style={{fontWeight:600,fontSize:12,maxWidth:180,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{qt.rfqTitle}</div><div style={{fontSize:11,color:C.t2}}>{qt.vendorName}</div></div>
-              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}><div style={{fontSize:12,fontWeight:700}}>{idr(qt.totalAmt)}</div><Badge s={qt.status}/></div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>📋 Quotations to Evaluate</div>
+          {pendingQt.length===0?<div style={{color:C.t2,fontSize:14}}>No quotations awaiting evaluation.</div>:pendingQt.slice(0,5).map(qt=>(
+            <div key={qt.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+              <div><div style={{fontWeight:600,fontSize:14,maxWidth:180,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{qt.rfqTitle}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{qt.vendorName}</div></div>
+              <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}><div style={{fontSize:13,fontWeight:700}}>{idr(qt.totalAmt)}</div><Badge s={qt.status}/></div>
             </div>
           ))}
-          {pendingQt.length>5&&<button onClick={()=>setSection("brm-quotation")} style={{marginTop:10,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}>View all →</button>}
+          {pendingQt.length>5&&<button onClick={()=>setSection("brm-quotation")} style={{marginTop:12,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,fontWeight:600,padding:0}}>View all →</button>}
         </Card>
       </div>
     </div>
@@ -1176,10 +1195,10 @@ const BrmInvoice = ({invoices,setInvoices}) => {
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:20,fontWeight:800}}>Invoice Management – All Vendors</div>
-        <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management – All Vendors</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
       </div>
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
         <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
@@ -1266,10 +1285,10 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const accept=id=>{setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Accepted"}:q));setView(null);};
   const reject=id=>{if(window.confirm("Reject this quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Rejected"}:q));setView(null);};
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{marginBottom:18}}>
-        <div style={{fontSize:20,fontWeight:800}}>Quotation Management – All Vendors</div>
-        <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 Vendor quotations from Custom CDS Table on BTP · Compare and award to best bidder</div>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Management – All Vendors</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Vendor quotations from Custom CDS Table on BTP · Compare and award to best bidder</div>
       </div>
       <FilterBar opts={["All","Submitted","Accepted","Rejected","Withdrawn"]} val={flt} onChange={setFlt}/>
       <Card style={{padding:0,overflow:"auto"}}>
@@ -1334,11 +1353,11 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",items:[{no:1,desc:"",qty:1,uom:"Unit",estPrice:0}]});
   };
   return (
-    <div style={{padding:pg(),maxWidth:1080,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
-          <div style={{fontSize:20,fontWeight:800}}>RFQ Management</div>
-          <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 RFQ published to BTP Vendor Portal → Vendor notified → Quotations collected</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ published to BTP Vendor Portal → Vendor notified → Quotations collected</div>
         </div>
         <Btn onClick={()=>setForm(true)}>+ Create RFQ</Btn>
       </div>
@@ -1461,8 +1480,8 @@ const SettingsModal = ({settings,onUpdate,onClose}) => {
   ];
   return (
     <Modal title="⚙️ Settings" onClose={onClose} width={520}>
-      <div style={{marginBottom:6,fontWeight:700,fontSize:13,color:C.t1}}>Number Format</div>
-      <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Controls thousand and decimal separators for all amounts.</div>
+      <div style={{marginBottom:6,fontWeight:700,fontSize:14,color:C.t1}}>Number Format</div>
+      <div style={{fontSize:13,color:C.t2,marginBottom:12}}>Controls thousand and decimal separators for all amounts.</div>
       {NUM_FMTS.map(f=>(
         <button key={f.v} style={btnStyle(settings.numFmt===f.v)} onClick={()=>onUpdate({numFmt:f.v})}>
           <input type="radio" readOnly checked={settings.numFmt===f.v} style={{accentColor:C.primary,flexShrink:0}}/>
@@ -1473,8 +1492,8 @@ const SettingsModal = ({settings,onUpdate,onClose}) => {
         </button>
       ))}
       <Sep/>
-      <div style={{marginBottom:6,fontWeight:700,fontSize:13,color:C.t1}}>Date Format</div>
-      <div style={{fontSize:11,color:C.t2,marginBottom:12}}>Controls how dates are displayed across the portal.</div>
+      <div style={{marginBottom:6,fontWeight:700,fontSize:14,color:C.t1}}>Date Format</div>
+      <div style={{fontSize:13,color:C.t2,marginBottom:12}}>Controls how dates are displayed across the portal.</div>
       <div style={{display:"grid",gridTemplateColumns:g2(),gap:8}}>
         {DATE_FMTS.map(f=>(
           <button key={f.v} style={{...btnStyle(settings.dateFmt===f.v),flexDirection:"column",alignItems:"flex-start",gap:2}} onClick={()=>onUpdate({dateFmt:f.v})}>
@@ -1522,11 +1541,11 @@ export default function App() {
     }
   };
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13,color:C.t1}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:14,color:C.t1}}>
       <Shell user={user} onLogout={logout} section={section} setSection={setSection} theme={theme} onToggleTheme={toggleTheme} onOpenSettings={()=>setShowSettings(true)}/>
       {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)}/>}
       <div style={{minHeight:"calc(100vh - 46px)"}}>{render()}</div>
-      <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>
+      <div style={{textAlign:"center",padding:"14px 0",fontSize:12,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>
         BRM Vendor Portal · Powered by SAP BTP & Accenture · © 2025 BRM
       </div>
     </div>
