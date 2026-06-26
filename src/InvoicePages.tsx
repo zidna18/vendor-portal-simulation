@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
-  mob, g2, g4,
+  mob, g2, g4, pg,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
   ValueHelpDialog, ValueHelpInp,
