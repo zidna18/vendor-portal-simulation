@@ -443,87 +443,96 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
   };
 
   return(
-    <Modal title={`Define Conditions: ${title}`} onClose={onClose} width={700}>
-      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-        <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
-          <optgroup label="Include" style={{fontWeight:700,color:"#32363a"}}>
-            {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
-          </optgroup>
-          <optgroup label="Exclude" style={{fontWeight:700,color:"#32363a"}}>
-            {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
-          </optgroup>
-        </select>
+    <div style={{position:"fixed",inset:0,zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.4)"}}>
+      <div style={{background:C.card,borderRadius:4,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",resize:"both",overflow:"hidden",width:700,minWidth:480,minHeight:420,maxWidth:"95vw",maxHeight:"92vh",display:"flex",flexDirection:"column",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px 12px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.t1}}>Define Conditions: {title}</div>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,padding:"0 4px",lineHeight:1}}>×</button>
+        </div>
+        {/* Body — scrollable */}
+        <div style={{flex:1,overflow:"auto",padding:16}}>
+          {/* Operator + value row — wraps on narrow widths */}
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+            <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
+              <optgroup label="Include" style={{fontWeight:700,color:"#32363a"}}>
+                {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+              </optgroup>
+              <optgroup label="Exclude" style={{fontWeight:700,color:"#32363a"}}>
+                {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+              </optgroup>
+            </select>
 
-        {!noVal&&(
-          <input style={inpStyle} value={v1} onChange={e=>setV1(e.target.value)}
-            onPaste={handleV1Paste}
-            onKeyDown={e=>{if(e.key==="Enter")addCond();}}
-            placeholder="Value" aria-label="Value"/>
-        )}
-        {isBetween&&(
-          <>
-            <span style={{fontSize:13,color:"#6a6d70",flexShrink:0}}>and</span>
-            <input style={inpStyle} value={v2} onChange={e=>setV2(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter")addCond();}}
-              placeholder="Value" aria-label="Second Value"/>
-          </>
-        )}
-        {!noVal&&(
-          <button onClick={()=>{setV1("");setV2("");}}
-            style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
-            ×
-          </button>
-        )}
-        <button onClick={()=>addCond()}
-          style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0,marginLeft:"auto"}}>
-          Add Condition
-        </button>
-      </div>
-
-      <div style={{minHeight:220,border:"1px solid #e5e5e5",borderRadius:2,padding:12,marginBottom:12,background:"#fff",overflowY:"auto"}}>
-        {conds.length===0?(
-          <div style={{color:"#0a6ed1",fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
-        ):(
-          <div>
-            {conds.map((c,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?"1px solid #f2f2f2":"none",fontSize:13,color:"#32363a"}}>
-                <span style={{color:"#6a6d70",minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
-                <span style={{flex:1,fontWeight:NO_VAL_OPS.has(c.op)?400:600}}>
-                  {NO_VAL_OPS.has(c.op)?"—":BETWEEN_OPS.has(c.op)?`${c.v1}  –  ${c.v2}`:c.v1}
-                </span>
-                <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))}
-                  style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
-              </div>
-            ))}
+            {!noVal&&(
+              <input style={{...inpStyle,minWidth:100}} value={v1} onChange={e=>setV1(e.target.value)}
+                onPaste={handleV1Paste}
+                onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+                placeholder="Value" aria-label="Value"/>
+            )}
+            {isBetween&&(
+              <>
+                <span style={{fontSize:13,color:"#6a6d70",flexShrink:0}}>and</span>
+                <input style={{...inpStyle,minWidth:100}} value={v2} onChange={e=>setV2(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+                  placeholder="Value" aria-label="Second Value"/>
+              </>
+            )}
+            {!noVal&&(
+              <button onClick={()=>{setV1("");setV2("");}}
+                style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
+                ×
+              </button>
+            )}
+            <button onClick={()=>addCond()}
+              style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0}}>
+              Add Condition
+            </button>
           </div>
-        )}
-      </div>
 
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-        <input value={pasteInput} onChange={e=>setPasteInput(e.target.value)}
-          onPaste={handlePasteInput}
-          placeholder="Paste multiple values here (one per line = one condition each)"
-          style={{...inpStyle,fontSize:12,color:"#6a6d70"}}/>
-        {pasteInput&&(
-          <button onClick={()=>setPasteInput("")}
-            style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
-        )}
-      </div>
+          <div style={{minHeight:160,border:"1px solid #e5e5e5",borderRadius:2,padding:12,marginBottom:12,background:"#fff",overflowY:"auto"}}>
+            {conds.length===0?(
+              <div style={{color:"#0a6ed1",fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
+            ):(
+              conds.map((c,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?"1px solid #f2f2f2":"none",fontSize:13,color:"#32363a"}}>
+                  <span style={{color:"#6a6d70",minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
+                  <span style={{flex:1,fontWeight:NO_VAL_OPS.has(c.op)?400:600}}>
+                    {NO_VAL_OPS.has(c.op)?"—":BETWEEN_OPS.has(c.op)?`${c.v1}  –  ${c.v2}`:c.v1}
+                  </span>
+                  <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))}
+                    style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
+                </div>
+              ))
+            )}
+          </div>
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:"1px solid #e5e5e5"}}>
-        <span style={{fontSize:12,color:"#6a6d70"}}>{conds.length>0?`${conds.length} condition${conds.length!==1?"s":""} defined`:""}</span>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={onClose}
-            style={{background:"#fff",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:400,cursor:"pointer"}}>
-            Cancel
-          </button>
-          <button onClick={()=>onSave(conds)}
-            style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
-            OK
-          </button>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <input value={pasteInput} onChange={e=>setPasteInput(e.target.value)}
+              onPaste={handlePasteInput}
+              placeholder="Paste multiple values here (one per line = one condition each)"
+              style={{...inpStyle,fontSize:12,color:"#6a6d70"}}/>
+            {pasteInput&&(
+              <button onClick={()=>setPasteInput("")}
+                style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+            )}
+          </div>
+        </div>
+        {/* Footer */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderTop:`1px solid ${C.border}`,flexShrink:0}}>
+          <span style={{fontSize:12,color:C.t2}}>{conds.length>0?`${conds.length} condition${conds.length!==1?"s":""} defined`:""}</span>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={onClose}
+              style={{background:"#fff",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>
+              Cancel
+            </button>
+            <button onClick={()=>onSave(conds)}
+              style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
+              OK
+            </button>
+          </div>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 
