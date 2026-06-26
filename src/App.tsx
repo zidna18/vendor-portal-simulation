@@ -701,86 +701,133 @@ const PdfViewer = ({filename,inv,onClose}) => {
 
 // ── Document Flow ─────────────────────────────────────────────
 const DocFlow = ({inv}) => {
-  // Deterministic pseudo-random seeded by string (no randomness — same invoice always produces same doc numbers)
   const seed = str => { let h=5381; for(const c of str) h=((h<<5)+h^c.charCodeAt(0))>>>0; return h; };
   const n5   = h => String(h%100000).padStart(5,"0");
   const pos  = inv.poNumbers?.length ? inv.poNumbers : inv.poNumber ? [inv.poNumber] : [];
 
-  // Build per-PO document chains
   const chains = pos.map(po => {
-    const h    = seed(po);
-    const prNo = `1000${n5(h)}`;
-    const sqNo = h%3!==2 ? `1800${n5(h+7)}` : null;  // ~2/3 of POs have an associated Supplier Quotation
-    const grCnt= (h%2)+1;                              // 1–2 Goods Receipts per PO (partial deliveries)
-    const grNos= Array.from({length:grCnt},(_,i)=>`5000${n5(h+(i+1)*53)}`);
-    return {po, prNo, sqNo, grNos};
+    const h = seed(po);
+    return {po, prNo:`1000${n5(h)}`, sqNo:h%3!==2?`1800${n5(h+7)}`:null, grNos:Array.from({length:(h%2)+1},(_,i)=>`5000${n5(h+(i+1)*53)}`)};
   });
 
-  // SAP Accounting Document only exists after BRM confirmation
-  const sapAccNo   = inv.status==="Confirmed" ? `5100${n5(seed(inv.id))}` : null;
-  const invStatus  = inv.status==="Confirmed" ? "Confirmed" : inv.status==="Rejected" ? "Rejected" : "In Process";
+  const sapAccNo = inv.status==="Confirmed" ? `5100${n5(seed(inv.id))}` : null;
+  const invSt    = inv.status==="Confirmed" ? "Confirmed" : inv.status==="Rejected" ? "Rejected" : "In Process";
 
-  const stMap = {
-    Completed:   {c:C.ok,   bg:C.okBg,   lbl:"✓ Completed"},
-    Posted:      {c:C.ok,   bg:C.okBg,   lbl:"✓ Posted"},
-    Confirmed:   {c:C.ok,   bg:C.okBg,   lbl:"✓ Confirmed"},
-    Active:      {c:C.info, bg:C.infoBg, lbl:"● Active"},
-    "In Process":{c:C.warn, bg:C.warnBg, lbl:"○ In Process"},
-    Rejected:    {c:C.err,  bg:C.errBg,  lbl:"✕ Rejected"},
-    Pending:     {c:C.t2,   bg:C.draftBg,lbl:"○ Pending"},
-  };
+  // Aggregate all docs per stage (M:N — multiple POs → multiple GRs → 1 invoice)
+  const allPRs = chains.map(c=>c.prNo);
+  const allSQs = chains.map(c=>c.sqNo).filter(Boolean);
+  const allPOs = pos;
+  const allGRs = chains.flatMap(c=>c.grNos);
 
-  // Flatten all rows (including optional dividers when multiple PO groups exist)
-  const rows = [];
-  chains.forEach(({po,prNo,sqNo,grNos},ci) => {
-    if(chains.length>1) rows.push({_div:true, po, ci, total:chains.length});
-    rows.push({ico:"📋", badge:"PR",   label:"Purchase Requisition",   doc:prNo,   status:"Completed", api:"A_PurchaseRequisitionItem (OData v4)"});
-    if(sqNo) rows.push({ico:"💬", badge:"SQ",   label:"Supplier Quotation",     doc:sqNo,   status:"Completed", api:"A_SupplierQuotation (S/4HANA)"});
-    rows.push({ico:"📄", badge:"PO",   label:"Purchase Order",          doc:po,     status:"Active",    api:"A_PurchaseOrder (OData v4)"});
-    grNos.forEach((gr,gi) =>
-      rows.push({ico:"📦", badge:"GR", label:`Goods / Service Receipt${grNos.length>1?` (${gi+1}/${grNos.length})`:""}`, doc:gr, status:"Posted", api:"A_MaterialDocumentItem (OData v4)"})
-    );
-  });
-  rows.push({ico:"🧾", badge:"PINV", label:`Pre-Invoice · ${inv.invoiceNo}`, doc:inv.id,   status:invStatus, api:"BTP Vendor Portal – Custom CDS"});
-  if(sapAccNo) rows.push({ico:"🏦", badge:"SINV", label:"SAP Supplier Invoice",   doc:sapAccNo, status:"Posted",   api:"API_SUPPLIERINVOICE_PROCESS_SRV"});
+  const stages = [
+    {ico:"📋", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
+    ...(allSQs.length>0?[{ico:"💬", badge:"SQ", label:"Supplier\nQuotation", docs:allSQs, status:"Completed", api:"A_SupplierQuotation"}]:[]),
+    {ico:"📄", badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
+    {ico:"📦", badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
+    {ico:"🧾", badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
+    ...(sapAccNo?[{ico:"🏦", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
+  ];
+
+  const stC  = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.ok:s==="Active"||s==="In Process"?C.info:s==="Rejected"?C.err:C.warn;
+  const stBg = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.okBg:s==="Active"||s==="In Process"?C.infoBg:s==="Rejected"?C.errBg:C.warnBg;
+  const stIco= s => s==="Completed"||s==="Posted"||s==="Confirmed"?"✓":s==="Rejected"?"✕":"○";
+  const stLbl= s => stIco(s)+" "+(s==="In Process"?"In Process":s);
+
+  const vert = mob();
 
   return (
     <>
       <Sep/>
-      <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Document Flow</div>
-      <div style={{fontSize:10,color:C.t2,marginBottom:10}}>
-        Procurement chain from purchase request to invoice posting · 📡 SAP S/4HANA Public Cloud
-      </div>
-      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
-        {rows.map((r,i) => {
-          if(r._div) return (
-            <div key={i} style={{padding:"5px 14px",background:C.infoBg,borderBottom:`1px solid ${C.border}`,fontSize:10,fontWeight:700,color:C.info,letterSpacing:.3}}>
-              PO Group {r.ci+1}/{r.total} — {r.po}
-            </div>
-          );
-          const st     = stMap[r.status]||stMap.Pending;
-          const isLast = i===rows.length-1;
-          return (
-            <div key={i} style={{display:"flex",gap:10,padding:"9px 14px",borderBottom:isLast?"none":`1px solid ${C.border}`,alignItems:"center",background:i%2===0?C.card:C.subtle}}>
-              <span style={{fontSize:14,flexShrink:0}}>{r.ico}</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,marginBottom:3}}>
-                  <span style={{fontSize:9,fontWeight:700,letterSpacing:.6,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 5px",color:C.t2,flexShrink:0}}>{r.badge}</span>
-                  <span style={{fontSize:12,fontWeight:600,color:C.t1}}>{r.label}</span>
+      <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Document Flow</div>
+      <div style={{fontSize:10,color:C.t2,marginBottom:10}}>📡 SAP S/4HANA — procurement chain from request to invoice posting</div>
+
+      {/* ── Horizontal ProcessFlow (desktop) ── */}
+      {!vert&&(
+        <div style={{overflowX:"auto",paddingBottom:8}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:0,minWidth:"max-content"}}>
+            {stages.map((st,i)=>{
+              const color=stC(st.status); const bg=stBg(st.status);
+              return (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:0}}>
+                  {/* Node card */}
+                  <div style={{width:110,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 8px",boxShadow:"0 2px 8px rgba(0,0,0,0.09)",position:"relative",flexShrink:0}}>
+                    {/* Status dot */}
+                    <div style={{position:"absolute",top:-8,right:-8,width:18,height:18,borderRadius:"50%",background:color,color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.22)"}}>
+                      {stIco(st.status)}
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:22,marginBottom:5}}>{st.ico}</div>
+                      <div style={{fontSize:9,fontWeight:800,color:C.t2,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{st.badge}</div>
+                      <div style={{fontSize:10,fontWeight:700,color:C.t1,marginBottom:7,lineHeight:1.4,minHeight:28}}>
+                        {st.label.split("\n").map((l,j)=><div key={j}>{l}</div>)}
+                      </div>
+                      {/* Doc numbers — show first 2 */}
+                      {st.docs.slice(0,2).map((d,j)=>(
+                        <div key={j} style={{fontFamily:"monospace",fontSize:8,color:C.primary,background:C.infoBg,borderRadius:3,padding:"2px 4px",marginBottom:2,wordBreak:"break-all",textAlign:"center"}}>{d}</div>
+                      ))}
+                      {st.docs.length>2&&<div style={{fontSize:8,color:C.t2,marginBottom:2}}>+{st.docs.length-2} more</div>}
+                      {st.docs.length>1&&<div style={{fontSize:8,color:C.t2,marginBottom:4}}>{st.docs.length} documents</div>}
+                      {/* Status badge */}
+                      <div style={{marginTop:6,display:"inline-block",fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"2px 7px",border:`1px solid ${color}44`}}>
+                        {stLbl(st.status)}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Connector arrow */}
+                  {i<stages.length-1&&(
+                    <div style={{display:"flex",alignItems:"center",flexShrink:0,width:28,marginTop:38}}>
+                      <div style={{flex:1,height:2,background:C.border}}/>
+                      <div style={{width:0,height:0,borderTop:"5px solid transparent",borderBottom:"5px solid transparent",borderLeft:`7px solid ${C.border}`}}/>
+                    </div>
+                  )}
                 </div>
-                <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{fontFamily:"monospace",fontSize:11,color:C.t1,fontWeight:700}}>{r.doc}</span>
-                  <span style={{fontSize:9,color:C.t2}}>📡 {r.api}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Vertical ProcessFlow (mobile) ── */}
+      {vert&&(
+        <div style={{display:"flex",flexDirection:"column",gap:0}}>
+          {stages.map((st,i)=>{
+            const color=stC(st.status); const bg=stBg(st.status);
+            return (
+              <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"stretch"}}>
+                {/* Node row */}
+                <div style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 12px",position:"relative",boxShadow:"0 1px 4px rgba(0,0,0,0.07)"}}>
+                  <div style={{position:"absolute",top:-7,right:-7,width:16,height:16,borderRadius:"50%",background:color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{stIco(st.status)}</div>
+                  <span style={{fontSize:22,flexShrink:0}}>{st.ico}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                      <span style={{fontSize:9,fontWeight:800,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 5px",letterSpacing:.5}}>{st.badge}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:C.t1}}>{st.label.replace("\n"," ")}</span>
+                      <span style={{fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"1px 7px",border:`1px solid ${color}44`,marginLeft:"auto",whiteSpace:"nowrap"}}>{stLbl(st.status)}</span>
+                    </div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {st.docs.slice(0,2).map((d,j)=><span key={j} style={{fontFamily:"monospace",fontSize:10,color:C.primary,background:C.infoBg,borderRadius:3,padding:"1px 6px"}}>{d}</span>)}
+                      {st.docs.length>2&&<span style={{fontSize:10,color:C.t2}}>+{st.docs.length-2} more</span>}
+                    </div>
+                  </div>
                 </div>
+                {/* Vertical connector */}
+                {i<stages.length-1&&(
+                  <div style={{display:"flex",justifyContent:"flex-start",paddingLeft:20}}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:2}}>
+                      <div style={{width:2,height:14,background:C.border}}/>
+                      <div style={{width:0,height:0,borderLeft:"5px solid transparent",borderRight:"5px solid transparent",borderTop:`7px solid ${C.border}`}}/>
+                    </div>
+                  </div>
+                )}
               </div>
-              <span style={{fontSize:10,fontWeight:700,color:st.c,background:st.bg,borderRadius:3,padding:"1px 8px",whiteSpace:"nowrap",flexShrink:0,border:`1px solid ${st.c}33`}}>{st.lbl}</span>
-            </div>
-          );
-        })}
-      </div>
-      {chains.length>1&&(
-        <div style={{fontSize:11,color:C.t2,marginTop:8,padding:"7px 10px",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
-          ℹ️ This invoice references {chains.length} Purchase Orders. Each PO may have independent Goods Receipts (partial deliveries). The invoice total covers all associated goods/services received across all PO lines.
+            );
+          })}
+        </div>
+      )}
+
+      {pos.length>1&&(
+        <div style={{fontSize:11,color:C.t2,marginTop:10,padding:"6px 10px",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
+          ℹ️ This invoice covers {pos.length} PO references with {allGRs.length} Goods Receipts across all lines.
         </div>
       )}
     </>
