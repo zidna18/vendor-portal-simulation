@@ -1,0 +1,983 @@
+import { useState } from "react";
+import {
+  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
+  fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
+  mob, g2, g4,
+  Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
+  FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
+} from "./shared";
+
+// ── PO Value Help ──────────────────────────────────────────────
+export const PoValueHelp = ({values,onConfirm,onClose}) => {
+  const [items,setItems]=useState([...values]);
+  const [raw,setRaw]=useState("");
+  const parse=txt=>txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+  const applyRaw=()=>{const p=parse(raw);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");};
+  const pasteClip=async()=>{
+    try{const t=await navigator.clipboard.readText();const p=parse(t);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");}
+    catch{alert("Clipboard access denied. Please paste manually into the field.");}
+  };
+  return (
+    <Modal title="PO Number – Value Help" onClose={onClose} width={500}>
+      <div style={{fontSize:10,color:C.t2,marginBottom:12}}>📡 SAP API: A_PurchaseOrder (OData v4) · Separate entries by newline, comma, or semicolon</div>
+      <Lbl>Paste or type PO numbers</Lbl>
+      <div style={{display:"flex",gap:8,marginBottom:6}}>
+        <textarea value={raw} onChange={e=>setRaw(e.target.value)} placeholder={"4500001234\n4500001235\n4500001236"} rows={4}
+          style={{flex:1,padding:"7px 10px",background:C.field,border:`1px solid ${C.border}`,borderRadius:4,color:C.t1,fontSize:12,fontFamily:"monospace",resize:"vertical",outline:"none"}}/>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <Btn v="neutral" sm onClick={pasteClip}>Paste</Btn>
+          <Btn v="primary" sm onClick={applyRaw}>Add →</Btn>
+        </div>
+      </div>
+      <div style={{marginBottom:14,fontSize:11,color:C.t2}}>Click <strong>Paste</strong> to read from clipboard automatically, or type and click <strong>Add</strong>.</div>
+      <Lbl>Selected PO Numbers ({items.length})</Lbl>
+      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",marginBottom:16,minHeight:40}}>
+        {items.length===0&&<div style={{padding:"12px 16px",color:C.t2,fontSize:12,textAlign:"center"}}>No PO numbers selected yet.</div>}
+        {items.map((po,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 12px",background:i%2===0?C.subtle:C.card,borderBottom:i<items.length-1?`1px solid ${C.border}`:"none"}}>
+            <span style={{fontFamily:"monospace",fontSize:12}}>{po}</span>
+            <button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12,padding:"0 4px"}}>✕</button>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+        <Btn v="primary" onClick={()=>onConfirm(items)}>Confirm ({items.length} PO{items.length!==1?"s":""})</Btn>
+      </div>
+    </Modal>
+  );
+};
+
+// ── Invoice Form Modal ─────────────────────────────────────────
+export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
+  const isNew=!inv;
+  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const [showPoHelp,setShowPoHelp]=useState(false);
+  const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
+  const rmFile=i=>s("files",f.files.filter((_,j)=>j!==i));
+  const save=draft=>{
+    if(!draft&&!(f.poNumbers||[]).length){alert("Please add at least one PO Number before submitting.");return;}
+    if(!draft&&!f.companyCode){alert("Please select a Company Code before submitting.");return;}
+    if(!draft&&!f.taxDoc){alert("Please enter Faktur Pajak number before submitting.");return;}
+    if(!draft&&(f.files||[]).length<2){alert("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.");return;}
+    const obj={...f,status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,submittedAt:draft?null:new Date().toISOString().split("T")[0]};
+    onSave(obj);
+  };
+  return (
+    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
+      <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>Company Code *</Lbl>
+          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
+        </div>
+        <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>PO Number *</Lbl>
+          <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",background:C.field,minHeight:38}}>
+            <div onClick={()=>setShowPoHelp(true)} style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"5px 8px",alignContent:"flex-start",cursor:"pointer",minHeight:36}}>
+              {!(f.poNumbers||[]).length&&<span style={{color:C.t2,fontSize:12,alignSelf:"center",pointerEvents:"none"}}>— click or press value help to add PO numbers —</span>}
+              {(f.poNumbers||[]).map((po,i)=>(
+                <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,gap:6,lineHeight:"20px"}}>
+                  <span style={{fontFamily:"monospace"}}>{po}</span>
+                  <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>
+                </span>
+              ))}
+            </div>
+            <button onClick={()=>setShowPoHelp(true)} title="Open Value Help" style={{padding:"0 14px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:12,color:C.t1,fontWeight:700,letterSpacing:1}}>...</button>
+          </div>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
+        </div>
+        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
+        <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
+        <div>
+          <Lbl>Transaction Currency *</Lbl>
+          <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: I_Currency</div>
+        </div>
+        <div><Lbl>Amount *</Lbl><AmtInp value={f.amount} onChange={v=>s("amount",v)}/></div>
+        <div><Lbl>VAT Base Amount</Lbl><AmtInp value={f.vatBase} onChange={v=>s("vatBase",v)}/></div>
+        <div><Lbl>VAT Amount</Lbl><AmtInp value={f.vatAmt} onChange={v=>s("vatAmt",v)}/></div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>WHT Type</Lbl>
+          <Sel value={f.whtType} onChange={v=>s("whtType",v)} opts={WHT_TYPES}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: WithholdingTaxType / WithholdingTaxCode</div>
+        </div>
+        <div><Lbl>WHT Base Amount</Lbl><AmtInp value={f.whtBase} onChange={v=>s("whtBase",v)}/></div>
+        <div><Lbl>WHT Amount</Lbl><AmtInp value={f.whtAmt} onChange={v=>s("whtAmt",v)}/></div>
+        <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
+      </div>
+      <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
+      <div style={{padding:14,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
+        <div style={{fontWeight:700,fontSize:12,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><SapIcon name="attachment" size={13} color={C.t1}/> Mandatory Attachments</div>
+        <div style={{fontSize:11,color:C.t2,marginBottom:10}}>Both Invoice PDF and Faktur Pajak PDF are required before submission.</div>
+        {(f.files||[]).map((a,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:C.card,borderRadius:4,marginBottom:6,border:`1px solid ${C.border}`,fontSize:12}}>
+            <span style={{display:"flex",alignItems:"center",gap:5}}><SapIcon name="document" size={13} color={C.t2}/>{a}</span>
+            <button onClick={()=>rmFile(i)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:11}}>Remove</button>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          {!f.files?.includes("invoice.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("invoice.pdf")}>+ Upload Invoice PDF</Btn>}
+          {!f.files?.includes("faktur_pajak.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("faktur_pajak.pdf")}>+ Upload Faktur Pajak PDF</Btn>}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+        <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
+        <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
+      </div>
+      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
+    </Modal>
+  );
+};
+
+// ── PDF Preview Components ─────────────────────────────────────
+export const InvoiceDoc = ({inv}) => {
+  const vd=VENDORS[inv.vendorId]||{};
+  const net=Number(inv.amount||0)+Number(inv.vatAmt||0)-Number(inv.whtAmt||0);
+  const rows=[["Amount",fmtAmt(inv.amount,inv.currency)],["VAT Base Amount",fmtAmt(inv.vatBase||0,inv.currency)],["VAT Amount (PPN 11%)",fmtAmt(inv.vatAmt||0,inv.currency)],
+    ...(inv.whtType?[[WHT_TYPES.find(w=>w.v===inv.whtType)?.l||inv.whtType,""],["WHT Base Amount",fmtAmt(inv.whtBase||0,inv.currency)],["WHT Amount","("+fmtAmt(inv.whtAmt||0,inv.currency)+")"]]:[])] ;
+  return (
+    <div style={{fontFamily:"Arial,sans-serif",fontSize:11,color:"#222",lineHeight:1.55}}>
+      <div style={{display:"flex",justifyContent:"space-between",paddingBottom:10,borderBottom:"2px solid #0070F2",marginBottom:14}}>
+        <div><div style={{fontSize:16,fontWeight:800,color:"#0070F2"}}>PRE-INVOICE</div><div style={{fontSize:9,color:"#aaa",marginTop:2}}>{inv.id}</div></div>
+        <div style={{textAlign:"right",fontSize:10}}><div style={{fontWeight:700,fontSize:12}}>{inv.invoiceNo}</div><div>Date: {fmtDate(inv.invoiceDate)}</div><div>Due: {fmtDate(inv.dueDate)}</div></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12,padding:"8px 10px",background:"#f5f5f5",borderRadius:4,fontSize:10}}>
+        <div><div style={{fontWeight:700,fontSize:9,color:"#888",textTransform:"uppercase",marginBottom:3}}>From (Vendor)</div><div style={{fontWeight:600}}>{inv.vendorName}</div><div style={{color:"#666",fontSize:9}}>{vd.addr}</div><div>NPWP: {vd.tax}</div></div>
+        <div><div style={{fontWeight:700,fontSize:9,color:"#888",textTransform:"uppercase",marginBottom:3}}>Bill To</div><div style={{fontWeight:600}}>{ccName(inv.companyCode)}</div><div style={{color:"#666"}}>Code: {inv.companyCode}</div><div>PO: {fmtPOs(inv)}</div></div>
+      </div>
+      <div style={{padding:"6px 10px",background:"#EBF5FB",borderLeft:"3px solid #0070F2",marginBottom:12,fontSize:10}}>{inv.desc}</div>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,marginBottom:10}}><tbody>
+        {rows.map(([l,v],i)=><tr key={i} style={{background:i%2?"#f9f9f9":"#fff"}}><td style={{padding:"4px 8px",borderBottom:"1px solid #ececec"}}>{l}</td><td style={{padding:"4px 8px",textAlign:"right",borderBottom:"1px solid #ececec",fontFamily:"monospace"}}>{v}</td></tr>)}
+        <tr style={{background:"#0070F2",color:"#fff"}}><td style={{padding:"6px 8px",fontWeight:700}}>Net Payable</td><td style={{padding:"6px 8px",textAlign:"right",fontWeight:700,fontFamily:"monospace"}}>{fmtAmt(net,inv.currency)}</td></tr>
+      </tbody></table>
+      <div style={{fontSize:9,color:"#aaa",display:"flex",justifyContent:"space-between",paddingTop:6,borderTop:"1px solid #e0e0e0"}}><span>Faktur Pajak: {inv.taxDoc||"—"}</span><span>BRM Vendor Portal</span></div>
+    </div>
+  );
+};
+export const FakturDoc = ({inv}) => {
+  const vd=VENDORS[inv.vendorId]||{};
+  return (
+    <div style={{fontFamily:"Arial,sans-serif",fontSize:11,color:"#222",lineHeight:1.55}}>
+      <div style={{textAlign:"center",borderBottom:"2px solid #222",paddingBottom:10,marginBottom:14}}>
+        <div style={{fontSize:14,fontWeight:800,letterSpacing:1}}>FAKTUR PAJAK</div>
+        <div style={{fontSize:9,color:"#888",marginTop:2}}>Kode dan Nomor Seri Faktur Pajak</div>
+        <div style={{fontSize:13,fontWeight:700,letterSpacing:2,marginTop:3}}>{inv.taxDoc||"—"}</div>
+      </div>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12,fontSize:10}}><tbody>
+        {[["Nama PKP Penjual",inv.vendorName,true],["NPWP Penjual",vd.tax||"—",false],["Alamat Penjual",vd.addr||"—",false]].map(([l,v,b])=>(
+          <tr key={l}><td style={{padding:"3px 0",color:"#888",width:150}}>{l}</td><td>: <span style={{fontWeight:b?700:400}}>{v}</span></td></tr>
+        ))}
+        <tr><td colSpan={2} style={{padding:"4px 0",borderTop:"1px solid #ddd"}}></td></tr>
+        {[["Nama Pembeli",ccName(inv.companyCode),true],["Kode Perusahaan",inv.companyCode,false],["Tanggal Faktur",fmtDate(inv.invoiceDate),false]].map(([l,v,b])=>(
+          <tr key={l}><td style={{padding:"3px 0",color:"#888",width:150}}>{l}</td><td>: <span style={{fontWeight:b?700:400}}>{v}</span></td></tr>
+        ))}
+      </tbody></table>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:12,fontSize:10}}>
+        <thead><tr style={{background:"#f0f0f0"}}><th style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"left",width:30}}>No.</th><th style={{padding:"4px 8px",border:"1px solid #ccc"}}>BKP / Jasa Kena Pajak</th><th style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"right"}}>Harga</th></tr></thead>
+        <tbody><tr><td style={{padding:"4px 8px",border:"1px solid #ccc"}}>1</td><td style={{padding:"4px 8px",border:"1px solid #ccc"}}>{inv.desc}</td><td style={{padding:"4px 8px",border:"1px solid #ccc",textAlign:"right",fontFamily:"monospace"}}>{fmtAmt(inv.vatBase||inv.amount||0,inv.currency)}</td></tr></tbody>
+      </table>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,fontSize:10,marginBottom:16}}>
+        <div style={{display:"flex",gap:20}}><span style={{color:"#888"}}>Dasar Pengenaan Pajak (DPP)</span><span style={{fontFamily:"monospace"}}>{fmtAmt(inv.vatBase||0,inv.currency)}</span></div>
+        <div style={{display:"flex",gap:20,fontWeight:700,borderTop:"1px solid #333",paddingTop:4}}><span>PPN (11%)</span><span style={{fontFamily:"monospace"}}>{fmtAmt(inv.vatAmt||0,inv.currency)}</span></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,fontSize:9,color:"#888",textAlign:"center",borderTop:"1px solid #ddd",paddingTop:10}}>
+        <div>Pembeli<br/><br/><br/>________________<br/>{ccName(inv.companyCode)}</div>
+        <div>{inv.vendorName}<br/><br/><br/>________________<br/>Kuasa Penjual</div>
+      </div>
+      <div style={{textAlign:"center",fontSize:9,color:"#aaa",marginTop:10,paddingTop:6,borderTop:"1px solid #ececec"}}>Diterbitkan melalui BRM Vendor Portal</div>
+    </div>
+  );
+};
+export const PdfViewer = ({filename,inv,onClose}) => {
+  const isFaktur=filename.toLowerCase().includes("faktur");
+  const dl=()=>{
+    const txt=isFaktur
+      ?`FAKTUR PAJAK\nNo: ${inv.taxDoc||"—"}\nPenjual: ${inv.vendorName}\nNPWP: ${VENDORS[inv.vendorId]?.tax||"—"}\nPembeli: ${ccName(inv.companyCode)}\nDPP: ${fmtAmt(inv.vatBase||0,inv.currency)}\nPPN: ${fmtAmt(inv.vatAmt||0,inv.currency)}`
+      :`PRE-INVOICE\nNo: ${inv.invoiceNo}\nDate: ${fmtDate(inv.invoiceDate)}\nFrom: ${inv.vendorName}\nTo: ${ccName(inv.companyCode)}\nPO: ${fmtPOs(inv)}\nAmount: ${fmtAmt(inv.amount,inv.currency)}\nNet: ${fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)-Number(inv.whtAmt||0),inv.currency)}`;
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));a.download=filename.replace(".pdf",".txt");a.click();
+  };
+  const print=()=>{
+    const el=document.getElementById("bvp-pdf-doc");if(!el)return;
+    const w=window.open("","_blank","width=720,height=900");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;padding:32px;color:#222;font-size:11px}table{width:100%;border-collapse:collapse}td,th{padding:4px 8px}@media print{body{padding:16px}}</style></head><body>${el.innerHTML}</body></html>`);
+    w.document.close();setTimeout(()=>{w.focus();w.print();},400);
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1100,padding:16}}>
+      <div style={{background:C.card,borderRadius:8,width:680,maxWidth:"95vw",maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.3)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,borderRadius:"8px 8px 0 0",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:13,fontWeight:700,color:C.t1,display:"flex",alignItems:"center",gap:6}}><SapIcon name="document" size={14} color={C.t1}/>{filename}</span>
+            <span style={{fontSize:10,color:C.t2,padding:"1px 8px",border:`1px solid ${C.border}`,borderRadius:10}}>Demo Preview</span>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <Btn v="ghost" sm onClick={print}>Print</Btn>
+            <Btn v="primary" sm onClick={dl}>Download</Btn>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2,lineHeight:1,marginLeft:4}}>✕</button>
+          </div>
+        </div>
+        <div style={{background:"#d8d8d8",padding:20,flex:1,overflowY:"auto"}}>
+          <div id="bvp-pdf-doc" style={{background:"#fff",maxWidth:540,margin:"0 auto",padding:mob()?"20px 16px":"36px 44px",boxShadow:"0 2px 14px rgba(0,0,0,0.18)"}}>
+            {isFaktur?<FakturDoc inv={inv}/>:<InvoiceDoc inv={inv}/>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Document Flow ─────────────────────────────────────────────
+export const DocFlow = ({inv}) => {
+  const seed = str => { let h=5381; for(const c of str) h=((h<<5)+h^c.charCodeAt(0))>>>0; return h; };
+  const n5   = h => String(h%100000).padStart(5,"0");
+  const pos  = inv.poNumbers?.length ? inv.poNumbers : inv.poNumber ? [inv.poNumber] : [];
+
+  const chains = pos.map(po => {
+    const h = seed(po);
+    return {po, prNo:`1000${n5(h)}`, sqNo:h%3!==2?`1800${n5(h+7)}`:null, grNos:Array.from({length:(h%2)+1},(_,i)=>`5000${n5(h+(i+1)*53)}`)};
+  });
+
+  const sapAccNo = inv.status==="Confirmed" ? `5100${n5(seed(inv.id))}` : null;
+  const invSt    = inv.status==="Confirmed" ? "Confirmed" : inv.status==="Rejected" ? "Rejected" : "In Process";
+
+  const allPRs = chains.map(c=>c.prNo);
+  const allSQs = chains.map(c=>c.sqNo).filter(Boolean);
+  const allPOs = pos;
+  const allGRs = chains.flatMap(c=>c.grNos);
+
+  const stages = [
+    {ico:"request-for-quotation", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
+    ...(allSQs.length>0?[{ico:"discussion-2",  badge:"SQ",   label:"Supplier\nQuotation",    docs:allSQs,    status:"Completed", api:"A_SupplierQuotation"}]:[]),
+    {ico:"document",              badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
+    {ico:"shipping-status",       badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
+    {ico:"document-text",         badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
+    ...(sapAccNo?[{ico:"bank-account", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
+  ];
+
+  const stC  = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.ok:s==="Active"||s==="In Process"?C.info:s==="Rejected"?C.err:C.warn;
+  const stBg = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.okBg:s==="Active"||s==="In Process"?C.infoBg:s==="Rejected"?C.errBg:C.warnBg;
+  const stIco= s => s==="Completed"||s==="Posted"||s==="Confirmed"?"✓":s==="Rejected"?"✕":"○";
+  const stLbl= s => stIco(s)+" "+(s==="In Process"?"In Process":s);
+
+  const vert = mob();
+
+  return (
+    <>
+      <Sep/>
+      <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Document Flow</div>
+      <div style={{fontSize:10,color:C.t2,marginBottom:10}}>📡 SAP S/4HANA — procurement chain from request to invoice posting</div>
+
+      {!vert&&(
+        <div style={{overflowX:"auto",paddingBottom:8}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:0,minWidth:"max-content"}}>
+            {stages.map((st,i)=>{
+              const color=stC(st.status); const bg=stBg(st.status);
+              return (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:0}}>
+                  <div style={{width:110,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 8px",boxShadow:"0 2px 8px rgba(0,0,0,0.09)",position:"relative",flexShrink:0}}>
+                    <div style={{position:"absolute",top:-8,right:-8,width:18,height:18,borderRadius:"50%",background:color,color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.22)"}}>
+                      {stIco(st.status)}
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:22,marginBottom:5}}><SapIcon name={st.ico} size={22} color={stC(st.status)}/></div>
+                      <div style={{fontSize:9,fontWeight:800,color:C.t2,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{st.badge}</div>
+                      <div style={{fontSize:10,fontWeight:700,color:C.t1,marginBottom:7,lineHeight:1.4,minHeight:28}}>
+                        {st.label.split("\n").map((l,j)=><div key={j}>{l}</div>)}
+                      </div>
+                      {st.docs.slice(0,2).map((d,j)=>(
+                        <div key={j} style={{fontFamily:"monospace",fontSize:8,color:C.primary,background:C.infoBg,borderRadius:3,padding:"2px 4px",marginBottom:2,wordBreak:"break-all",textAlign:"center"}}>{d}</div>
+                      ))}
+                      {st.docs.length>2&&<div style={{fontSize:8,color:C.t2,marginBottom:2}}>+{st.docs.length-2} more</div>}
+                      {st.docs.length>1&&<div style={{fontSize:8,color:C.t2,marginBottom:4}}>{st.docs.length} documents</div>}
+                      <div style={{marginTop:6,display:"inline-block",fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"2px 7px",border:`1px solid ${color}44`}}>
+                        {stLbl(st.status)}
+                      </div>
+                    </div>
+                  </div>
+                  {i<stages.length-1&&(
+                    <div style={{display:"flex",alignItems:"center",flexShrink:0,width:28,marginTop:38}}>
+                      <div style={{flex:1,height:2,background:C.border}}/>
+                      <div style={{width:0,height:0,borderTop:"5px solid transparent",borderBottom:"5px solid transparent",borderLeft:`7px solid ${C.border}`}}/>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {vert&&(
+        <div style={{display:"flex",flexDirection:"column",gap:0}}>
+          {stages.map((st,i)=>{
+            const color=stC(st.status); const bg=stBg(st.status);
+            return (
+              <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"stretch"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 12px",position:"relative",boxShadow:"0 1px 4px rgba(0,0,0,0.07)"}}>
+                  <div style={{position:"absolute",top:-7,right:-7,width:16,height:16,borderRadius:"50%",background:color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{stIco(st.status)}</div>
+                  <span style={{flexShrink:0}}><SapIcon name={st.ico} size={22} color={stC(st.status)}/></span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                      <span style={{fontSize:9,fontWeight:800,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 5px",letterSpacing:.5}}>{st.badge}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:C.t1}}>{st.label.replace("\n"," ")}</span>
+                      <span style={{fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"1px 7px",border:`1px solid ${color}44`,marginLeft:"auto",whiteSpace:"nowrap"}}>{stLbl(st.status)}</span>
+                    </div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {st.docs.slice(0,2).map((d,j)=><span key={j} style={{fontFamily:"monospace",fontSize:10,color:C.primary,background:C.infoBg,borderRadius:3,padding:"1px 6px"}}>{d}</span>)}
+                      {st.docs.length>2&&<span style={{fontSize:10,color:C.t2}}>+{st.docs.length-2} more</span>}
+                    </div>
+                  </div>
+                </div>
+                {i<stages.length-1&&(
+                  <div style={{display:"flex",justifyContent:"flex-start",paddingLeft:20}}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:2}}>
+                      <div style={{width:2,height:14,background:C.border}}/>
+                      <div style={{width:0,height:0,borderLeft:"5px solid transparent",borderRight:"5px solid transparent",borderTop:`7px solid ${C.border}`}}/>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {pos.length>1&&(
+        <div style={{fontSize:11,color:C.t2,marginTop:10,padding:"6px 10px",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
+          ℹ️ This invoice covers {pos.length} PO references with {allGRs.length} Goods Receipts across all lines.
+        </div>
+      )}
+    </>
+  );
+};
+
+// ── SAP Multi-Value Input (sap.m.MultiInput) ───────────────────
+export type Cond = {op:string,v1:string,v2:string};
+export const INCL_OPS = ["contains","equal to","between","starts with","ends with","less than","less than or equal to","greater than","greater than or equal to","empty"];
+export const EXCL_OPS = ["does not contain","not equal to","not between","does not start with","does not end with","not less than","not less than or equal to","not greater than","not greater than or equal to","not empty"];
+export const NO_VAL_OPS  = new Set(["empty","not empty"]);
+export const BETWEEN_OPS = new Set(["between","not between"]);
+
+export const evalCond = (val:string, c:Cond):boolean => {
+  const v=val.toLowerCase(), c1=c.v1.toLowerCase(), c2=c.v2.toLowerCase();
+  switch(c.op){
+    case "contains":                return v.includes(c1);
+    case "equal to":                return v===c1;
+    case "between":                 return v>=c1&&v<=c2;
+    case "starts with":             return v.startsWith(c1);
+    case "ends with":               return v.endsWith(c1);
+    case "less than":               return v<c1;
+    case "less than or equal to":   return v<=c1;
+    case "greater than":            return v>c1;
+    case "greater than or equal to":return v>=c1;
+    case "empty":                   return !val.trim();
+    case "does not contain":        return !v.includes(c1);
+    case "not equal to":            return v!==c1;
+    case "not between":             return !(v>=c1&&v<=c2);
+    case "does not start with":     return !v.startsWith(c1);
+    case "does not end with":       return !v.endsWith(c1);
+    case "not less than":           return !(v<c1);
+    case "not less than or equal to":return !(v<=c1);
+    case "not greater than":        return !(v>c1);
+    case "not greater than or equal to":return !(v>=c1);
+    case "not empty":               return !!val.trim();
+    default: return true;
+  }
+};
+
+export const condLabel = (c:Cond):string => {
+  if(NO_VAL_OPS.has(c.op)) return c.op;
+  if(BETWEEN_OPS.has(c.op)) return `${c.op} ${c.v1} and ${c.v2}`;
+  return `${c.op==="contains"||c.op==="equal to"?"":c.op+" "}${c.v1}`;
+};
+
+export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:string,conditions:Cond[],onSave:(c:Cond[])=>void,onClose:()=>void}) => {
+  const [conds,setConds]=useState<Cond[]>([...conditions]);
+  const [op,setOp]=useState("contains");
+  const [v1,setV1]=useState("");
+  const [v2,setV2]=useState("");
+  const [pasteInput,setPasteInput]=useState("");
+  const noVal=NO_VAL_OPS.has(op);
+  const isBetween=BETWEEN_OPS.has(op);
+
+  const addCond = (extraConds?:Cond[]) => {
+    if(extraConds){setConds(p=>[...p,...extraConds]);return;}
+    if(!noVal&&!v1.trim()) return;
+    setConds(p=>[...p,{op,v1:noVal?"":v1.trim(),v2:isBetween?v2.trim():""}]);
+    setV1("");setV2("");
+  };
+
+  const handleV1Paste=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>1){
+      e.preventDefault();
+      addCond(lines.map((l:string)=>({op,v1:l,v2:""})));
+    }
+  };
+
+  const handlePasteInput=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>0){
+      e.preventDefault();
+      addCond(lines.map((l:string)=>({op:"equal to",v1:l,v2:""})));
+      setPasteInput("");
+    }
+  };
+
+  const inpStyle:any={
+    flex:1,padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#32363a",
+    border:"1px solid #89919a",borderRadius:2,background:"#fff",outline:"none",
+    boxSizing:"border-box" as const,
+  };
+  const opSelStyle:any={
+    padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#0a6ed1",
+    border:"1px solid #0a6ed1",borderRadius:2,background:"#fff",outline:"none",
+    minWidth:200,cursor:"pointer",
+  };
+
+  return(
+    <Modal title={`Define Conditions: ${title}`} onClose={onClose} width={700}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+        <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
+          <optgroup label="Include" style={{fontWeight:700,color:"#32363a"}}>
+            {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+          </optgroup>
+          <optgroup label="Exclude" style={{fontWeight:700,color:"#32363a"}}>
+            {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+          </optgroup>
+        </select>
+
+        {!noVal&&(
+          <input style={inpStyle} value={v1} onChange={e=>setV1(e.target.value)}
+            onPaste={handleV1Paste}
+            onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+            placeholder="Value" aria-label="Value"/>
+        )}
+        {isBetween&&(
+          <>
+            <span style={{fontSize:13,color:"#6a6d70",flexShrink:0}}>and</span>
+            <input style={inpStyle} value={v2} onChange={e=>setV2(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter")addCond();}}
+              placeholder="Value" aria-label="Second Value"/>
+          </>
+        )}
+        {!noVal&&(
+          <button onClick={()=>{setV1("");setV2("");}}
+            style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
+            ×
+          </button>
+        )}
+        <button onClick={()=>addCond()}
+          style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0,marginLeft:"auto"}}>
+          Add Condition
+        </button>
+      </div>
+
+      <div style={{minHeight:220,border:"1px solid #e5e5e5",borderRadius:2,padding:12,marginBottom:12,background:"#fff",overflowY:"auto"}}>
+        {conds.length===0?(
+          <div style={{color:"#0a6ed1",fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
+        ):(
+          <div>
+            {conds.map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?"1px solid #f2f2f2":"none",fontSize:13,color:"#32363a"}}>
+                <span style={{color:"#6a6d70",minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
+                <span style={{flex:1,fontWeight:NO_VAL_OPS.has(c.op)?400:600}}>
+                  {NO_VAL_OPS.has(c.op)?"—":BETWEEN_OPS.has(c.op)?`${c.v1}  –  ${c.v2}`:c.v1}
+                </span>
+                <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))}
+                  style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
+        <input value={pasteInput} onChange={e=>setPasteInput(e.target.value)}
+          onPaste={handlePasteInput}
+          placeholder="Paste multiple values here (one per line = one condition each)"
+          style={{...inpStyle,fontSize:12,color:"#6a6d70"}}/>
+        {pasteInput&&(
+          <button onClick={()=>setPasteInput("")}
+            style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+        )}
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:"1px solid #e5e5e5"}}>
+        <span style={{fontSize:12,color:"#6a6d70"}}>{conds.length>0?`${conds.length} condition${conds.length!==1?"s":""} defined`:""}</span>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose}
+            style={{background:"#fff",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:400,cursor:"pointer"}}>
+            Cancel
+          </button>
+          <button onClick={()=>onSave(conds)}
+            style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
+            OK
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:string,conditions:Cond[],onChange:(c:Cond[])=>void}) => {
+  const [showModal,setShowModal]=useState(false);
+  const [quickVal,setQuickVal]=useState("");
+
+  const addQuick=()=>{
+    if(!quickVal.trim()) return;
+    onChange([...conditions,{op:"contains",v1:quickVal.trim(),v2:""}]);
+    setQuickVal("");
+  };
+
+  const handlePaste=(e:any)=>{
+    const text=e.clipboardData?.getData("text")||"";
+    const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
+    if(lines.length>1){
+      e.preventDefault();
+      onChange([...conditions,...lines.map((l:string)=>({op:"contains",v1:l,v2:""}))]);
+      setQuickVal("");
+    }
+  };
+
+  return(
+    <>
+      <div style={{
+        display:"flex",flexWrap:"wrap",alignItems:"center",gap:4,
+        border:"1px solid #89919a",borderRadius:2,background:"#fff",
+        minHeight:34,padding:"3px 30px 3px 6px",position:"relative",
+        boxSizing:"border-box" as const,cursor:"text",
+      }}
+        onClick={e=>{(e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();}}>
+
+        {conditions.map((c,i)=>(
+          <span key={i} style={{
+            display:"inline-flex",alignItems:"center",gap:3,
+            background:"#e8f2fb",border:"1px solid #0a6ed1",borderRadius:4,
+            padding:"1px 4px 1px 6px",fontSize:11,color:"#0a6ed1",
+            lineHeight:1.6,flexShrink:0,maxWidth:160,overflow:"hidden",
+          }}>
+            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {condLabel(c)}
+            </span>
+            <button onClick={e=>{e.stopPropagation();onChange(conditions.filter((_,j)=>j!==i));}}
+              style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:13,padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
+          </span>
+        ))}
+
+        <input
+          type="text"
+          value={quickVal}
+          onChange={e=>setQuickVal(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")addQuick();}}
+          onPaste={handlePaste}
+          placeholder={conditions.length===0?"INV/MJB/2025/001":""}
+          aria-haspopup="dialog"
+          aria-roledescription="Multi Value Input"
+          style={{
+            flex:1,minWidth:60,border:"none",outline:"none",
+            background:"transparent",fontSize:14,padding:0,
+            fontFamily:"inherit",color:"#32363a",
+          }}/>
+
+        <button
+          onClick={e=>{e.stopPropagation();setShowModal(true);}}
+          title="Define Conditions"
+          style={{
+            position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",
+            background:"none",border:"none",cursor:"pointer",
+            color:"#6a6d70",padding:"2px 3px",lineHeight:1,
+            display:"flex",alignItems:"center",justifyContent:"center",
+          }}>
+          <SapIcon name="value-help" size={16} color="#6a6d70"/>
+        </button>
+      </div>
+
+      {showModal&&(
+        <DefineConditionsModal
+          title={fieldTitle}
+          conditions={conditions}
+          onSave={c=>{onChange(c);setShowModal(false);}}
+          onClose={()=>setShowModal(false)}/>
+      )}
+    </>
+  );
+};
+
+// ── Vendor Invoice ─────────────────────────────────────────────
+export const VendorInvoice = ({user,invoices,setInvoices}) => {
+  const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
+  const [hovRow,setHovRow]=useState<string|null>(null);
+  const [selRows,setSelRows]=useState<Set<string>>(new Set());
+  const emptyF={invoiceNoConds:[] as Cond[],status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
+  const go=()=>setActive({...draft});
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
+  const v=VENDORS[user.vendorId];
+  const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
+    (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
+    (!active.status||i.status===active.status)&&
+    (!active.companyCode||i.companyCode===active.companyCode)&&
+    (!active.currency||i.currency===active.currency)&&
+    (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
+    (!active.dateTo||i.invoiceDate<=active.dateTo)
+  );
+  const tokens=[
+    active.invoiceNoConds.length>0&&{label:"Invoice No.",val:active.invoiceNoConds.length===1?condLabel(active.invoiceNoConds[0]):`${active.invoiceNoConds.length} conditions`,onClear:()=>clr("invoiceNoConds")},
+    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
+    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
+    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
+  ].filter(Boolean);
+  const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
+  const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
+  const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  const allSel=mine.length>0&&selRows.size===mine.length;
+  const toggleAll=()=>setSelRows(allSel?new Set():new Set(mine.map(i=>i.id)));
+
+  const TK={
+    hdrBg:"#f2f2f2",   hdrBorder:"#e5e5e5", hdrText:"#6a6d70",
+    rowBg:"#ffffff",    rowBorder:"#e5e5e5",  rowText:"#232629",
+    hovBg:"#ededed",    selBg:"#e5f0fa",
+    link:"#0a6ed1",     linkHov:"#0854a0",
+    footerBg:"#fafafa", footerText:"#232629",
+    toolbarBg:"#ffffff",
+  };
+  const FS={base:14,sm:12,xs:11};
+
+  return (
+    <div style={{padding:mob()?"12px 10px":"20px 24px",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
+        <div style={{fontSize:FS.sm,color:"#6a6d70",marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+          <SapIcon name="connected" size={12} color="#6a6d70"/>
+          Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow
+        </div>
+      </div>
+
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
+        <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
+        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
+        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Draft",l:"Draft"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
+        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
+        <FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
+      </FioriBar>
+
+      <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
+            <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400}}>({mine.length})</span>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="excel-attachment" size={13} color="#32363a"/> Export
+            </button>
+            <div style={{width:1,height:20,background:"#d9d9d9",margin:"0 2px"}}/>
+            <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
+              style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="add" size={13} color="#fff"/> Add Invoice
+            </button>
+          </div>
+        </div>
+
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:900,tableLayout:"fixed",fontSize:FS.sm}}>
+            <colgroup>
+              <col style={{width:32}}/>
+              <col style={{width:"18%"}}/>
+              <col style={{width:"13%"}}/>
+              <col style={{width:"14%"}}/>
+              <col style={{width:"9%"}}/>
+              <col style={{width:"9%"}}/>
+              <col style={{width:"11%"}}/>
+              <col style={{width:"9%"}}/>
+              <col style={{width:"9%"}}/>
+              <col style={{width:"8%"}}/>
+              <col style={{width:32}}/>
+            </colgroup>
+
+            <thead>
+              <tr style={{background:TK.hdrBg,height:32}}>
+                <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
+                  <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                </th>
+                {[
+                  {l:"Invoice No.",    align:"left"},
+                  {l:"PO Number",      align:"left"},
+                  {l:"Company Code",   align:"left"},
+                  {l:"Invoice Date",   align:"left"},
+                  {l:"Due Date",       align:"left"},
+                  {l:"Amount",         align:"right"},
+                  {l:"Attachments",    align:"left"},
+                  {l:"Status",         align:"left"},
+                  {l:"Actions",        align:"left"},
+                ].map(h=>(
+                  <th key={h.l} style={{
+                    padding:"0 0.5rem",textAlign:h.align as any,
+                    fontSize:FS.sm,fontWeight:700,color:TK.hdrText,
+                    borderBottom:`1px solid ${TK.hdrBorder}`,
+                    whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,
+                  }}>{h.l}</th>
+                ))}
+                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:32}}/>
+              </tr>
+            </thead>
+
+            <tbody>
+              {mine.length===0?(
+                <tr><td colSpan={11}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:"#6a6d70",fontSize:FS.base}}>
+                    <SapIcon name="document" size={36} color="#c8cdd0"/>
+                    <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
+                  </div>
+                </td></tr>
+              ):mine.map(inv=>{
+                const isSel=selRows.has(inv.id);
+                const isHov=hovRow===inv.id;
+                const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const cs:any={
+                  padding:"0 0.5rem",height:36,
+                  borderBottom:`1px solid ${TK.rowBorder}`,
+                  fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle",
+                };
+                return(
+                  <tr key={inv.id}
+                    onMouseEnter={()=>setHovRow(inv.id)}
+                    onMouseLeave={()=>setHovRow(null)}
+                    style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
+
+                    <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
+                      <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                    </td>
+
+                    <td style={cs}>
+                      <button onClick={()=>setView(inv)} style={{
+                        background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",
+                        color:TK.link,fontSize:FS.sm,fontWeight:600,
+                        textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",
+                        fontFamily:"inherit",
+                      }}>{inv.invoiceNo}</button>
+                      <div style={{fontSize:FS.xs,color:"#6a6d70",lineHeight:1.4}}>{inv.id}</div>
+                    </td>
+
+                    <td style={cs}>
+                      <span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span>
+                    </td>
+
+                    <td style={cs}>
+                      <span style={{fontSize:FS.sm,fontWeight:600,color:TK.link}}>{inv.companyCode||"—"}</span>
+                      <div style={{fontSize:FS.xs,color:"#6a6d70",lineHeight:1.4}}>{ccName(inv.companyCode)}</div>
+                    </td>
+
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)}</span></td>
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)}</span></td>
+
+                    <td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontWeight:600,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(inv.amount,inv.currency)}</span>
+                    </td>
+
+                    <td style={cs}>
+                      {inv.files?.length>=2
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}>
+                            <SapIcon name="accept" size={13} color="#107e3e"/>
+                            <span style={{fontWeight:600}}>{inv.files.length} file(s)</span>
+                          </span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}>
+                            <SapIcon name="alert" size={13} color="#df6e0c"/>
+                            <span>Incomplete</span>
+                          </span>
+                      }
+                    </td>
+
+                    <td style={cs}><Badge s={inv.status}/></td>
+
+                    <td style={cs}>
+                      <div style={{display:"flex",gap:4}}>
+                        {["Draft","Rejected"].includes(inv.status)&&(
+                          <button onClick={()=>{setEd(inv);setForm(true);}}
+                            style={{background:"transparent",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>
+                            Edit
+                          </button>
+                        )}
+                        {inv.status==="Submitted"&&(
+                          <button onClick={()=>withdraw(inv.id)}
+                            style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:22}}>
+                            Withdraw
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                    <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>
+                      ›
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:"#fafafa",borderTop:`1px solid ${TK.hdrBorder}`}}>
+          <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{mine.length} item{mine.length!==1?"s":""}</span>
+        </div>
+      </div>
+      {view&&(
+        <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
+              <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
+            ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <Lbl>PO Numbers</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+            </div>
+          </div>
+          <Sep/>
+          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
+          </div>
+          <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
+          <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
+          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
+            {!view.files?.length&&<Val/>}</div>
+          <DocFlow inv={view}/>
+          {view.rejReason&&<div style={{padding:10,background:C.errBg,borderRadius:4,fontSize:12,color:C.err,marginTop:12}}><strong>Rejection Reason:</strong> {view.rejReason}</div>}
+          {view.status==="Confirmed"&&<div style={{padding:10,background:C.okBg,borderRadius:4,fontSize:12,color:C.ok,marginTop:12}}>✓ Invoice confirmed by BRM. SAP Supplier Invoice created via <code>API_SUPPLIERINVOICE_PROCESS_SRV</code>. Flexible Workflow initiated for payment approval.</div>}
+        </Modal>
+      )}
+      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name}/>}
+      {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
+    </div>
+  );
+};
+
+// ── BRM Invoice Mgmt ───────────────────────────────────────────
+export const BrmInvoice = ({invoices,setInvoices}) => {
+  const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
+  const emptyF={invoiceNo:"",vendorId:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
+  const go=()=>setActive({...draft});
+  const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
+  const vids=[...new Set(invoices.map(i=>i.vendorId))];
+  const list=invoices.filter(i=>
+    (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
+    (!active.vendorId||i.vendorId===active.vendorId)&&
+    (!active.status||i.status===active.status)&&
+    (!active.companyCode||i.companyCode===active.companyCode)&&
+    (!active.currency||i.currency===active.currency)&&
+    (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
+    (!active.dateTo||i.invoiceDate<=active.dateTo)
+  );
+  const tokens=[
+    active.invoiceNo&&{label:"Invoice No.",val:active.invoiceNo,onClear:()=>clr("invoiceNo")},
+    active.vendorId&&{label:"Vendor",val:VENDORS[active.vendorId]?.name||active.vendorId,onClear:()=>clr("vendorId")},
+    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
+    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
+    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
+  ].filter(Boolean);
+  const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
+  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
+  const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
+  return (
+    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
+      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management – All Vendors</div>
+        <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
+      </div>
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
+        <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
+        <FField label="Vendor"><Sel value={draft.vendorId} onChange={v=>sd("vendorId",v)} opts={[{v:"",l:"All Vendors"},...vids.map(id=>({v:id,l:VENDORS[id]?.name||id}))]}/></FField>
+        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
+        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
+        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
+        <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
+      </FioriBar>
+      <Card style={{padding:0,overflow:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+          <thead><tr>{["Invoice No.","Vendor","Company Code","PO No.","Inv. Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
+          <tbody>
+            {list.length===0?<tr><Td colSpan={9} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:list.map(inv=>(
+              <tr key={inv.id}>
+                <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
+                <Td><div style={{fontWeight:500}}>{inv.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{inv.vendorId}</div></Td>
+                <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
+                <Td>{fmtPOs(inv)}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
+                <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
+                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="accept" size={12} color={C.ok}/>Complete</span>:<span style={{color:C.warn,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="warning" size={12} color={C.warn}/>Incomplete</span>}</Td>
+                <Td><Badge s={inv.status}/></Td>
+                <Td><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {inv.status==="Submitted"&&<><Btn v="neutral" sm onClick={()=>setUR(inv.id)}>Review</Btn><Btn v="success" sm onClick={()=>accept(inv.id)}>Accept</Btn><Btn v="danger" sm onClick={()=>setRejM(inv)}>Reject</Btn></>}
+                  {inv.status==="Under Review"&&<><Btn v="success" sm onClick={()=>accept(inv.id)}>Accept</Btn><Btn v="danger" sm onClick={()=>setRejM(inv)}>Reject</Btn></>}
+                </div></Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+      {view&&(
+        <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
+              <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
+            ))}
+          </div>
+          <div style={{marginBottom:12}}>
+            <Lbl>PO Numbers</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+            </div>
+          </div>
+          <Sep/>
+          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
+          </div>
+          <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
+          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
+            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
+            {!view.files?.length&&<Val/>}</div>
+          <DocFlow inv={view}/>
+          <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
+            <strong>SAP Integration:</strong> Accepting will call <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> to park the Supplier Invoice in SAP S/4HANA Public Cloud and trigger Flexible Workflow for posting approval.
+          </div>
+          {["Submitted","Under Review"].includes(view.status)&&(
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn>
+              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Create SAP Invoice</Btn>
+            </div>
+          )}
+        </Modal>
+      )}
+      {rejModal&&(
+        <Modal title={`Reject Invoice: ${rejModal.invoiceNo}`} onClose={()=>{setRejM(null);setRejR("");}} width={480}>
+          <div style={{marginBottom:14}}><Lbl>Rejection Reason *</Lbl><TA value={rejR} onChange={setRejR} placeholder="Explain clearly to the vendor why the invoice is rejected…" rows={4}/></div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="neutral" onClick={()=>{setRejM(null);setRejR("");}}>Cancel</Btn><Btn v="danger" onClick={reject}>Confirm Rejection</Btn></div>
+        </Modal>
+      )}
+      {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
+    </div>
+  );
+};
