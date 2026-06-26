@@ -2160,15 +2160,9 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             }
             {s}
           </div>
-          <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-          <div style={{marginBottom:12}}><Lbl>Target Vendors</Lbl>{view.targets.map(v=><div key={v} style={{fontSize:13,display:"flex",alignItems:"center",gap:5}}><SapIcon name="factory" size={13} color={C.t2}/>{VENDORS[v]?.name} ({v})</div>)}</div>
-          <Lbl>Line Items</Lbl>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,margin:"6px 0"}}>
-            <thead><tr style={{background:C.subtle}}>{["Description","Qty","UoM","Est. Price","Total Est."].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>)}</tr></thead>
-            <tbody>{view.items.map((it,i)=><tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"6px 10px"}}>{it.desc}</td><td style={{padding:"6px 10px"}}>{it.qty}</td><td style={{padding:"6px 10px"}}>{it.uom}</td><td style={{padding:"6px 10px"}}>{idr(it.estPrice)}</td><td style={{padding:"6px 10px",fontWeight:700}}>{idr(it.estPrice*it.qty)}</td></tr>)}</tbody>
-          </table>
-        </Modal>
-      )}
+        ))}
+      </div>
+
       {showForm&&(
         <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={800}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
