@@ -162,6 +162,17 @@ const g3  = () => mob() ? "1fr" : tab() ? "1fr 1fr" : "repeat(3,1fr)";
 const g4  = () => mob() ? "1fr" : tab() ? "repeat(2,1fr)" : "repeat(4,1fr)";
 const pg  = () => mob() ? "12px 10px" : 24;
 
+// SAP Fiori Avatar – 10 accent color variants (Quartz Light design tokens)
+const AVT_ACCENTS = [
+  {bg:"#E5E0EC",fg:"#6C32A9"},{bg:"#FFDDE2",fg:"#CC1677"},
+  {bg:"#D3F0EA",fg:"#046C7A"},{bg:"#DAEEFF",fg:"#0854A0"},
+  {bg:"#FEF0D0",fg:"#C87741"},{bg:"#E3F1E2",fg:"#256F3A"},
+  {bg:"#FFF0DB",fg:"#BE5B00"},{bg:"#E0CFEC",fg:"#7030A0"},
+  {bg:"#E8ECF0",fg:"#364DA0"},{bg:"#F0F4EF",fg:"#1B6B35"},
+];
+const avtColor = id => AVT_ACCENTS[(id||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0) % AVT_ACCENTS.length];
+const avtIni = name => { const p=name.trim().split(/\s+/); return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[1][0]).toUpperCase(); };
+
 const Badge = ({s}) => {
   const x = STC[s]||{c:C.draft,bg:C.draftBg};
   return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
@@ -238,7 +249,7 @@ const FilterBar = ({opts,val,onChange}) => (
 );
 // SAP Fiori-style compact filter bar
 const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
-  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
@@ -371,6 +382,8 @@ const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,
 // ── Shell Bar ──────────────────────────────────────────────────
 const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSettings}) => {
   const [menuOpen,setMenuOpen]=useState(false);
+  const [avatarOpen,setAvatarOpen]=useState(false);
+  const ac=avtColor(user.id); const ini=avtIni(user.name);
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"}];
@@ -399,8 +412,32 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
           <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{theme==="dark"?"☀️":"🌙"}</button>
           {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙️</button>}
           {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
-          <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,0.25)",border:"2px solid rgba(255,255,255,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,flexShrink:0,color:"#fff"}}>{user.name[0]}</div>
-          {!isMob&&<button onClick={onLogout} style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setAvatarOpen(o=>!o)} title={user.name} aria-label={`User menu: ${user.name}`} aria-expanded={avatarOpen} style={{width:36,height:36,borderRadius:"50%",background:ac.bg,border:`2px solid ${avatarOpen?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.35)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:ac.fg,cursor:"pointer",padding:0,outline:"none",flexShrink:0,transition:"border-color .15s,box-shadow .15s",boxShadow:avatarOpen?"0 0 0 3px rgba(255,255,255,0.22)":"none"}}>{ini}</button>
+            {avatarOpen&&<>
+              <div onClick={()=>setAvatarOpen(false)} style={{position:"fixed",inset:0,zIndex:299}}/>
+              <div style={{position:"absolute",top:44,right:0,background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",minWidth:244,zIndex:300,overflow:"hidden"}}>
+                <div style={{padding:"20px 20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                  <div style={{width:64,height:64,borderRadius:"50%",background:ac.bg,border:`2px solid ${ac.fg}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:700,color:ac.fg,letterSpacing:.5}}>{ini}</div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:2}}>{user.name}</div>
+                    <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div>
+                    {user.title&&<div style={{fontSize:12,color:C.t2,marginTop:1}}>{user.title}</div>}
+                    {user.vendorId&&<div style={{fontSize:11,color:C.info,marginTop:5,padding:"2px 10px",background:C.infoBg,borderRadius:10,display:"inline-block",border:`1px solid ${C.info}30`}}>Vendor ID: {user.vendorId}</div>}
+                  </div>
+                </div>
+                <div style={{padding:"6px 0"}}>
+                  <button onClick={()=>{setAvatarOpen(false);onOpenSettings();}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.t1,fontFamily:"inherit"}}>
+                    <span style={{fontSize:15}}>⚙️</span><span>Settings</span>
+                  </button>
+                  <div style={{margin:"4px 18px",borderTop:`1px solid ${C.border}`}}/>
+                  <button onClick={()=>{setAvatarOpen(false);onLogout();}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.err,fontFamily:"inherit"}}>
+                    <span style={{fontSize:15}}>🚪</span><span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            </>}
+          </div>
           {isMob&&<button onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>}
         </div>
       </div>
