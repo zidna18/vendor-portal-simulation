@@ -249,7 +249,7 @@ const Modal = ({title,onClose,children,footer,width=640}) => (
 );
 
 const FilterBar = ({opts,val,onChange}) => (
-  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",padding:mob()?"10px 16px":"10px 32px",background:C.card,borderBottom:`1px solid ${C.border}`}}>
     {opts.map(f=>(
       <button key={f} onClick={()=>onChange(f)} style={{padding:"5px 14px",borderRadius:16,cursor:"pointer",fontSize:12,border:`1px solid ${val===f?C.primary:C.border}`,background:val===f?C.selection:C.card,color:val===f?C.primary:C.t2,fontWeight:val===f?700:400,fontFamily:"inherit",transition:"background .12s"}}>
         {f}
@@ -259,8 +259,8 @@ const FilterBar = ({opts,val,onChange}) => (
 );
 // SAP Fiori-style compact filter bar
 const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
-  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+  <div style={{background:C.card,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:mob()?"9px 16px":"9px 32px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
         {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
@@ -270,11 +270,11 @@ const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
         <Btn v="primary" sm onClick={onGo}>Go</Btn>
       </div>
     </div>
-    <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
+    <div style={{padding:mob()?"14px 16px":"14px 32px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
       {children}
     </div>
     {activeTokens.length>0&&(
-      <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+      <div style={{padding:mob()?"8px 16px 12px":"8px 32px 12px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
         <span style={{fontSize:12,color:C.t2,fontWeight:600,marginRight:4}}>Active filters:</span>
         {activeTokens.map((t,i)=>(
           <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:14,padding:"3px 10px 3px 10px",fontSize:12,color:C.info}}>
@@ -469,7 +469,7 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
                   </button>
                   <div style={{margin:"4px 18px",borderTop:`1px solid ${C.border}`}}/>
                   <button onClick={()=>{setAvatarOpen(false);onLogout();}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 18px",background:"none",border:"none",cursor:"pointer",fontSize:13,color:C.err,fontFamily:"inherit"}}>
-                    <span style={{fontSize:15}}>🚪</span><span>Sign Out</span>
+                    <SapIcon name="log" size={15} color={C.err}/><span>Sign Out</span>
                   </button>
                 </div>
               </div>
@@ -930,11 +930,11 @@ const DocFlow = ({inv}) => {
 
   const stages = [
     {ico:"request-for-quotation", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
-    ...(allSQs.length>0?[{ico:"💬", badge:"SQ", label:"Supplier\nQuotation", docs:allSQs, status:"Completed", api:"A_SupplierQuotation"}]:[]),
+    ...(allSQs.length>0?[{ico:"discussion-2", badge:"SQ", label:"Supplier\nQuotation", docs:allSQs, status:"Completed", api:"A_SupplierQuotation"}]:[]),
     {ico:"document", badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
-    {ico:"📦", badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
+    {ico:"shipping-status", badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
     {ico:"document-text", badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
-    ...(sapAccNo?[{ico:"🏦", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
+    ...(sapAccNo?[{ico:"bank-account", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
   ];
 
   const stC  = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.ok:s==="Active"||s==="In Process"?C.info:s==="Rejected"?C.err:C.warn;
@@ -1071,8 +1071,8 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
   return (
-    <div style={{padding:pg()}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:pg(),paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management</div>
           <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow</div>
@@ -1086,7 +1086,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
         <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
-      <Card style={{padding:0,overflow:"auto"}}>
+      <div style={{background:C.card,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
           <thead><tr>{["Invoice No.","PO Number","Company Code","Date","Due Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
           <tbody>
@@ -1107,7 +1107,7 @@ const VendorInvoice = ({user,invoices,setInvoices}) => {
             ))}
           </tbody>
         </table>
-      </Card>
+      </div>
       {view&&(
         <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
@@ -1210,18 +1210,18 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const save=qt=>{setQuotations(p=>p.find(q=>q.id===qt.id)?p.map(q=>q.id===qt.id?qt:q):[...p,qt]);setQR(null);setEQ(null);};
   const withdraw=id=>{if(window.confirm("Withdraw quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Withdrawn"}:q));};
   return (
-    <div style={{padding:pg()}}>
-      <div style={{marginBottom:18,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:0}}>
+      <div style={{padding:pg(),paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation & RFQ</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ: SAP Purchasing API (A_PurchaseRequisition) · Quotation: Custom CDS Table on BTP</div>
       </div>
-      <div style={{display:"flex",gap:0,marginBottom:18,borderBottom:`1px solid ${C.border}`}}>
+      <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.border}`,padding:mob()?"0 16px":"0 32px",background:C.card}}>
         {[{id:"rfq",l:`Open RFQs (${myRfqs.filter(r=>r.status==="Open").length})`},{id:"my",l:`My Quotations (${mine.length})`}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"9px 18px",cursor:"pointer",border:"none",background:"none",fontFamily:"inherit",fontSize:14,fontWeight:tab===t.id?700:400,color:tab===t.id?C.primary:C.t2,borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`}}>{t.l}</button>
         ))}
       </div>
       {tab==="rfq"&&(
-        <div>{myRfqs.map(rfq=>{
+        <div style={{padding:pg()}}>{myRfqs.map(rfq=>{
           const q=quoted(rfq.id);
           return(
             <Card key={rfq.id}>
@@ -1253,7 +1253,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
       {tab==="my"&&(
         <div>
           <FilterBar opts={["All","Draft","Submitted","Accepted","Rejected","Withdrawn"]} val={flt} onChange={setFlt}/>
-          <Card style={{padding:0,overflow:"auto"}}>
+          <div style={{background:C.card,overflow:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
               <thead><tr>{["RFQ Title","Submitted","Valid Until","Total Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
               <tbody>
@@ -1272,7 +1272,7 @@ const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                 ))}
               </tbody>
             </table>
-          </Card>
+          </div>
         </div>
       )}
       {viewQt&&(
@@ -1381,8 +1381,8 @@ const BrmInvoice = ({invoices,setInvoices}) => {
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
   return (
-    <div style={{padding:pg()}}>
-      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:0}}>
+      <div style={{padding:pg(),paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management – All Vendors</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
       </div>
@@ -1394,7 +1394,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
         <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
         <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
-      <Card style={{padding:0,overflow:"auto"}}>
+      <div style={{background:C.card,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
           <thead><tr>{["Invoice No.","Vendor","Company Code","PO No.","Inv. Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
           <tbody>
@@ -1415,7 +1415,7 @@ const BrmInvoice = ({invoices,setInvoices}) => {
             ))}
           </tbody>
         </table>
-      </Card>
+      </div>
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}
           footer={["Submitted","Under Review"].includes(view.status)?<><Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn><Btn v="success" onClick={()=>accept(view.id)}>Accept & Create SAP Invoice</Btn></>:undefined}>
@@ -1465,13 +1465,13 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const accept=id=>{setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Accepted"}:q));setView(null);};
   const reject=id=>{if(window.confirm("Reject this quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Rejected"}:q));setView(null);};
   return (
-    <div style={{padding:pg()}}>
-      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:0}}>
+      <div style={{padding:pg(),paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Management – All Vendors</div>
         <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 Vendor quotations from Custom CDS Table on BTP · Compare and award to best bidder</div>
       </div>
       <FilterBar opts={["All","Submitted","Accepted","Rejected","Withdrawn"]} val={flt} onChange={setFlt}/>
-      <Card style={{padding:0,overflow:"auto"}}>
+      <div style={{background:C.card,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
           <thead><tr>{["RFQ Title","Vendor","Submitted","Valid Until","Total Amount","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
           <tbody>
@@ -1490,7 +1490,7 @@ const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
             ))}
           </tbody>
         </table>
-      </Card>
+      </div>
       {view&&(
         <Modal title={`Quotation Detail: ${view.rfqTitle}`} onClose={()=>setView(null)} width={720}
           footer={view.status==="Submitted"?<><Btn v="danger" onClick={()=>reject(view.id)}>Reject Quotation</Btn><Btn v="success" onClick={()=>accept(view.id)}>Accept & Award Contract</Btn></>:undefined}>
@@ -1528,8 +1528,8 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",items:[{no:1,desc:"",qty:1,uom:"Unit",estPrice:0}]});
   };
   return (
-    <div style={{padding:pg()}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+    <div style={{padding:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:pg(),paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
           <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 RFQ published to BTP Vendor Portal → Vendor notified → Quotations collected</div>
@@ -1537,6 +1537,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         <Btn onClick={()=>setForm(true)}>+ Create RFQ</Btn>
       </div>
       <FilterBar opts={["All","Open","Closed"]} val={flt} onChange={setFlt}/>
+      <div style={{padding:pg()}}>
       {list.map(rfq=>{
         const qts=getQts(rfq.id);
         return(
@@ -1572,6 +1573,7 @@ const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           </Card>
         );
       })}
+      </div>
       {view&&(
         <Modal title={`RFQ Detail: ${view.title}`} onClose={()=>setView(null)} width={700}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
