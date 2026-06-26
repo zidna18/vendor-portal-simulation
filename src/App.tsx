@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 
 // ── Mock Data ──────────────────────────────────────────────────
 const USERS = [
@@ -1640,6 +1640,22 @@ const SettingsModal = ({settings,onUpdate,onClose}) => {
   );
 };
 
+// ── Error Boundary ─────────────────────────────────────────────
+class ErrorBoundary extends Component<{children:any},{err:any,info:any}> {
+  constructor(p){super(p);this.state={err:null,info:null};}
+  componentDidCatch(err,info){this.setState({err,info});}
+  render(){
+    if(this.state.err) return (
+      <div style={{padding:40,fontFamily:"monospace",background:"#fff1f1",minHeight:"100vh"}}>
+        <h2 style={{color:"#cc0000",marginBottom:16}}>App crashed — error details:</h2>
+        <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-all",background:"#fff",padding:16,border:"1px solid #cc0000",borderRadius:4,fontSize:13}}>{String(this.state.err)}</pre>
+        <pre style={{whiteSpace:"pre-wrap",wordBreak:"break-all",background:"#fff",padding:16,border:"1px solid #ccc",borderRadius:4,fontSize:12,marginTop:12}}>{this.state.info?.componentStack}</pre>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 // ── App Root ───────────────────────────────────────────────────
 export default function App() {
   const [user,setUser]=useState(null);
@@ -1656,7 +1672,7 @@ export default function App() {
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const login=u=>{setUser(u);setSection("dashboard");};
   const logout=()=>{setUser(null);setSection("dashboard");};
-  if(!user) return <Login onLogin={login}/>;
+  if(!user) return <ErrorBoundary><Login onLogin={login}/></ErrorBoundary>;
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
@@ -1672,6 +1688,7 @@ export default function App() {
     }
   };
   return (
+    <ErrorBoundary>
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:14,color:C.t1}}>
       <Shell user={user} onLogout={logout} section={section} setSection={setSection} theme={theme} onToggleTheme={toggleTheme} onOpenSettings={()=>setShowSettings(true)}/>
       {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)}/>}
@@ -1680,5 +1697,6 @@ export default function App() {
         BRM Vendor Portal · Powered by SAP BTP & Accenture · © 2025 BRM
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
