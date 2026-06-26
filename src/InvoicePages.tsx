@@ -5,6 +5,7 @@ import {
   mob, g2, g4,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
+  ValueHelpDialog, ValueHelpInp,
 } from "./shared";
 
 // ── PO Value Help ──────────────────────────────────────────────
@@ -615,12 +616,13 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
-  const emptyF={invoiceNoConds:[] as Cond[],status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [vhOpen,setVhOpen]=useState<null|"companyCode"|"status"|"currency">(null);
+  const emptyF={invoiceNoConds:[] as Cond[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
-  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{setActive(p=>({...p,[k]:[]}));setDraft(p=>({...p,[k]:[]}))}};
   const v=VENDORS[user.vendorId];
   const exportCSV=()=>{
     const rows=selRows.size>0?mine.filter(i=>selRows.has(i.id)):mine;
@@ -636,17 +638,17 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   };
   const mine=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
     (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
-    (!active.status||i.status===active.status)&&
-    (!active.companyCode||i.companyCode===active.companyCode)&&
-    (!active.currency||i.currency===active.currency)&&
+    (active.statuses.length===0||active.statuses.includes(i.status))&&
+    (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
+    (active.currencies.length===0||active.currencies.includes(i.currency))&&
     (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
     (!active.dateTo||i.invoiceDate<=active.dateTo)
   );
   const tokens=[
     active.invoiceNoConds.length>0&&{label:"Invoice No.",val:active.invoiceNoConds.length===1?condLabel(active.invoiceNoConds[0]):`${active.invoiceNoConds.length} conditions`,onClear:()=>clr("invoiceNoConds")},
-    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
-    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
-    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    active.statuses.length>0&&{label:"Status",val:active.statuses.length===1?active.statuses[0]:`${active.statuses.length} selected`,onClear:()=>clr("statuses")},
+    active.companyCodes.length>0&&{label:"Company Code",val:active.companyCodes.length===1?`${active.companyCodes[0]} – ${ccName(active.companyCodes[0])}`:`${active.companyCodes.length} selected`,onClear:()=>clr("companyCodes")},
+    active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
   ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
@@ -678,11 +680,43 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
         <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
-        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
-        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Draft",l:"Draft"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
-        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
+        <FField label="Company Code">
+          <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
+        </FField>
+        <FField label="Status">
+          <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
+        </FField>
+        <FField label="Currency">
+          <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
+        </FField>
         <FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
+
+      {vhOpen==="companyCode"&&(
+        <ValueHelpDialog title="Company Code"
+          cols={[{key:"v",label:"Company...",width:80},{key:"l",label:"Company Name",width:200},{key:"ctrl",label:"Controlling...",width:100},{key:"city",label:"City",width:100},{key:"country",label:"Country/Reg...",width:90},{key:"currency",label:"Currency",width:80},{key:"lang",label:"Language...",width:80},{key:"chart",label:"Chart of",width:70}]}
+          rows={COMPANY_CODES} keyField="v" labelField="l"
+          selected={draft.companyCodes}
+          onConfirm={s=>{sd("companyCodes",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="status"&&(
+        <ValueHelpDialog title="Status"
+          cols={[{key:"v",label:"Status",width:160},{key:"desc",label:"Description",width:260}]}
+          rows={[{v:"Draft",desc:"Invoice saved but not submitted"},{v:"Submitted",desc:"Awaiting BRM review"},{v:"Under Review",desc:"BRM is reviewing the invoice"},{v:"Confirmed",desc:"Invoice approved by BRM"},{v:"Rejected",desc:"Invoice rejected by BRM"}]}
+          keyField="v" labelField="v"
+          selected={draft.statuses}
+          onConfirm={s=>{sd("statuses",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="currency"&&(
+        <ValueHelpDialog title="Currency"
+          cols={[{key:"v",label:"Currency Key",width:120},{key:"l",label:"Description",width:300}]}
+          rows={CURRENCIES} keyField="v" labelField="l"
+          selected={draft.currencies}
+          onConfirm={s=>{sd("currencies",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
 
       <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
 
