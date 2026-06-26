@@ -634,13 +634,15 @@ const COL_DEFS = [
 ];
 const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidth,onClose}:any) => {
   const [w,setW]=useState(width);
+  const [grp,setGrp]=useState(!!groupBy);
   const clamp=(n:number)=>Math.max(48,Math.min(2560,n));
   const seg=[{title:"No Sorting",icon:"sort"},  {title:"Ascending",icon:"sort-ascending"},{title:"Descending",icon:"sort-descending"}];
   const vals=["none","asc","desc"];
+  const toggleGrp=(e:any)=>{e.stopPropagation();const next=!grp;setGrp(next);onGroupBy(next);};
   return(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:499}}/>
-      <div style={{position:"fixed",left:Math.min(x,window.innerWidth-270),top:Math.min(y,window.innerHeight-320),zIndex:500,background:"#fff",border:"1px solid #e5e5e5",borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.18)",width:260,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(x,window.innerWidth-270),top:Math.min(y,window.innerHeight-320),zIndex:500,background:"#fff",border:"1px solid #e5e5e5",borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.18)",width:260,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13}}>
         {/* Title */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px 8px",borderBottom:"1px solid #e5e5e5"}}>
           <span style={{fontWeight:700,fontSize:14,color:"#32363a"}}>Column Settings</span>
@@ -667,8 +669,8 @@ const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidt
           <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Group By</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{color:"#32363a",fontSize:13}}>{col}</span>
-            <div onClick={()=>onGroupBy(!groupBy)} style={{width:40,height:22,borderRadius:11,background:groupBy?"#0a6ed1":"#bfbfbf",cursor:"pointer",position:"relative",transition:"background .15s"}}>
-              <div style={{position:"absolute",top:3,left:groupBy?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+            <div onClick={toggleGrp} style={{width:40,height:22,borderRadius:11,background:grp?"#0a6ed1":"#bfbfbf",cursor:"pointer",position:"relative",transition:"background .15s",flexShrink:0}}>
+              <div style={{position:"absolute",top:3,left:grp?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
             </div>
           </div>
         </div>
@@ -1016,71 +1018,263 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 };
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
+const COL_DEFS_BRM = [
+  {key:"invoiceNo", label:"Invoice No.",   defW:175},
+  {key:"vendor",    label:"Vendor",        defW:155},
+  {key:"poNumber",  label:"PO Number",     defW:125},
+  {key:"compCode",  label:"Company Code",  defW:130},
+  {key:"invDate",   label:"Invoice Date",  defW:95},
+  {key:"dueDate",   label:"Due Date",      defW:95},
+  {key:"amount",    label:"Amount",        defW:115},
+  {key:"attach",    label:"Attachments",   defW:95},
+  {key:"status",    label:"Status",        defW:95},
+  {key:"actions",   label:"Actions",       defW:110},
+];
 export const BrmInvoice = ({invoices,setInvoices}) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
-  const emptyF={invoiceNo:"",vendorId:"",status:"",companyCode:"",currency:"",dateFrom:"",dateTo:""};
+  const [hovRow,setHovRow]=useState<string|null>(null);
+  const [selRows,setSelRows]=useState<Set<string>>(new Set());
+  const [vhOpen,setVhOpen]=useState<null|"vendor"|"companyCode"|"status"|"currency">(null);
+  const [colSort,setColSort]=useState<Record<string,string>>({});
+  const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS_BRM.map(c=>[c.key,c.defW])));
+  const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
+  const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
+  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:""};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
-  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else{const n={...active,[k]:""};setActive(n);setDraft(p=>({...p,[k]:""}))}};
-  const vids=[...new Set(invoices.map(i=>i.vendorId))];
-  const list=invoices.filter(i=>
-    (!active.invoiceNo||i.invoiceNo.toLowerCase().includes(active.invoiceNo.toLowerCase()))&&
-    (!active.vendorId||i.vendorId===active.vendorId)&&
-    (!active.status||i.status===active.status)&&
-    (!active.companyCode||i.companyCode===active.companyCode)&&
-    (!active.currency||i.currency===active.currency)&&
+  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{setActive(p=>({...p,[k]:[]}));setDraft(p=>({...p,[k]:[]}))}};
+
+  const listFiltered=invoices.filter(i=>
+    (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
+    (active.vendorIds.length===0||active.vendorIds.includes(i.vendorId))&&
+    (active.statuses.length===0||active.statuses.includes(i.status))&&
+    (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
+    (active.currencies.length===0||active.currencies.includes(i.currency))&&
     (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
     (!active.dateTo||i.invoiceDate<=active.dateTo)
   );
+  const SORT_FIELDS_BRM:Record<string,(i:any)=>any>={
+    invoiceNo:i=>i.invoiceNo, vendor:i=>i.vendorName, poNumber:i=>fmtPOs(i),
+    compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, dueDate:i=>i.dueDate,
+    amount:i=>Number(i.amount||0), attach:i=>i.files?.length||0, status:i=>i.status, actions:i=>i.status,
+  };
+  const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
+  const list=[...listFiltered].sort((a,b)=>{
+    if(!activeSort)return 0;
+    const [key,dir]=activeSort; const fn=SORT_FIELDS_BRM[key]||(()=>"");
+    const va=fn(a),vb=fn(b);
+    const cmp=typeof va==="number"?va-vb:String(va).localeCompare(String(vb));
+    return dir==="asc"?cmp:-cmp;
+  });
+
   const tokens=[
-    active.invoiceNo&&{label:"Invoice No.",val:active.invoiceNo,onClear:()=>clr("invoiceNo")},
-    active.vendorId&&{label:"Vendor",val:VENDORS[active.vendorId]?.name||active.vendorId,onClear:()=>clr("vendorId")},
-    active.status&&{label:"Status",val:active.status,onClear:()=>clr("status")},
-    active.companyCode&&{label:"Company Code",val:`${active.companyCode} – ${ccName(active.companyCode)}`,onClear:()=>clr("companyCode")},
-    active.currency&&{label:"Currency",val:active.currency,onClear:()=>clr("currency")},
+    active.invoiceNoConds.length>0&&{label:"Invoice No.",val:active.invoiceNoConds.length===1?condLabel(active.invoiceNoConds[0]):`${active.invoiceNoConds.length} conditions`,onClear:()=>clr("invoiceNoConds")},
+    active.vendorIds.length>0&&{label:"Vendor",val:active.vendorIds.length===1?(VENDORS[active.vendorIds[0]]?.name||active.vendorIds[0]):`${active.vendorIds.length} selected`,onClear:()=>clr("vendorIds")},
+    active.statuses.length>0&&{label:"Status",val:active.statuses.length===1?active.statuses[0]:`${active.statuses.length} selected`,onClear:()=>clr("statuses")},
+    active.companyCodes.length>0&&{label:"Company Code",val:active.companyCodes.length===1?`${active.companyCodes[0]} – ${ccName(active.companyCodes[0])}`:`${active.companyCodes.length} selected`,onClear:()=>clr("companyCodes")},
+    active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
   ].filter(Boolean);
+
   const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
+  const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  const allSel=list.length>0&&selRows.size===list.length;
+  const toggleAll=()=>setSelRows(allSel?new Set():new Set(list.map(i=>i.id)));
+  const exportCSV=()=>{
+    const rows=selRows.size>0?list.filter(i=>selRows.has(i.id)):list;
+    if(rows.length===0){alert("No invoices to export.");return;}
+    const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
+    const hdr=["Pre-Invoice ID","Invoice No.","Vendor","Vendor ID","Company Code","Invoice Date","Due Date","PO Numbers","Currency","Amount","VAT Amount","WHT Amount","Net Amount","Status","Description"];
+    const data=rows.map(i=>[i.id,i.invoiceNo,i.vendorName,i.vendorId,i.companyCode,i.invoiceDate,i.dueDate,fmtPOs(i),i.currency,i.amount,i.vatAmt,i.whtAmt,Number(i.amount||0)+Number(i.vatAmt||0)-Number(i.whtAmt||0),i.status,i.desc].map(esc).join(","));
+    const csv=[hdr.join(","),...data].join("\r\n");
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+    a.download=`invoices_brm_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const TK={hdrBg:"#f2f2f2",hdrBorder:"#e5e5e5",hdrText:"#6a6d70",rowBg:"#ffffff",rowBorder:"#e5e5e5",rowText:"#232629",hovBg:"#ededed",selBg:"#e5f0fa",link:"#0a6ed1",toolbarBg:"#ffffff",footerBg:"#fafafa"};
+  const FS={base:14,sm:12,xs:11};
+
   return (
-    <div style={{padding:pg(),maxWidth:1100,margin:"0 auto"}}>
-      <div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
-        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Invoice Management – All Vendors</div>
-        <div style={{fontSize:12,color:C.t2,marginTop:4}}>📡 On Accept: <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> triggered → SAP Flexible Workflow initiated (Parked → Posted)</div>
+    <div style={{padding:mob()?"12px 10px":"20px 24px",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
+        <div style={{fontSize:FS.sm,color:"#6a6d70",marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+          <SapIcon name="connected" size={12} color="#6a6d70"/>
+          On Accept: API_SUPPLIERINVOICE_PROCESS_SRV → SAP Flexible Workflow (Parked → Posted)
+        </div>
       </div>
+
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
-        <FField label="Invoice No."><Inp value={draft.invoiceNo} onChange={v=>sd("invoiceNo",v)} placeholder="INV/MJB/2025/001"/></FField>
-        <FField label="Vendor"><Sel value={draft.vendorId} onChange={v=>sd("vendorId",v)} opts={[{v:"",l:"All Vendors"},...vids.map(id=>({v:id,l:VENDORS[id]?.name||id}))]}/></FField>
-        <FField label="Company Code"><Sel value={draft.companyCode} onChange={v=>sd("companyCode",v)} opts={[{v:"",l:"All Company Codes"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/></FField>
-        <FField label="Status"><Sel value={draft.status} onChange={v=>sd("status",v)} opts={[{v:"",l:"All Statuses"},{v:"Submitted",l:"Submitted"},{v:"Under Review",l:"Under Review"},{v:"Confirmed",l:"Confirmed"},{v:"Rejected",l:"Rejected"}]}/></FField>
-        <FField label="Currency"><Sel value={draft.currency} onChange={v=>sd("currency",v)} opts={[{v:"",l:"All Currencies"},...CURRENCIES.map(c=>({v:c.v,l:c.v}))]}/></FField>
-        <FField label="Invoice Date Range" style={{gridColumn:"span 2"}}><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
+        <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
+        <FField label="Vendor">
+          <ValueHelpInp selected={draft.vendorIds} getLabel={k=>VENDORS[k]?.name||k} onOpen={()=>setVhOpen("vendor")} placeholder="All Vendors"/>
+        </FField>
+        <FField label="Company Code">
+          <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
+        </FField>
+        <FField label="Status">
+          <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
+        </FField>
+        <FField label="Currency">
+          <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
+        </FField>
+        <FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
       </FioriBar>
-      <Card style={{padding:0,overflow:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
-          <thead><tr>{["Invoice No.","Vendor","Company Code","PO No.","Inv. Date","Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
-          <tbody>
-            {list.length===0?<tr><Td colSpan={9} style={{textAlign:"center",padding:40,color:C.t2}}>No invoices found.</Td></tr>:list.map(inv=>(
-              <tr key={inv.id}>
-                <Td><button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontWeight:700,fontSize:13,padding:0}}>{inv.invoiceNo}</button><div style={{fontSize:10,color:C.t2}}>{inv.id}</div></Td>
-                <Td><div style={{fontWeight:500}}>{inv.vendorName}</div><div style={{fontSize:10,color:C.t2}}>{inv.vendorId}</div></Td>
-                <Td><span style={{fontFamily:"monospace",fontWeight:700,fontSize:12,color:C.primary}}>{inv.companyCode||"—"}</span><div style={{fontSize:10,color:C.t2}}>{ccName(inv.companyCode)}</div></Td>
-                <Td>{fmtPOs(inv)}</Td><Td>{fmtDate(inv.invoiceDate)}</Td>
-                <Td style={{fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</Td>
-                <Td>{inv.files?.length>=2?<span style={{color:C.ok,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="accept" size={12} color={C.ok}/>Complete</span>:<span style={{color:C.warn,fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><SapIcon name="warning" size={12} color={C.warn}/>Incomplete</span>}</Td>
-                <Td><Badge s={inv.status}/></Td>
-                <Td><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {inv.status==="Submitted"&&<><Btn v="neutral" sm onClick={()=>setUR(inv.id)}>Review</Btn><Btn v="success" sm onClick={()=>accept(inv.id)}>Accept</Btn><Btn v="danger" sm onClick={()=>setRejM(inv)}>Reject</Btn></>}
-                  {inv.status==="Under Review"&&<><Btn v="success" sm onClick={()=>accept(inv.id)}>Accept</Btn><Btn v="danger" sm onClick={()=>setRejM(inv)}>Reject</Btn></>}
-                </div></Td>
+
+      {vhOpen==="vendor"&&(
+        <ValueHelpDialog title="Vendor"
+          cols={[{key:"v",label:"Vendor ID",width:110},{key:"l",label:"Vendor Name",width:260}]}
+          rows={Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}))}
+          keyField="v" labelField="l"
+          selected={draft.vendorIds}
+          onConfirm={s=>{sd("vendorIds",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="companyCode"&&(
+        <ValueHelpDialog title="Company Code"
+          cols={[{key:"v",label:"Company...",width:80},{key:"l",label:"Company Name",width:200},{key:"ctrl",label:"Controlling...",width:100},{key:"city",label:"City",width:100},{key:"country",label:"Country/Reg...",width:90},{key:"currency",label:"Currency",width:80},{key:"lang",label:"Language...",width:80},{key:"chart",label:"Chart of",width:70}]}
+          rows={COMPANY_CODES} keyField="v" labelField="l"
+          selected={draft.companyCodes}
+          onConfirm={s=>{sd("companyCodes",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="status"&&(
+        <ValueHelpDialog title="Status"
+          cols={[{key:"v",label:"Status",width:160},{key:"desc",label:"Description",width:260}]}
+          rows={[{v:"Submitted",desc:"Awaiting BRM review"},{v:"Under Review",desc:"BRM is reviewing the invoice"},{v:"Confirmed",desc:"Invoice approved by BRM"},{v:"Rejected",desc:"Invoice rejected by BRM"}]}
+          keyField="v" labelField="v"
+          selected={draft.statuses}
+          onConfirm={s=>{sd("statuses",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="currency"&&(
+        <ValueHelpDialog title="Currency"
+          cols={[{key:"v",label:"Currency Key",width:120},{key:"l",label:"Description",width:300}]}
+          rows={CURRENCIES} keyField="v" labelField="l"
+          selected={draft.currencies}
+          onConfirm={s=>{sd("currencies",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+
+      <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
+        {/* Toolbar */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
+            <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400}}>({list.length})</span>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="excel-attachment" size={13} color="#32363a"/> Export
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:1000,tableLayout:"fixed",fontSize:FS.sm}}>
+            <colgroup>
+              <col style={{width:32}}/>
+              {COL_DEFS_BRM.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
+              <col style={{width:32}}/>
+            </colgroup>
+            <thead>
+              <tr style={{background:TK.hdrBg,height:32}}>
+                <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
+                  <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                </th>
+                {COL_DEFS_BRM.map(col=>{
+                  const sortVal=colSort[col.key]||"none";
+                  const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
+                  const isRight=col.key==="amount";
+                  return(
+                    <th key={col.key}
+                      onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
+                      style={{padding:"0 0.5rem",textAlign:isRight?"right":"left",fontSize:FS.sm,fontWeight:700,color:TK.hdrText,borderBottom:`1px solid ${TK.hdrBorder}`,whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,cursor:"pointer"}}
+                      title={`Click to configure ${col.label}`}>
+                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:"#0a6ed1"}}>{sortIcon}</span>}
+                    </th>
+                  );
+                })}
+                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:32}}/>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {list.length===0?(
+                <tr><td colSpan={COL_DEFS_BRM.length+2}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:"#6a6d70"}}>
+                    <SapIcon name="document" size={36} color="#c8cdd0"/>
+                    <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
+                  </div>
+                </td></tr>
+              ):list.map(inv=>{
+                const isSel=selRows.has(inv.id); const isHov=hovRow===inv.id;
+                const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const cs:any={padding:"0 0.5rem",height:36,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle"};
+                return(
+                  <tr key={inv.id} onMouseEnter={()=>setHovRow(inv.id)} onMouseLeave={()=>setHovRow(null)}
+                    style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
+                    <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
+                      <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                    </td>
+                    <td style={cs}>
+                      <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:FS.sm,padding:0,fontFamily:"inherit",textAlign:"left"}}>
+                        {inv.invoiceNo}
+                      </button>
+                      <div style={{fontSize:FS.xs,color:"#8c8c8c",marginTop:1}}>{inv.id}</div>
+                    </td>
+                    <td style={cs}>
+                      <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
+                      <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{inv.vendorId}</div>
+                    </td>
+                    <td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>
+                    <td style={cs}>
+                      <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
+                      <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{ccName(inv.companyCode)}</div>
+                    </td>
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)||"—"}</span></td>
+                    <td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontWeight:600,fontSize:FS.sm}}>{fmtAmt(inv.amount,inv.currency)}</span>
+                    </td>
+                    <td style={cs}>
+                      {inv.files?.length>=2
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={12} color="#107e3e"/>✓ {inv.files.length} file(s)</span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Incomplete</span>
+                      }
+                    </td>
+                    <td style={cs}><Badge s={inv.status}/></td>
+                    <td style={cs}>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        {inv.status==="Submitted"&&<>
+                          <button onClick={()=>setUR(inv.id)} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Review</button>
+                          <button onClick={()=>accept(inv.id)} style={{background:"#107e3e",border:"1px solid #107e3e",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Accept</button>
+                          <button onClick={()=>setRejM(inv)} style={{background:"transparent",border:"1px solid #bb0000",color:"#bb0000",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Reject</button>
+                        </>}
+                        {inv.status==="Under Review"&&<>
+                          <button onClick={()=>accept(inv.id)} style={{background:"#107e3e",border:"1px solid #107e3e",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Accept</button>
+                          <button onClick={()=>setRejM(inv)} style={{background:"transparent",border:"1px solid #bb0000",color:"#bb0000",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Reject</button>
+                        </>}
+                      </div>
+                    </td>
+                    <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>›</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* Footer */}
+        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:"#fafafa",borderTop:`1px solid ${TK.hdrBorder}`}}>
+          <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{list.length} item{list.length!==1?"s":""}</span>
+        </div>
+      </div>
+
+      {/* Detail Modal */}
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
@@ -1104,10 +1298,11 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
           <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
             {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
-            {!view.files?.length&&<Val/>}</div>
+            {!view.files?.length&&<Val/>}
+          </div>
           <DocFlow inv={view}/>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
-            <strong>SAP Integration:</strong> Accepting will call <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> to park the Supplier Invoice in SAP S/4HANA Public Cloud and trigger Flexible Workflow for posting approval.
+            <strong>SAP Integration:</strong> Accepting calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks invoice in S/4HANA → triggers Flexible Workflow for posting approval.
           </div>
           {["Submitted","Under Review"].includes(view.status)&&(
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
@@ -1124,6 +1319,17 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </Modal>
       )}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
+      {colMenu&&(
+        <ColumnSettingsPopup
+          col={colMenu.label} x={colMenu.x} y={colMenu.y}
+          sort={colSort[colMenu.key]||"none"}
+          onSort={v=>{setColSort(p=>({...p,[colMenu.key]:v}));}}
+          groupBy={!!colGroup[colMenu.key]}
+          onGroupBy={v=>setColGroup(p=>({...p,[colMenu.key]:v}))}
+          width={colWidth[colMenu.key]}
+          onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
+          onClose={()=>setColMenu(null)}/>
+      )}
     </div>
   );
 };
