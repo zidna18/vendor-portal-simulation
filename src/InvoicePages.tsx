@@ -1262,55 +1262,61 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
       )}
 
       <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
-        {/* Toolbar — SAP Fiori transparent button bar */}
+        {/* Toolbar — SAP Fiori transparent button bar, always visible */}
         {(()=>{
           const sel=list.filter(i=>selRows.has(i.id));
-          const single=sel.length===1?sel[0]:null;
           const allSameStatus=sel.length>0&&sel.every(i=>i.status===sel[0].status);
           const status=allSameStatus?sel[0]?.status:null;
-          const tbBtn=(label,onClick,icon?,variant?:"default"|"emphasized"|"negative"|"positive")=>{
-            const isEmp=variant==="emphasized"; const isNeg=variant==="negative"; const isPos=variant==="positive";
-            const bg=isEmp?"#0a6ed1":isNeg?"#bb0000":isPos?"#107e3e":"transparent";
-            const border=isEmp?"1px solid #0a6ed1":isNeg?"1px solid #bb0000":isPos?"1px solid #107e3e":"none";
-            const color=isEmp||isNeg||isPos?"#fff":"#32363a";
+
+          // canX: whether currently-selected rows qualify for each action
+          const canReview   = status==="Submitted";
+          const canAccept   = status==="Submitted"||status==="Under Review";
+          const canReject   = status==="Submitted"||status==="Under Review";
+          const canPost     = status==="Confirmed";
+          const canConvert  = status==="Posted"&&sel.every(i=>i.invoiceType==="Supplier DPR");
+          const canClear    = status==="Converted to Invoice";
+
+          const tbBtn=(label,onClick,icon,active,variant?:"emphasized"|"negative"|"positive")=>{
+            const isEmp=active&&variant==="emphasized";
+            const isNeg=active&&variant==="negative";
+            const isPos=active&&variant==="positive";
+            const bg    = isEmp?"#0a6ed1":isNeg?"#bb0000":isPos?"#107e3e":"transparent";
+            const bdr   = isEmp?"1px solid #0a6ed1":isNeg?"1px solid #bb0000":isPos?"1px solid #107e3e":"none";
+            const color = active?(isEmp||isNeg||isPos?"#fff":"#32363a"):"#a9b4be";
+            const fw    = isEmp||isPos?"600":"400";
             return(
-              <button key={label} onClick={onClick} style={{background:bg,border,color,borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const,fontWeight:isEmp||isPos?"600":"400",letterSpacing:0}}>
+              <button key={label} onClick={active?onClick:undefined} disabled={!active}
+                title={active?undefined:`Select invoice(s) with applicable status to use "${label}"`}
+                style={{background:bg,border:bdr,color,borderRadius:4,padding:"0 0.5625rem",fontSize:14,
+                  fontFamily:"'72','72full',Arial,Helvetica,sans-serif",
+                  cursor:active?"pointer":"default",height:36,display:"inline-flex",alignItems:"center",
+                  gap:5,whiteSpace:"nowrap" as const,fontWeight:fw,letterSpacing:0,
+                  opacity:active?1:0.45,transition:"opacity .1s,color .1s"}}>
                 {icon&&<SapIcon name={icon} size={14} color={color}/>}
                 <bdi>{label}</bdi>
               </button>
             );
           };
-          const sep=()=><div key={Math.random()} style={{width:1,height:20,background:"#d9d9d9",margin:"0 4px",flexShrink:0}}/>;
-          const actions:any[]=[];
-          if(sel.length===0){
-            // no selection — only non-destructive context-free actions
-          } else {
-            if(status==="Submitted"){
-              actions.push(tbBtn("Review",()=>sel.forEach(i=>setUR(i.id)),"request-pending"));
-              actions.push(tbBtn("Accept",()=>sel.forEach(i=>accept(i.id)),undefined,"positive"));
-              actions.push(tbBtn("Reject",()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",undefined));
-            } else if(status==="Under Review"){
-              actions.push(tbBtn("Accept",()=>sel.forEach(i=>accept(i.id)),undefined,"positive"));
-              actions.push(tbBtn("Reject",()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",undefined));
-            } else if(status==="Confirmed"){
-              actions.push(tbBtn("Post to SAP",()=>sel.forEach(i=>postToSAP(i)),"upload-to-cloud","emphasized"));
-            } else if(status==="Posted"&&sel.every(i=>i.invoiceType==="Supplier DPR")){
-              actions.push(tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)),"switch-classes","emphasized"));
-            } else if(status==="Converted to Invoice"){
-              actions.push(tbBtn("Clear",()=>sel.forEach(i=>clearDPR(i)),"complete",undefined));
-            }
-            if(actions.length>0) actions.push(sep());
-          }
+
+          const sep=<div style={{width:1,height:20,background:"#d9d9d9",margin:"0 2px",flexShrink:0}}/>;
+
           return(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
-              <div style={{display:"flex",alignItems:"center",gap:2}}>
+              <div style={{display:"flex",alignItems:"center",gap:0}}>
                 <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText,marginRight:8}}>Invoices</span>
-                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:16}}>({list.length})</span>
-                {actions}
-                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:4}}>{sel.length} selected</span>}
+                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:12}}>({list.length})</span>
+                {tbBtn("Review",       ()=>sel.forEach(i=>setUR(i.id)),                       "request-pending",canReview)}
+                {tbBtn("Accept",       ()=>sel.forEach(i=>accept(i.id)),                      "accept",         canAccept, "positive")}
+                {tbBtn("Reject",       ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject, "negative")}
+                {sep}
+                {tbBtn("Post to SAP",  ()=>sel.forEach(i=>postToSAP(i)),                      "upload-to-cloud",canPost,   "emphasized")}
+                {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)),                "switch-classes", canConvert,"emphasized")}
+                {tbBtn("Clear",        ()=>sel.forEach(i=>clearDPR(i)),                       "complete",       canClear)}
+                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:8}}>{sel.length} selected</span>}
               </div>
               <div style={{display:"flex",gap:2,alignItems:"center"}}>
-                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"} style={{background:"transparent",border:"none",color:"#32363a",borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5}}>
+                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"}
+                  style={{background:"transparent",border:"none",color:"#32363a",borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5}}>
                   <SapIcon name="excel-attachment" size={14} color="#32363a"/><bdi>Export</bdi>
                 </button>
               </div>
