@@ -359,14 +359,32 @@ export const Card = ({children,style={}}) => (
 );
 
 export const Btn = ({children,onClick,v="primary",sm,disabled,style={}}) => {
-  const VS = {
-    primary:{background:C.primary,color:"#fff",border:`1px solid ${C.primary}`},
-    ghost:  {background:"transparent",color:C.primaryDk,border:`1px solid ${C.primaryDk}`},
-    danger: {background:C.err,color:"#fff",border:`1px solid ${C.err}`},
-    success:{background:C.ok,color:"#fff",border:`1px solid ${C.ok}`},
-    neutral:{background:C.card,color:C.t1,border:`1px solid ${C.border}`},
+  const VS:any = {
+    primary:{background:C.primary,  color:"#fff",    border:`1px solid ${C.primary}`,   hov:C.primaryDk},
+    ghost:  {background:"transparent",color:C.primary,border:"1px solid transparent",   hov:C.selection},
+    danger: {background:C.err,      color:"#fff",    border:`1px solid ${C.err}`,        hov:"#9e0000"},
+    success:{background:C.ok,       color:"#fff",    border:`1px solid ${C.ok}`,         hov:"#0d6b34"},
+    neutral:{background:C.card,     color:C.t1,      border:`1px solid #89919a`,          hov:C.subtle},
   };
-  return <button onClick={onClick} disabled={disabled} style={{...VS[v],borderRadius:4,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,fontSize:sm?12:14,padding:sm?"4px 12px":"7px 16px",opacity:disabled?.5:1,transition:"background .12s,opacity .15s",lineHeight:"20px",...style}}>{children}</button>;
+  const [hov,setHov]=useState(false);
+  const s=VS[v]||VS.primary;
+  return <button
+    onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+    onClick={onClick} disabled={disabled}
+    style={{
+      background:hov&&!disabled?s.hov:s.background,
+      color:s.color, border:s.border,
+      borderRadius:"0.25rem",
+      cursor:disabled?"not-allowed":"pointer",
+      fontFamily:"'72','72full',Arial,Helvetica,sans-serif",
+      fontWeight:600, fontSize:sm?12:14,
+      height:sm?"1.5rem":"2.25rem",
+      padding:sm?"0 0.75rem":"0 1rem",
+      opacity:disabled?.4:1,
+      transition:"background .1s,opacity .1s",
+      lineHeight:1, display:"inline-flex", alignItems:"center", gap:4, whiteSpace:"nowrap" as const,
+      ...style
+    }}>{children}</button>;
 };
 
 export const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
@@ -441,12 +459,14 @@ export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFilte
       {children}
     </div>
     {activeTokens.length>0&&(
-      <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
-        <span style={{fontSize:12,color:C.t2,fontWeight:600,marginRight:4}}>Active filters:</span>
+      <div style={{padding:"6px 16px 10px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:6,letterSpacing:0.3}}>Active:</span>
         {activeTokens.map((t,i)=>(
-          <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:14,padding:"3px 10px 3px 10px",fontSize:12,color:C.info}}>
-            <span style={{fontWeight:600}}>{t.label}:</span><span>{t.val}</span>
-            <button onClick={t.onClear} style={{background:"none",border:"none",cursor:"pointer",color:C.info,fontSize:14,padding:"0 0 0 4px",lineHeight:1}}>×</button>
+          <span key={i} style={{display:"inline-flex",alignItems:"center",height:"1.625rem",background:C.selection,border:`1px solid #8bb1d1`,borderRadius:"0.25rem",padding:"0 0 0 0.5rem",fontSize:12,color:C.t1,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",maxWidth:260}}>
+            <span style={{fontWeight:600,color:C.t2,marginRight:3,flexShrink:0}}>{t.label}:</span>
+            <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{t.val}</span>
+            <button onClick={t.onClear} title={`Remove ${t.label} filter`}
+              style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:16,padding:"0 0.375rem",lineHeight:1,display:"flex",alignItems:"center",flexShrink:0,height:"100%"}}>×</button>
           </span>
         ))}
       </div>

@@ -20,35 +20,69 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"}];
   const isMob=mob();
+  const iconBtn=(onClick,title,children)=>(
+    <button onClick={onClick} title={title} aria-label={title} style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.75)",transition:"background .1s",flexShrink:0}}
+      onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.1)")}
+      onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>{children}</button>
+  );
   return (
-    <div style={{background:C.shell,color:"#fff",position:"sticky",top:0,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
-      <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:48}}>
-        <div style={{fontWeight:800,fontSize:isMob?13:15,marginRight:isMob?10:24,whiteSpace:"nowrap",letterSpacing:.2,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-          <SapIcon name="grid" size={18} color="rgba(255,255,255,0.65)"/>
-          <span style={{color:"#fff",fontWeight:700}}>{isMob?"BRM Portal":"BRM Vendor Portal"}</span>
+    <div style={{background:C.shell,color:"#fff",position:"sticky",top:0,zIndex:200,fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div style={{display:"flex",alignItems:"center",height:44,paddingLeft:4,paddingRight:8}}>
+
+        {/* Product switch */}
+        {iconBtn(undefined,"Product switch",<SapIcon name="grid" size={16} color="rgba(255,255,255,0.65)"/>)}
+
+        {/* Logo + title */}
+        <div style={{display:"flex",alignItems:"center",gap:0,paddingLeft:4,paddingRight:16,flexShrink:0}}>
+          <div style={{width:32,height:32,borderRadius:4,background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",marginRight:8,flexShrink:0}}>
+            <SapIcon name="business-objects-experience" size={18} color="#fff"/>
+          </div>
+          <div>
+            <div style={{fontSize:isMob?12:14,fontWeight:700,color:"#fff",lineHeight:1.15}}>{isMob?"BRM Portal":"BRM Vendor Portal"}</div>
+            {!isMob&&<div style={{fontSize:10,color:"rgba(255,255,255,0.55)",lineHeight:1}}>PT Bumi Resource Minerals Group</div>}
+          </div>
         </div>
+
+        {/* Separator */}
+        {!isMob&&<div style={{width:1,height:24,background:"rgba(255,255,255,0.25)",marginRight:4,flexShrink:0}}/>}
+
+        {/* Nav items */}
         {!isMob&&(
-          <div style={{display:"flex",gap:0,flex:1}}>
-            {nav.map(n=>(
-              <button key={n.id} onClick={()=>setSection(n.id)} style={{
-                background:section===n.id?C.shellHov:"transparent",
-                color:section===n.id?"#fff":"rgba(255,255,255,0.75)",border:"none",cursor:"pointer",padding:"0 16px",height:48,fontFamily:"inherit",
-                fontSize:13,fontWeight:section===n.id?600:400,whiteSpace:"nowrap",
-                borderBottom:`2px solid ${section===n.id?"rgba(255,255,255,0.9)":"transparent"}`,
-                transition:"background .15s,color .15s",
-              }}>{n.l}</button>
-            ))}
+          <div style={{display:"flex",gap:0,flex:1,height:44}}>
+            {nav.map(n=>{
+              const active=section===n.id;
+              return(
+                <button key={n.id} onClick={()=>setSection(n.id)}
+                  style={{background:active?"rgba(255,255,255,0.1)":"transparent",color:active?"#fff":"rgba(255,255,255,0.72)",
+                    border:"none",borderBottom:`3px solid ${active?"rgba(255,255,255,0.9)":"transparent"}`,
+                    cursor:"pointer",padding:"0 1rem",height:44,fontFamily:"inherit",
+                    fontSize:13,fontWeight:active?600:400,whiteSpace:"nowrap" as const,
+                    transition:"background .1s,color .1s",letterSpacing:0.1}}
+                  onMouseEnter={e=>{if(!active){e.currentTarget.style.background="rgba(255,255,255,0.06)";e.currentTarget.style.color="#fff";}}}
+                  onMouseLeave={e=>{if(!active){e.currentTarget.style.background="transparent";e.currentTarget.style.color="rgba(255,255,255,0.72)";}}}
+                >{n.l}</button>
+              );
+            })}
           </div>
         )}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
-          {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setAvatarOpen(o=>!o)} title={user.name} aria-label={`User menu: ${user.name}`} aria-expanded={avatarOpen} style={{width:36,height:36,borderRadius:"50%",background:ac.bg,border:`2px solid ${avatarOpen?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.35)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:ac.fg,cursor:"pointer",padding:0,outline:"none",flexShrink:0,transition:"border-color .15s,box-shadow .15s",boxShadow:avatarOpen?"0 0 0 3px rgba(255,255,255,0.22)":"none"}}>{ini}</button>
+        {isMob&&<div style={{flex:1}}/>}
+
+        {/* Right-side action icons */}
+        <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:4}}>
+          {iconBtn(undefined,"Search",<SapIcon name="search" size={16} color="rgba(255,255,255,0.75)"/>)}
+          {iconBtn(undefined,"Notifications",<SapIcon name="bell" size={16} color="rgba(255,255,255,0.75)"/>)}
+
+          {/* User avatar */}
+          <div style={{position:"relative",marginLeft:4}}>
+            <button onClick={()=>setAvatarOpen(o=>!o)} title={user.name} aria-label={`User menu: ${user.name}`} aria-expanded={avatarOpen}
+              style={{width:32,height:32,borderRadius:"50%",background:ac.bg,border:`2px solid ${avatarOpen?"rgba(255,255,255,0.85)":"rgba(255,255,255,0.3)"}`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:ac.fg,
+                cursor:"pointer",padding:0,outline:"none",flexShrink:0,transition:"border-color .12s"}}>{ini}</button>
             {avatarOpen&&<>
               <div onClick={()=>setAvatarOpen(false)} style={{position:"fixed",inset:0,zIndex:299}}/>
-              <div style={{position:"absolute",top:44,right:0,background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",minWidth:244,zIndex:300,overflow:"hidden"}}>
-                <div style={{padding:"20px 20px 16px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
-                  <div style={{width:64,height:64,borderRadius:"50%",background:ac.bg,border:`2px solid ${ac.fg}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:700,color:ac.fg,letterSpacing:.5}}>{ini}</div>
+              <div style={{position:"absolute",top:40,right:0,background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",minWidth:248,zIndex:300,overflow:"hidden"}}>
+                <div style={{padding:"20px 20px 14px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                  <div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,border:`2px solid ${ac.fg}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg}}>{ini}</div>
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:2}}>{user.name}</div>
                     <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div>
@@ -68,13 +102,16 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
               </div>
             </>}
           </div>
-          {isMob&&<button onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>}
+
+          {isMob&&<button onClick={()=>setMenuOpen(o=>!o)} style={{background:"rgba(255,255,255,0.1)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:6}}>☰</button>}
         </div>
       </div>
+
+      {/* Mobile nav drawer */}
       {isMob&&menuOpen&&(
         <div style={{background:C.shell,borderTop:"1px solid rgba(255,255,255,0.12)",paddingBottom:6}}>
           {nav.map(n=>(
-            <button key={n.id} onClick={()=>{setSection(n.id);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",background:section===n.id?C.shellHov:"transparent",color:"#fff",border:"none",cursor:"pointer",padding:"12px 20px",fontFamily:"inherit",fontSize:14,fontWeight:section===n.id?700:400,borderLeft:`3px solid ${section===n.id?"#F0A500":"transparent"}`}}>{n.l}</button>
+            <button key={n.id} onClick={()=>{setSection(n.id);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",background:section===n.id?"rgba(255,255,255,0.1)":"transparent",color:"#fff",border:"none",borderLeft:`3px solid ${section===n.id?"rgba(255,255,255,0.9)":"transparent"}`,cursor:"pointer",padding:"12px 20px",fontFamily:"inherit",fontSize:14,fontWeight:section===n.id?600:400}}>{n.l}</button>
           ))}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",borderTop:"1px solid rgba(255,255,255,0.12)",marginTop:4}}>
             <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":"BRM"}</span>
