@@ -407,7 +407,7 @@ export const FilterBar = ({opts,val,onChange}) => (
   </div>
 );
 // SAP Fiori-style compact filter bar
-export const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
+export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFiltersCount,children}:{activeTokens?:any[],onGo?:()=>void,onReset?:()=>void,onAdaptFilters?:()=>void,adaptFiltersCount?:number,children?:any}) => (
   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -415,6 +415,7 @@ export const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
         {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
       </div>
       <div style={{display:"flex",gap:8}}>
+        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:32,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
         <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
         <Btn v="primary" sm onClick={onGo}>Go</Btn>
       </div>

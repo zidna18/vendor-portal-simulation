@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -1083,6 +1083,165 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   );
 };
 
+// ── Adapt Filters ─────────────────────────────────────────────
+const ALL_FILTER_FIELDS = [
+  { id:"invoiceNo",      label:"Invoice No.",           defaultOn:true  },
+  { id:"vendor",         label:"Vendor",                defaultOn:true  },
+  { id:"poNumber",       label:"PO Number",             defaultOn:false },
+  { id:"companyCode",    label:"Company Code",          defaultOn:true  },
+  { id:"invoiceType",    label:"Invoice Type",          defaultOn:false },
+  { id:"status",         label:"Status",                defaultOn:true  },
+  { id:"currency",       label:"Currency",              defaultOn:true  },
+  { id:"invoiceDate",    label:"Invoice Date",          defaultOn:true  },
+  { id:"submittedDate",  label:"Submitted Date",        defaultOn:false },
+  { id:"approvedDate",   label:"Approved Date",         defaultOn:false },
+  { id:"postedDate",     label:"Posted Date",           defaultOn:false },
+  { id:"amountMin",      label:"Amount (From)",         defaultOn:false },
+  { id:"amountMax",      label:"Amount (To)",           defaultOn:false },
+  { id:"sapDocNo",       label:"SAP Document No.",      defaultOn:false },
+  { id:"whtType",        label:"WHT Type",              defaultOn:false },
+  { id:"rejReason",      label:"Rejection Reason",      defaultOn:false },
+];
+
+function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft }: {
+  open: boolean;
+  onClose: () => void;
+  visibleFields: Set<string>;
+  onSave: (fields: Set<string>) => void;
+  draft: any;
+}) {
+  const [localVisible, setLocalVisible] = useState<Set<string>>(new Set(visibleFields));
+  const [search, setSearch] = useState("");
+  const [viewFilter, setViewFilter] = useState<"All"|"Active"|"Inactive">("All");
+
+  useEffect(() => {
+    if (open) {
+      setLocalVisible(new Set(visibleFields));
+      setSearch("");
+      setViewFilter("All");
+    }
+  }, [open]);
+
+  function isFieldActive(id: string): boolean {
+    switch(id) {
+      case "invoiceNo": return draft.invoiceNoConds?.length > 0;
+      case "vendor": return draft.vendorIds?.length > 0;
+      case "poNumber": return draft.poNumbers?.length > 0;
+      case "companyCode": return draft.companyCodes?.length > 0;
+      case "invoiceType": return draft.invoiceTypes?.length > 0;
+      case "status": return draft.statuses?.length > 0;
+      case "currency": return draft.currencies?.length > 0;
+      case "invoiceDate": return !!(draft.dateFrom || draft.dateTo);
+      case "submittedDate": return !!(draft.submittedFrom || draft.submittedTo);
+      case "approvedDate": return !!(draft.approvedFrom || draft.approvedTo);
+      case "postedDate": return !!(draft.postedFrom || draft.postedTo);
+      case "amountMin": return !!draft.amountMin;
+      case "amountMax": return !!draft.amountMax;
+      case "sapDocNo": return draft.sapDocNoConds?.length > 0;
+      case "whtType": return draft.whtTypes?.length > 0;
+      default: return false;
+    }
+  }
+
+  const displayFields = ALL_FILTER_FIELDS.filter(f => {
+    if (search && !f.label.toLowerCase().includes(search.toLowerCase())) return false;
+    if (viewFilter === "Active") return localVisible.has(f.id);
+    if (viewFilter === "Inactive") return !localVisible.has(f.id);
+    return true;
+  });
+
+  if (!open) return null;
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#fff",width:560,maxHeight:620,borderRadius:8,boxShadow:"0 8px 32px rgba(0,0,0,0.24)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",borderBottom:"1px solid #d9d9d9",flexShrink:0}}>
+          <span style={{fontSize:16,fontWeight:700,color:"#32363a"}}>Adapt Filters</span>
+          <button
+            onClick={() => { setLocalVisible(new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))); }}
+            style={{background:"none",border:"none",color:"#0a6ed1",fontSize:13,cursor:"pointer",padding:"4px 8px"}}
+          >Reset</button>
+        </div>
+        {/* Sub-header */}
+        <div style={{height:40,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:"#f5f6f7",borderBottom:"1px solid #e5e5e5",flexShrink:0}}>
+          <select value={viewFilter} onChange={e=>setViewFilter(e.target.value as any)}
+            style={{width:80,height:28,border:"1px solid #d9d9d9",borderRadius:4,fontSize:13,background:"#fff",color:"#32363a"}}>
+            <option>All</option>
+            <option>Active</option>
+            <option>Inactive</option>
+          </select>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button style={{background:"none",border:"none",color:"#0a6ed1",fontSize:13,cursor:"pointer"}}>Show Values</button>
+          </div>
+        </div>
+        {/* Search */}
+        <div style={{padding:"8px 16px",flexShrink:0}}>
+          <div style={{position:"relative"}}>
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:"#8a8d91",fontSize:14,pointerEvents:"none"}}>🔍</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Search for Filters"
+              style={{width:"100%",height:32,border:"1px solid #d9d9d9",borderRadius:4,paddingLeft:28,paddingRight:8,fontSize:13,color:"#32363a",boxSizing:"border-box",outline:"none"}} />
+          </div>
+        </div>
+        {/* Field list */}
+        <div style={{flex:1,overflowY:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
+            <colgroup>
+              <col style={{width:32}} />
+              <col style={{width:40}} />
+              <col />
+              <col style={{width:80}} />
+            </colgroup>
+            <thead>
+              <tr style={{background:"#f2f2f2",height:32}}>
+                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"center"}}></th>
+                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none"}}></th>
+                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"left",paddingLeft:8}}>Field Name</th>
+                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"center"}}>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayFields.map(f => {
+                const checked = localVisible.has(f.id);
+                const active = isFieldActive(f.id);
+                return (
+                  <tr key={f.id} style={{height:44,borderBottom:"1px solid #f2f2f2",cursor:"default"}}
+                    onMouseEnter={e=>(e.currentTarget.style.background="#f5f6f7")}
+                    onMouseLeave={e=>(e.currentTarget.style.background="")}>
+                    <td style={{textAlign:"center",color:"#c8cdd0",fontSize:16,userSelect:"none"}}>⠿</td>
+                    <td style={{textAlign:"center"}}>
+                      <input type="checkbox" checked={checked}
+                        onChange={e=>{
+                          const ns = new Set(localVisible);
+                          if(e.target.checked) ns.add(f.id); else ns.delete(f.id);
+                          setLocalVisible(ns);
+                        }}
+                        style={{accentColor:"#0a6ed1",width:16,height:16,cursor:"pointer"}} />
+                    </td>
+                    <td style={{fontSize:14,color:"#32363a",paddingLeft:8}}>{f.label}</td>
+                    <td style={{textAlign:"center",fontSize:10,color:"#0a6ed1"}}>{checked && active ? "●" : ""}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* Footer */}
+        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,padding:"0 16px",borderTop:"1px solid #d9d9d9",flexShrink:0}}>
+          <button onClick={onClose}
+            style={{height:36,padding:"0 16px",borderRadius:4,border:"1px solid #d9d9d9",background:"#fff",fontSize:14,cursor:"pointer",color:"#32363a"}}>
+            Cancel
+          </button>
+          <button onClick={()=>{ onSave(localVisible); onClose(); }}
+            style={{height:36,padding:"0 16px",borderRadius:4,border:"none",background:"#0a6ed1",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const COL_DEFS_BRM = [
   {key:"invoiceNo",  label:"Invoice No.",     defW:175},
@@ -1111,12 +1270,16 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
-  const [vhOpen,setVhOpen]=useState<null|"vendor"|"companyCode"|"status"|"currency">(null);
+  const [vhOpen,setVhOpen]=useState<null|"vendor"|"companyCode"|"status"|"currency"|"whtType">(null);
   const [colSort,setColSort]=useState<Record<string,string>>({});
   const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS_BRM.map(c=>[c.key,c.defW])));
   const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
   const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
-  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:""};
+  const [adaptOpen, setAdaptOpen] = useState(false);
+  const [visibleFields, setVisibleFields] = useState<Set<string>>(
+    new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
+  );
+  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[]};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
@@ -1131,7 +1294,18 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     (active.currencies.length===0||active.currencies.includes(i.currency))&&
     (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
     (!active.dateTo||i.invoiceDate<=active.dateTo)
-  );
+  ).filter(inv => !active.poNumbers?.length || (inv.poNumbers||[]).some((p:string) => active.poNumbers.includes(p)))
+   .filter(inv => !active.invoiceTypes?.length || active.invoiceTypes.includes(inv.invoiceType))
+   .filter(inv => !active.submittedFrom || (inv.submittedAt||"") >= active.submittedFrom)
+   .filter(inv => !active.submittedTo || (inv.submittedAt||"") <= active.submittedTo)
+   .filter(inv => !active.approvedFrom || (inv.confirmedAt||"") >= active.approvedFrom)
+   .filter(inv => !active.approvedTo || (inv.confirmedAt||"") <= active.approvedTo)
+   .filter(inv => !active.postedFrom || (inv.postedAt||"") >= active.postedFrom)
+   .filter(inv => !active.postedTo || (inv.postedAt||"") <= active.postedTo)
+   .filter(inv => !active.amountMin || inv.amount >= parseFloat(active.amountMin))
+   .filter(inv => !active.amountMax || inv.amount <= parseFloat(active.amountMax))
+   .filter(inv => !active.sapDocNoConds?.length || active.sapDocNoConds.every((c:any) => evalCond(inv.sapDocNo||"", c)))
+   .filter(inv => !active.whtTypes?.length || active.whtTypes.includes(inv.whtType));
   const SORT_FIELDS_BRM:Record<string,(i:any)=>any>={
     invoiceNo:i=>i.invoiceNo, vendor:i=>i.vendorName, poNumber:i=>fmtPOs(i),
     compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, submittedAt:i=>i.submittedAt||"",
@@ -1154,6 +1328,15 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.companyCodes.length>0&&{label:"Company Code",val:active.companyCodes.length===1?`${active.companyCodes[0]} – ${ccName(active.companyCodes[0])}`:`${active.companyCodes.length} selected`,onClear:()=>clr("companyCodes")},
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
+    active.poNumbers?.length>0&&{label:"PO Number",val:active.poNumbers.length===1?active.poNumbers[0]:`${active.poNumbers.length} selected`,onClear:()=>clr("poNumbers")},
+    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
+    (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
+    (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
+    active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>{setActive(p=>({...p,amountMin:""}));setDraft(p=>({...p,amountMin:""}));}},
+    active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>{setActive(p=>({...p,amountMax:""}));setDraft(p=>({...p,amountMax:""}));}},
+    active.sapDocNoConds?.length>0&&{label:"SAP Doc No.",val:`${active.sapDocNoConds.length} condition${active.sapDocNoConds.length!==1?"s":""}`,onClear:()=>clr("sapDocNoConds")},
+    active.whtTypes?.length>0&&{label:"WHT Type",val:active.whtTypes.length===1?active.whtTypes[0]:`${active.whtTypes.length} selected`,onClear:()=>clr("whtTypes")},
   ].filter(Boolean);
 
   const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
@@ -1209,21 +1392,30 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </div>
       </div>
 
-      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
-        <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
-        <FField label="Vendor">
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset} onAdaptFilters={()=>setAdaptOpen(true)} adaptFiltersCount={visibleFields.size}>
+        {visibleFields.has("invoiceNo")&&<FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>}
+        {visibleFields.has("vendor")&&<FField label="Vendor">
           <ValueHelpInp selected={draft.vendorIds} getLabel={k=>VENDORS[k]?.name||k} onOpen={()=>setVhOpen("vendor")} placeholder="All Vendors"/>
-        </FField>
-        <FField label="Company Code">
+        </FField>}
+        {visibleFields.has("companyCode")&&<FField label="Company Code">
           <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
-        </FField>
-        <FField label="Status">
+        </FField>}
+        {visibleFields.has("status")&&<FField label="Status">
           <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
-        </FField>
-        <FField label="Currency">
+        </FField>}
+        {visibleFields.has("currency")&&<FField label="Currency">
           <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
-        </FField>
-        <FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
+        </FField>}
+        {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
+        {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
+        {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
+        {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
+        {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount" /></FField>}
+        {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount" /></FField>}
+        {visibleFields.has("sapDocNo")&&<FField label="SAP Doc No."><MultiValueInp fieldTitle="SAP Doc No." conditions={draft.sapDocNoConds} onChange={v=>setDraft(d=>({...d,sapDocNoConds:v}))}/></FField>}
+        {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
       </FioriBar>
 
       {vhOpen==="vendor"&&(
@@ -1258,6 +1450,14 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           rows={CURRENCIES} keyField="v" labelField="l"
           selected={draft.currencies}
           onConfirm={s=>{sd("currencies",s);setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="whtType"&&(
+        <ValueHelpDialog title="WHT Type"
+          cols={[{key:"v",label:"WHT Code",width:120},{key:"l",label:"Description",width:360}]}
+          rows={WHT_TYPES.filter(w=>w.v)} keyField="v" labelField="l"
+          selected={draft.whtTypes}
+          onConfirm={s=>{sd("whtTypes",s);setVhOpen(null);}}
           onClose={()=>setVhOpen(null)}/>
       )}
 
@@ -1539,6 +1739,13 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
           onClose={()=>setColMenu(null)}/>
       )}
+      <AdaptFiltersDialog
+        open={adaptOpen}
+        onClose={()=>setAdaptOpen(false)}
+        visibleFields={visibleFields}
+        onSave={fields=>setVisibleFields(fields)}
+        draft={draft}
+      />
     </div>
   );
 };
