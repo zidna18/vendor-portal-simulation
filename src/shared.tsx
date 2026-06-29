@@ -38,15 +38,154 @@ export const WHT_TYPES = [
   {v:"PPh26", l:"PPh Pasal 26 – Foreign Entity / Non-Resident (20%)"},
   {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
 ];
+// ── Invoice seed generator ─────────────────────────────────────
+const _genInvoices = () => {
+  const V = [
+    {id:"10000001",name:"PT Maju Bersama",   pfx:"MJB"},
+    {id:"10000002",name:"CV Sukses Mandiri", pfx:"CSM"},
+  ];
+  const CCS   = ["BRMS","CPMS","GMIN","SHSI","LMRS"];
+  const CURRS:[string,number,number][] = [
+    // [currency, minAmt, maxAmt]
+    ["IDR",  5000000,  500000000],
+    ["IDR", 20000000,  800000000],
+    ["IDR", 10000000,  300000000],
+    ["USD",      5000,     95000],
+    ["EUR",      3000,     80000],
+    ["SGD",      8000,    120000],
+    ["AUD",      6000,    110000],
+    ["JPY",   1000000,  15000000],
+    ["CNY",     50000,    900000],
+    ["GBP",      2000,     60000],
+    ["MYR",     20000,    350000],
+  ];
+  const DESCS = [
+    "Office supplies and stationery Q{q} {y}",
+    "IT hardware procurement – {mon} {y}",
+    "Maintenance services {mon} {y}",
+    "Consulting & advisory services Q{q} {y}",
+    "Cleaning & hygiene services contract",
+    "Security guard services – monthly",
+    "Logistics and courier services {mon} {y}",
+    "Engineering spare parts supply",
+    "Software license & subscription renewal",
+    "Training and development services",
+    "Printing and documentation services",
+    "Catering services – monthly contract",
+    "Fuel & energy supply {mon} {y}",
+    "Laboratory equipment and reagents",
+    "HSE safety equipment procurement",
+    "Medical supplies and first aid kit",
+    "Uniforms and PPE procurement",
+    "Network infrastructure maintenance",
+    "Waste management services",
+    "Vehicle rental and transportation",
+    "Cloud hosting & managed services",
+    "Civil construction works – Phase {q}",
+    "Electrical installation & maintenance",
+    "HVAC preventive maintenance {mon} {y}",
+    "Inspection & quality audit services",
+    "Mining survey and geotechnical study",
+    "Drilling equipment supply – batch {q}",
+    "Explosives handling and blasting",
+    "Environmental monitoring services",
+    "Import duties and freight forwarding",
+  ];
+  const MONS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const STATUSES = ["Draft","Draft","Submitted","Submitted","Submitted","Under Review","Under Review","Confirmed","Posted","Posted","Posted","Rejected","Converted to Invoice","Cleared"];
+  const WHT = ["","","","PPh23","PPh23","PPh26","PPh4a2"];
+  const pick = <T,>(arr:T[]):T => arr[Math.floor(Math.abs(Math.sin(arr.length)*99999)%arr.length)];
+
+  // deterministic-ish seeded pseudo-random to avoid hydration differences
+  let seed = 42;
+  const rng = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+  const ri  = (min,max) => Math.floor(rng()*(max-min+1))+min;
+  const rp  = <T,>(arr:T[]):T => arr[ri(0,arr.length-1)];
+
+  const dateAdd = (base:string, days:number) => {
+    const d = new Date(base); d.setDate(d.getDate()+days); return d.toISOString().split("T")[0];
+  };
+  const fmtSeq = (n:number) => String(n).padStart(3,"0");
+  const fpNum  = (n:number) => String(n).padStart(8,"0");
+
+  const rows:any[] = [];
+  // Keep the 8 canonical seed rows first (hand-written below), then append generated
+  const BASE_PO = 4500001244;
+  const seqCounters:{[k:string]:number} = {"MJB":5,"CSM":5};
+
+  for(let i=0;i<250;i++){
+    const vendor   = rp(V);
+    const pfx      = vendor.pfx;
+    seqCounters[pfx] = (seqCounters[pfx]||0)+1;
+    const seq      = seqCounters[pfx];
+    const cc       = rp(CCS);
+    const [curr,mn,mx] = rp(CURRS);
+    const rawAmt   = ri(mn,mx);
+    const amount   = curr==="IDR"?Math.round(rawAmt/1000)*1000:Math.round(rawAmt*100)/100;
+    const vatBase  = amount;
+    const vatAmt   = Math.round(vatBase*0.11*100)/100;
+    const whtType  = rp(WHT);
+    const whtRate  = whtType==="PPh23"?0.02:whtType==="PPh26"?0.20:whtType==="PPh4a2"?0.04:whtType==="PPh21"?0.05:0;
+    const whtBase  = whtType?amount:0;
+    const whtAmt   = Math.round(whtBase*whtRate*100)/100;
+    const invType  = rng()<0.18?"Supplier DPR":"Invoice";
+
+    const year     = ri(2024,2025);
+    const month    = ri(1,12);
+    const day      = ri(1,28);
+    const invDate  = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const dueDate  = dateAdd(invDate, ri(28,60));
+
+    const status   = rp(STATUSES);
+    const hasTax   = invType==="Invoice"&&rng()>0.25;
+    const taxDoc   = hasTax?`FP-010.000-${String(year).slice(2)}.${fpNum(100+i)}`:"";
+    const numPOs   = rng()<0.25?2:1;
+    const poNumbers= Array.from({length:numPOs},(_,k)=>String(BASE_PO+i*3+k));
+
+    const submittedAt  = ["Draft"].includes(status)?null:dateAdd(invDate,ri(1,5));
+    const confirmedAt  = ["Draft","Submitted","Under Review","Rejected"].includes(status)?null:
+                         submittedAt?dateAdd(submittedAt,ri(2,7)):null;
+    const postedAt     = ["Posted","Converted to Invoice","Cleared"].includes(status)&&confirmedAt?dateAdd(confirmedAt,ri(1,4)):null;
+    const sapDocNo     = postedAt
+                         ? (invType==="Supplier DPR"?`${cc}/${String(1000000+i).padStart(10,"0").slice(0,10)}/2025`:`${String(5100000+i).padStart(10,"0").slice(0,10)}/2025`)
+                         : null;
+    const convertedDocNo = status==="Converted to Invoice"||status==="Cleared"?`${String(5200000+i).padStart(10,"0").slice(0,10)}/2025`:null;
+    const clearingDocNo  = status==="Cleared"?`${cc}/${String(400000+i)}/2025`:null;
+
+    const mon = MONS[month-1];
+    const q   = Math.ceil(month/3);
+    const rawDesc = rp(DESCS).replace("{mon}",mon).replace("{y}",String(year)).replace("{q}",String(q));
+
+    rows.push({
+      id:`PI-GEN-${String(i+1).padStart(4,"0")}`,
+      invoiceType:invType,
+      vendorId:vendor.id, vendorName:vendor.name,
+      invoiceNo:`INV/${pfx}/${year}/${fmtSeq(seq)}`,
+      invoiceDate:invDate, dueDate,
+      poNumbers, companyCode:cc,
+      amount, currency:curr,
+      vatBase, vatAmt, whtType, whtBase, whtAmt,
+      desc:rawDesc, status,
+      sapDocNo, postedAt, taxDoc,
+      files: rng()>0.4?["invoice.pdf","faktur_pajak.pdf"]:rng()>0.5?["invoice.pdf"]:[],
+      submittedAt, confirmedAt,
+      convertedDocNo, clearingDocNo,
+      rejReason: status==="Rejected"?rp(["Missing supporting documents.","PO number mismatch. Please verify.","Duplicate invoice detected.","Amount exceeds PO value. Revise and resubmit.","Faktur Pajak not valid. Check tax document number."]):"",
+    });
+  }
+  return rows;
+};
+
 export const INIT_INV = [
-  { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Posted",       sapDocNo:"5100000001/2025", postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
-  { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review", sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000,  currency:"IDR", vatBase:45000000,  vatAmt:4950000,  whtType:"PPh23", whtBase:45000000,  whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",        sapDocNo:null,             postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",    sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
-  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000,  currency:"IDR", vatBase:15000000,  vatAmt:1650000,  whtType:"PPh23", whtBase:15000000,  whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",     sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
-  { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,       currency:"USD", vatBase:8500,       vatAmt:935,      whtType:"PPh26", whtBase:8500,       whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",       sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", rejReason:"" },
-  { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,      currency:"AUD", vatBase:12000,      vatAmt:1320,     whtType:"PPh23", whtBase:12000,      whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",    sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", rejReason:"" },
-  { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        sapDocNo:null,             postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Posted",               sapDocNo:"5100000001/2025",      postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000, currency:"IDR", vatBase:15000000, vatAmt:1650000, whtType:"PPh23", whtBase:15000000, whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",             sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,      currency:"USD", vatBase:8500,      vatAmt:935,      whtType:"PPh26", whtBase:8500,      whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",               sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  ..._genInvoices(),
 ];
 export const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
