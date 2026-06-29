@@ -877,7 +877,8 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const FS={base:14,sm:12,xs:11};
 
   return (
-    <div style={{padding:mob()?"12px 10px":"20px 24px",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+    <div style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
 
       <div style={{marginBottom:14}}>
         <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
@@ -1030,7 +1031,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                 if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={11} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id);
                 const isHov=hovRow===inv.id;
-                const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const rowBg=view?.id===inv.id?"#ddeeff":isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
                 const cs:any={
                   padding:"0 0.5rem",height:36,
                   borderBottom:`1px solid ${TK.rowBorder}`,
@@ -1105,7 +1106,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       </div>
                     </td>
 
-                    <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>
+                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?"#0a6ed1":"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>
                       ›
                     </td>
                   </tr>
@@ -1119,39 +1120,53 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{mine.length} item{mine.length!==1?"s":""}</span>
         </div>
       </div>
+      </div>
       {view&&(
-        <Modal title={`Invoice Detail: ${view.invoiceNo}`} onClose={()=>setView(null)} width={660}>
-          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
-              <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
-            ))}
-          </div>
-          <div style={{marginBottom:12}}>
-            <Lbl>PO Numbers</Lbl>
-            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
-              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid #e5e5e5`,background:"#fff",display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid #e5e5e5`,background:"#f2f2f2",position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"#32363a"}}>{view.invoiceNo}</div>
+              <div style={{fontSize:11,color:"#6a6d70",marginTop:1}}>{view.id}</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <Badge s={view.status}/>
+              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#6a6d70",lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
             </div>
           </div>
-          <Sep/>
-          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
-          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
-          </div>
-          <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-          <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
-          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
-            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
-            {!view.files?.length&&<Val/>}</div>
-          <DocFlow inv={view}/>
-          {view.status==="Rejected"&&view.rejReason&&(
-            <div style={{padding:12,background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:4,marginTop:12}}>
-              <div style={{fontWeight:700,fontSize:12,color:"#bb0000",marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color="#bb0000"/>Rejection Reason from Client</div>
-              <div style={{fontSize:13,color:"#32363a"}}>{view.rejReason}</div>
+          <div style={{padding:"16px 20px",flex:1}}>
+            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+              {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
+                <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
+              ))}
             </div>
-          )}
-        </Modal>
+            <div style={{marginBottom:12}}>
+              <Lbl>PO Numbers</Lbl>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+                {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+              </div>
+            </div>
+            <Sep/>
+            <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+              <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+              <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+              {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
+            </div>
+            <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
+            <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
+            <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
+              {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
+              {!view.files?.length&&<Val/>}
+            </div>
+            <DocFlow inv={view}/>
+            {view.status==="Rejected"&&view.rejReason&&(
+              <div style={{padding:12,background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:4,marginTop:12}}>
+                <div style={{fontWeight:700,fontSize:12,color:"#bb0000",marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color="#bb0000"/>Rejection Reason from Client</div>
+                <div style={{fontSize:13,color:"#32363a"}}>{view.rejReason}</div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
@@ -1474,7 +1489,8 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   const FS={base:14,sm:12,xs:11};
 
   return (
-    <div style={{padding:mob()?"12px 10px":"20px 24px",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+    <div style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
         <div style={{fontSize:FS.sm,color:"#6a6d70",marginTop:3,display:"flex",alignItems:"center",gap:5}}>
@@ -1669,7 +1685,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 )(buildGroups(list,colGroup,COL_DEFS_BRM.map(c=>c.key)))).map((inv:any)=>{
                 if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={COL_DEFS_BRM.length+2} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id); const isHov=hovRow===inv.id;
-                const rowBg=isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const rowBg=view?.id===inv.id?"#ddeeff":isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
                 const cs:any={padding:"0 0.5rem",height:36,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle"};
                 return(
                   <tr key={inv.id} onMouseEnter={()=>setHovRow(inv.id)} onMouseLeave={()=>setHovRow(null)}
@@ -1722,7 +1738,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                         <div style={{fontSize:9,color:"#6a6d70",marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
                       )}
                     </td>
-                    <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>›</td>
+                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?"#0a6ed1":"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>›</td>
                   </tr>
                 );
               })}
@@ -1734,83 +1750,113 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{list.length} item{list.length!==1?"s":""}</span>
         </div>
       </div>
+      </div>
 
-      {/* Detail Modal */}
+      {/* FCL Detail Panel */}
       {view&&(
-        <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
-          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null],["Document Type",null]].map(([l,val])=>(
-              <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:l==="Document Type"?<Val>{view.invoiceType||"Invoice"}</Val>:<Val>{val}</Val>}</div>
-            ))}
-          </div>
-          <div style={{marginBottom:12}}>
-            <Lbl>PO Numbers</Lbl>
-            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
-              {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
+        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid #e5e5e5`,background:"#fff",display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
+          {/* Panel header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid #e5e5e5`,background:"#f2f2f2",position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"#32363a",display:"flex",alignItems:"center",gap:6}}>
+                {view.invoiceNo}
+                {view.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 5px"}}>DPR</span>}
+              </div>
+              <div style={{fontSize:11,color:"#6a6d70",marginTop:1}}>{view.vendorName} · {view.id}</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <Badge s={view.status}/>
+              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#6a6d70",lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
             </div>
           </div>
-          {view.sapDocNo&&(
-            <div style={{marginBottom:12,padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
-              <SapIcon name="connected" size={14} color="#107e3e"/>
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
-                <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
-                {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+          {/* Action toolbar */}
+          <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:`1px solid #e5e5e5`,background:"#fff",height:40,flexShrink:0}}>
+            {(()=>{
+              const btnStyle=(active:boolean)=>({background:"transparent",border:"none",color:active?"#32363a":"#bfbfbf",fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13,fontWeight:400,cursor:active?"pointer":"default",height:36,padding:"0 10px",display:"inline-flex",alignItems:"center",gap:5,opacity:active?1:0.4});
+              const canReview=["Submitted"].includes(view.status);
+              const canAccept=["Submitted","Under Review"].includes(view.status);
+              const canReject=["Submitted","Under Review"].includes(view.status);
+              const canPost=view.status==="Confirmed";
+              const canConvert=view.status==="Posted"&&view.invoiceType==="Supplier DPR";
+              const canClear=view.status==="Converted to Invoice";
+              return (<>
+                <button style={btnStyle(canReview)} disabled={!canReview} onClick={()=>canReview&&setUR(view.id)}>
+                  <SapIcon name="user-edit" size={14} color={canReview?"#32363a":"#bfbfbf"}/>Review
+                </button>
+                <button style={btnStyle(canAccept)} disabled={!canAccept} onClick={()=>canAccept&&accept(view.id)}>
+                  <SapIcon name="accept" size={14} color={canAccept?"#32363a":"#bfbfbf"}/>Accept
+                </button>
+                <button style={btnStyle(canReject)} disabled={!canReject} onClick={()=>canReject&&(setRejM(view),setView(null))}>
+                  <SapIcon name="decline" size={14} color={canReject?"#32363a":"#bfbfbf"}/>Reject
+                </button>
+                <div style={{width:1,height:20,background:"#e5e5e5",margin:"0 4px"}}/>
+                <button style={btnStyle(canPost)} disabled={!canPost} onClick={()=>canPost&&postToSAP(view)}>
+                  <SapIcon name="upload-to-cloud" size={14} color={canPost?"#32363a":"#bfbfbf"}/>Post to SAP
+                </button>
+                <button style={btnStyle(canConvert)} disabled={!canConvert} onClick={()=>canConvert&&convertDPR(view)}>
+                  <SapIcon name="convert" size={14} color={canConvert?"#32363a":"#bfbfbf"}/>Convert
+                </button>
+                <button style={btnStyle(canClear)} disabled={!canClear} onClick={()=>canClear&&clearDPR(view)}>
+                  <SapIcon name="complete" size={14} color={canClear?"#32363a":"#bfbfbf"}/>Clear
+                </button>
+              </>);
+            })()}
+          </div>
+          {/* Panel body */}
+          <div style={{padding:"16px 20px",flex:1}}>
+            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+              {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null],["Document Type",null]].map(([l,val])=>(
+                <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:l==="Document Type"?<Val>{view.invoiceType||"Invoice"}</Val>:<Val>{val}</Val>}</div>
+              ))}
+            </div>
+            <div style={{marginBottom:12}}>
+              <Lbl>PO Numbers</Lbl>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+                {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
               </div>
             </div>
-          )}
-          {(view.convertedDocNo||view.clearingDocNo)&&(
-            <div style={{marginBottom:12,padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4}}>
-              {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
-              {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
+            {view.sapDocNo&&(
+              <div style={{marginBottom:12,padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
+                <SapIcon name="connected" size={14} color="#107e3e"/>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
+                  <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
+                  {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+                </div>
+              </div>
+            )}
+            {(view.convertedDocNo||view.clearingDocNo)&&(
+              <div style={{marginBottom:12,padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4}}>
+                {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
+                {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
+              </div>
+            )}
+            <Sep/>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
+              <div><Lbl>Invoice Date</Lbl><Val>{fmtDate(view.invoiceDate)}</Val></div>
+              <div><Lbl>Vendor Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
+              <div><Lbl>Fully Approved Date</Lbl><Val>{view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
             </div>
-          )}
-          <Sep/>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
-            <div><Lbl>Invoice Date</Lbl><Val>{fmtDate(view.invoiceDate)}</Val></div>
-            <div><Lbl>Vendor Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
-            <div><Lbl>Fully Approved Date</Lbl><Val>{view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
+            <Sep/>
+            <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
+            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+              <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+              <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+              {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
+            </div>
+            <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
+            <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
+              {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
+              {!view.files?.length&&<Val/>}
+            </div>
+            <DocFlow inv={view}/>
+            <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
+              <strong>SAP Integration:</strong> {view.invoiceType==="Supplier DPR"
+                ? <>Routes to <code>SAP Build Process Automation</code> for Down Payment workflow.</>
+                : <>Calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks in S/4HANA → SAP Flexible Workflow for posting approval.</>}
+            </div>
           </div>
-          <Sep/>
-          <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
-          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-            {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
-          </div>
-          <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-          <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
-            {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
-            {!view.files?.length&&<Val/>}
-          </div>
-          <DocFlow inv={view}/>
-          <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
-            <strong>SAP Integration:</strong> {view.invoiceType==="Supplier DPR"
-              ? <>Approving routes to <code>SAP Build Process Automation</code> for Supplier Down Payment Request workflow until the document is posted in S/4HANA FI.</>
-              : <>Approving calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks invoice in S/4HANA as parked-complete → triggers SAP Flexible Workflow for posting approval.</>}
-          </div>
-          {["Submitted","Under Review"].includes(view.status)&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn>
-              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Approve</Btn>
-            </div>
-          )}
-          {view.status==="Confirmed"&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="primary" onClick={()=>{postToSAP(view);}}>{view.invoiceType==="Supplier DPR"?"Post DPR to SAP BPA":"Post Invoice to SAP S/4HANA"}</Btn>
-            </div>
-          )}
-          {view.status==="Posted"&&view.invoiceType==="Supplier DPR"&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="primary" onClick={()=>convertDPR(view)}>Convert DPR to Invoice</Btn>
-            </div>
-          )}
-          {view.status==="Converted to Invoice"&&(
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="neutral" onClick={()=>clearDPR(view)}>Clear DPR Against Invoice</Btn>
-            </div>
-          )}
-        </Modal>
+        </div>
       )}
       {rejModal&&(
         <Modal title={`Reject Invoice: ${rejModal.invoiceNo}`} onClose={()=>{setRejM(null);setRejR("");}} width={480}>
