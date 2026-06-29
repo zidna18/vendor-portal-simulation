@@ -56,6 +56,43 @@ export const WHT_TYPES = [
   {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
 ];
 // ── Invoice seed generator ─────────────────────────────────────
+const _genItems = (poNumbers:string[], seed:number) => {
+  const MATS = [
+    {id:"MAT-OFF-001",desc:"A4 Paper 80gsm",              uom:"Ream",     p:50000},
+    {id:"MAT-OFF-002",desc:"Stationery & Office Supplies", uom:"Set",      p:250000},
+    {id:"MAT-IT-001", desc:"Laptop 14\" Core i7",          uom:"Unit",     p:8000000},
+    {id:"MAT-IT-002", desc:"Monitor 24\" LED",             uom:"Unit",     p:2500000},
+    {id:"MAT-IT-003", desc:"Wireless Keyboard & Mouse",    uom:"Set",      p:350000},
+    {id:"MAT-SVC-001",desc:"Maintenance Service",          uom:"Man-Day",  p:2500000},
+    {id:"MAT-SVC-002",desc:"Consulting Service",           uom:"Man-Hour", p:500000},
+    {id:"MAT-MFG-001",desc:"Steel Pipe 2\" Sch.40",        uom:"Meter",    p:180000},
+    {id:"MAT-MFG-002",desc:"Industrial Valve DN50",        uom:"Pcs",      p:750000},
+    {id:"MAT-CHM-001",desc:"Lubricant Oil 20L",            uom:"Drum",     p:1200000},
+    {id:"MAT-ELC-001",desc:"Cable NYY 4x10mm",             uom:"Meter",    p:95000},
+    {id:"MAT-PPE-001",desc:"Safety Helmet",                uom:"Pcs",      p:250000},
+    {id:"MAT-FUL-001",desc:"HSD Diesel Fuel",              uom:"Liter",    p:14000},
+    {id:"MAT-CLN-001",desc:"Cleaning Chemical Supplies",   uom:"Liter",    p:45000},
+    {id:"MAT-MED-001",desc:"First Aid Kit",                uom:"Kit",      p:350000},
+  ];
+  const VAT_CODES = ["V1","V1","V1","V2","V0"];
+  let s = (seed+1)*1013904223;
+  const rng = () => { s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
+  const ri = (a:number,b:number)=>Math.floor(rng()*(b-a+1))+a;
+  // Each PO must appear at least once; total items = max(poCount, 1-3)
+  const extraItems = ri(0,2);
+  const numItems = poNumbers.length + extraItems;
+  const items:any[]=[];
+  for(let i=0;i<numItems;i++){
+    // First pass: one item per PO in order; extra items use random PO
+    const po = i < poNumbers.length ? poNumbers[i] : poNumbers[Math.floor(rng()*poNumbers.length)];
+    const mat=MATS[ri(0,MATS.length-1)];
+    const qty=ri(2,50);
+    const unitPrice=Math.round(mat.p*(0.8+rng()*0.4)/1000)*1000;
+    items.push({poNo:po,poItem:String((i+1)*10).padStart(5,"0"),qty,uom:mat.uom,materialId:mat.id,materialDesc:mat.desc,unitPrice,vatCode:VAT_CODES[ri(0,VAT_CODES.length-1)]});
+  }
+  return items;
+};
+
 const _genInvoices = () => {
   const V = [
     {id:"10000001",name:"PT Maju Bersama",   pfx:"MJB"},
@@ -188,12 +225,14 @@ const _genInvoices = () => {
       submittedAt, confirmedAt,
       convertedDocNo, clearingDocNo,
       rejReason: status==="Rejected"?rp(["Missing supporting documents.","PO number mismatch. Please verify.","Duplicate invoice detected.","Amount exceeds PO value. Revise and resubmit.","Faktur Pajak not valid. Check tax document number."]):"",
+      items: _genItems(poNumbers, i),
     });
   }
   return rows;
 };
 
-export const INIT_INV = [
+export const INIT_INV = (() => {
+  const base = [
   { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Posted",               sapDocNo:"5100000001/2025",      postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
@@ -203,7 +242,9 @@ export const INIT_INV = [
   { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   ..._genInvoices(),
-];
+  ];
+  return base.map((inv:any,idx:number)=>inv.items?inv:{...inv,items:_genItems(inv.poNumbers,idx+100)});
+})();
 export const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
     items:[
@@ -390,10 +431,10 @@ const buildSTC = () => ({
   Win:         {c:"#188918", bg:"#eaf7ea"},
   Completed:   {c:"#6a6d70", bg:"#f4f4f4"},
   Active:      {c:C.ok,   bg:C.okBg},
-  "Posted":              {c:"#107e3e", bg:"#ecf8f0"},
-  "Converted to Invoice":{c:"#0a6ed1", bg:"#dff0fd"},
-  "Cleared":             {c:"#6a6d70", bg:"#f4f4f4"},
-  "Supplier DPR":        {c:"#c87941", bg:"#fef6ee"},
+  "Posted":              {c:C.ok,    bg:C.okBg},
+  "Converted to Invoice":{c:C.info,  bg:C.infoBg},
+  "Cleared":             {c:C.draft, bg:C.draftBg},
+  "Supplier DPR":        {c:C.gold,  bg:C.warnBg},
 });
 export let STC = buildSTC();
 export const applyTheme = mode => { C = mode==="dark"?DARK:LIGHT; STC = buildSTC(); };
@@ -735,13 +776,13 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
   };
   return (
     <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.45)"}}>
-      <div style={{background:"#fff",borderRadius:4,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",width:"min(880px,95vw)",maxHeight:"85vh",display:"flex",flexDirection:"column",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div style={{background:C.card,borderRadius:4,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",width:"min(880px,95vw)",maxHeight:"85vh",display:"flex",flexDirection:"column",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
         {/* Title + tabs */}
-        <div style={{padding:"14px 16px 0",borderBottom:"1px solid #e5e5e5"}}>
-          <div style={{fontSize:16,fontWeight:700,color:"#32363a",marginBottom:10}}>{title}</div>
+        <div style={{padding:"14px 16px 0",borderBottom:`1px solid ${C.border}`}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.t1,marginBottom:10}}>{title}</div>
           <div style={{display:"flex"}}>
             {(["sel","cond"] as const).map((t,i)=>(
-              <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",cursor:"pointer",padding:"8px 16px 10px",fontSize:14,color:tab===t?"#0a6ed1":"#6a6d70",fontFamily:"inherit",fontWeight:tab===t?600:400,borderBottom:`2px solid ${tab===t?"#0a6ed1":"transparent"}`,marginBottom:-1}}>
+              <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",cursor:"pointer",padding:"8px 16px 10px",fontSize:14,color:tab===t?C.info:C.t2,fontFamily:"inherit",fontWeight:tab===t?600:400,borderBottom:`2px solid ${tab===t?C.info:"transparent"}`,marginBottom:-1}}>
                 {i===0?"Search and Select":"Define Conditions"}
               </button>
             ))}
@@ -754,45 +795,45 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
               <div style={{padding:"12px 16px 6px",display:"flex",gap:8,alignItems:"center"}}>
                 <div style={{flex:1,position:"relative"}}>
                   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search"
-                    style={{width:"100%",height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 30px 0 8px",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
-                  <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><SapIcon name="search" size={14} color="#6a6d70"/></span>
+                    style={{width:"100%",height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 30px 0 8px",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none",background:C.field,color:C.t1}}/>
+                  <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><SapIcon name="search" size={14} color={C.t2}/></span>
                 </div>
-                <button style={{background:"#0a6ed1",color:"#fff",border:"1px solid #0854a0",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>Go</button>
-                <button style={{background:"none",border:"none",color:"#0a6ed1",fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>Show Filters</button>
+                <button style={{background:C.primary,color:"#fff",border:`1px solid ${C.primaryDk}`,borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>Go</button>
+                <button style={{background:"none",border:"none",color:C.info,fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>Show Filters</button>
               </div>
               <div style={{padding:"2px 16px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:14,fontWeight:700,color:"#32363a"}}>Items ({filtered.length})</span>
-                <SapIcon name="copy" size={15} color="#6a6d70"/>
+                <span style={{fontSize:14,fontWeight:700,color:C.t1}}>Items ({filtered.length})</span>
+                <SapIcon name="copy" size={15} color={C.t2}/>
               </div>
-              <div style={{flex:1,overflow:"auto",borderTop:"1px solid #e5e5e5"}}>
+              <div style={{flex:1,overflow:"auto",borderTop:`1px solid ${C.border}`}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                   <thead>
-                    <tr style={{background:"#f7f7f7",position:"sticky",top:0,zIndex:1}}>
-                      <th style={{width:36,padding:"7px 8px 7px 14px",borderBottom:"1px solid #e5e5e5",textAlign:"center"}}>
-                        <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",accentColor:"#0854a0"}}/>
+                    <tr style={{background:C.subtle,position:"sticky",top:0,zIndex:1}}>
+                      <th style={{width:36,padding:"7px 8px 7px 14px",borderBottom:`1px solid ${C.border}`,textAlign:"center"}}>
+                        <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",accentColor:C.primaryDk}}/>
                       </th>
                       {cols.map(c=>(
-                        <th key={c.key} style={{padding:"7px 10px",textAlign:"left",borderBottom:"1px solid #e5e5e5",color:"#6a6d70",fontSize:12,fontWeight:700,whiteSpace:"nowrap",width:c.width,maxWidth:c.width}}>
-                          {c.label} <span style={{color:"#aaa",fontSize:9}}>▲</span>
+                        <th key={c.key} style={{padding:"7px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,color:C.t2,fontSize:12,fontWeight:700,whiteSpace:"nowrap",width:c.width,maxWidth:c.width}}>
+                          {c.label} <span style={{color:C.t2,fontSize:9}}>▲</span>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((r,i)=>{const key=r[keyField];const sel=localSel.includes(key);return(
-                      <tr key={key} onClick={()=>toggleRow(key)} style={{background:sel?"#e8f3fd":i%2===0?"#fff":"#fafafa",cursor:"pointer"}}
-                        onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLElement).style.background="#f0f7ff";}}
-                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=sel?"#e8f3fd":i%2===0?"#fff":"#fafafa";}}>
-                        <td style={{padding:"7px 8px 7px 14px",borderBottom:"1px solid #f0f0f0",textAlign:"center"}}>
-                          <input type="checkbox" checked={sel} onChange={()=>toggleRow(key)} onClick={e=>e.stopPropagation()} style={{cursor:"pointer",accentColor:"#0854a0"}}/>
+                      <tr key={key} onClick={()=>toggleRow(key)} style={{background:sel?C.selection:i%2===0?C.card:C.subtle,cursor:"pointer"}}
+                        onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLElement).style.background=C.hover;}}
+                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=sel?C.selection:i%2===0?C.card:C.subtle;}}>
+                        <td style={{padding:"7px 8px 7px 14px",borderBottom:`1px solid ${C.border}`,textAlign:"center"}}>
+                          <input type="checkbox" checked={sel} onChange={()=>toggleRow(key)} onClick={e=>e.stopPropagation()} style={{cursor:"pointer",accentColor:C.primaryDk}}/>
                         </td>
                         {cols.map((c,ci)=>(
-                          <td key={c.key} style={{padding:"7px 10px",borderBottom:"1px solid #f0f0f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:c.width||140,color:ci===0?"#0a6ed1":"#32363a",fontWeight:ci===0?600:400}}>
+                          <td key={c.key} style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:c.width||140,color:ci===0?C.info:C.t1,fontWeight:ci===0?600:400}}>
                             {r[c.key]??""}</td>
                         ))}
                       </tr>
                     );})}
-                    {filtered.length===0&&<tr><td colSpan={cols.length+1} style={{textAlign:"center",padding:"28px",color:"#8c8c8c",fontSize:13}}>No items found.</td></tr>}
+                    {filtered.length===0&&<tr><td colSpan={cols.length+1} style={{textAlign:"center",padding:"28px",color:C.t2,fontSize:13}}>No items found.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -800,47 +841,47 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
           ):(
             <div style={{padding:16,flex:1,overflow:"auto"}}>
               <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
-                <select value={condOp} onChange={e=>setCondOp(e.target.value)} style={{height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>
+                <select value={condOp} onChange={e=>setCondOp(e.target.value)} style={{height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",cursor:"pointer",background:C.field,color:C.t1}}>
                   {VH_OPS.map(o=><option key={o}>{o}</option>)}
                 </select>
                 {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Value…"
-                  style={{flex:1,height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",outline:"none"}}/>}
-                <button onClick={addCond} style={{background:"#0a6ed1",color:"#fff",border:"none",borderRadius:4,height:32,padding:"0 14px",fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:600}}>Add Condition</button>
+                  style={{flex:1,height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",outline:"none",background:C.field,color:C.t1}}/>}
+                <button onClick={addCond} style={{background:C.primary,color:"#fff",border:"none",borderRadius:4,height:32,padding:"0 14px",fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:600}}>Add Condition</button>
               </div>
               {conds.length>0?(
-                <div style={{border:"1px solid #e5e5e5",borderRadius:4,overflow:"hidden"}}>
+                <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
                   {conds.map((c,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<conds.length-1?"1px solid #f0f0f0":"none",background:i%2===0?"#fff":"#fafafa",gap:8}}>
-                      <span style={{fontSize:12,color:"#6a6d70",minWidth:120}}>{c.op}</span>
-                      <span style={{fontSize:13,color:"#32363a",flex:1}}>{c.val||<em style={{color:"#aaa"}}>any</em>}</span>
-                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#cc1919",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>×</button>
+                    <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<conds.length-1?`1px solid ${C.border}`:"none",background:i%2===0?C.card:C.subtle,gap:8}}>
+                      <span style={{fontSize:12,color:C.t2,minWidth:120}}>{c.op}</span>
+                      <span style={{fontSize:13,color:C.t1,flex:1}}>{c.val||<em style={{color:C.t2}}>any</em>}</span>
+                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>×</button>
                     </div>
                   ))}
                 </div>
-              ):<div style={{color:"#8c8c8c",fontSize:13,textAlign:"center",padding:32}}>No conditions defined.</div>}
+              ):<div style={{color:C.t2,fontSize:13,textAlign:"center",padding:32}}>No conditions defined.</div>}
             </div>
           )}
         </div>
         {/* Selected tokens bar */}
-        <div style={{padding:"8px 16px",borderTop:"1px solid #e5e5e5",background:"#fafafa"}}>
-          <div style={{fontSize:12,color:"#6a6d70",marginBottom:5}}>
+        <div style={{padding:"8px 16px",borderTop:`1px solid ${C.border}`,background:C.subtle}}>
+          <div style={{fontSize:12,color:C.t2,marginBottom:5}}>
             {localSel.length===0&&conds.length===0?"No Items or Conditions Selected":`${localSel.length>0?`${localSel.length} Item${localSel.length!==1?"s":""}`:""} ${conds.length>0?`${conds.length} Condition${conds.length!==1?"s":""}`:""} Selected`}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,minHeight:30,border:"1px solid #bfbfbf",borderRadius:4,padding:"3px 8px",background:"#fff",flexWrap:"wrap"}}>
-            {localSel.length===0&&conds.length===0&&<span style={{color:"#bfbfbf",fontSize:12}}>No selection</span>}
+          <div style={{display:"flex",alignItems:"center",gap:6,minHeight:30,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"3px 8px",background:C.field,flexWrap:"wrap"}}>
+            {localSel.length===0&&conds.length===0&&<span style={{color:C.t2,fontSize:12}}>No selection</span>}
             {localSel.map(key=>(
-              <span key={key} style={{display:"inline-flex",alignItems:"center",gap:3,background:"#e8f3fd",border:"1px solid #bdd6f0",borderRadius:10,padding:"1px 8px 1px 8px",fontSize:12,color:"#0854a0",whiteSpace:"nowrap"}}>
+              <span key={key} style={{display:"inline-flex",alignItems:"center",gap:3,background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 8px 1px 8px",fontSize:12,color:C.info,whiteSpace:"nowrap"}}>
                 {getLabel(key)}
-                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:"#0854a0",padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>×</button>
+                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:C.info,padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>×</button>
               </span>
             ))}
-            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:"#8c8c8c",fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">×</button>}
+            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">×</button>}
           </div>
         </div>
         {/* Footer */}
-        <div style={{padding:"10px 16px",display:"flex",justifyContent:"flex-end",gap:8,borderTop:"1px solid #e5e5e5"}}>
-          <button onClick={onClose} style={{background:"#fff",border:"1px solid #bfbfbf",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",cursor:"pointer",color:"#32363a"}}>Cancel</button>
-          <button onClick={confirm} style={{background:"#0a6ed1",border:"1px solid #0854a0",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer",color:"#fff"}}>OK</button>
+        <div style={{padding:"10px 16px",display:"flex",justifyContent:"flex-end",gap:8,borderTop:`1px solid ${C.border}`}}>
+          <button onClick={onClose} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",cursor:"pointer",color:C.t1}}>Cancel</button>
+          <button onClick={confirm} style={{background:C.primary,border:`1px solid ${C.primaryDk}`,borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer",color:"#fff"}}>OK</button>
         </div>
       </div>
     </div>
@@ -851,7 +892,7 @@ export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…
   <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:28,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 4px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
     {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
     {selected.map(k=>(
-      <span key={k} style={{display:"inline-flex",alignItems:"center",background:"#e8f3fd",border:"1px solid #bdd6f0",borderRadius:10,padding:"1px 7px",fontSize:11,color:"#0854a0",whiteSpace:"nowrap"}}>{getLabel(k)}</span>
+      <span key={k} style={{display:"inline-flex",alignItems:"center",background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 7px",fontSize:11,color:C.info,whiteSpace:"nowrap"}}>{getLabel(k)}</span>
     ))}
     <button onClick={e=>{e.stopPropagation();onOpen();}} style={{position:"absolute",right:2,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:2,display:"flex",alignItems:"center"}}>
       <SapIcon name="value-help" size={14} color="#6a6d70"/>
