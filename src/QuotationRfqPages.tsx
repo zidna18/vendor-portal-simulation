@@ -272,6 +272,18 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
   const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
+  const [detailQt,setDetailQt]=useState<any>(null);
+  const [qtTab,setQtTab]=useState("general");
+  const [split,setSplit]=useState(48);
+  const containerRef=useRef<HTMLDivElement>(null);
+  const onSplitterDrag=(e)=>{
+    e.preventDefault();
+    const startX=e.clientX,startSplit=split;
+    const containerW=containerRef.current?.offsetWidth||window.innerWidth;
+    const onMove=(me)=>{const dx=me.clientX-startX;setSplit(Math.min(75,Math.max(25,startSplit-(dx/containerW)*100)));};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  };
   const scrollRef=useRef<HTMLDivElement>(null);
   const drag=useRef({active:false,startX:0,scrollLeft:0});
   const onDragDown=(e)=>{if(!scrollRef.current)return;drag.current={active:true,startX:e.pageX-scrollRef.current.offsetLeft,scrollLeft:scrollRef.current.scrollLeft};scrollRef.current.style.cursor="grabbing";};
@@ -372,7 +384,8 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const gridCols2=colW2.map(w=>`${w}px`).join(" ");
 
   return (
-    <div style={{padding:pg()}}>
+    <div ref={containerRef} style={{display:"flex",alignItems:"flex-start",overflow:"hidden",width:"100%"}}>
+    <div style={{flex:detailQt?`0 0 ${100-split}%`:"1",padding:pg(),overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Management – All Vendors</div>
@@ -516,9 +529,9 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                 <div style={{padding:"8px 10px",fontSize:13,color:C.t2,display:"flex",alignItems:"center"}}>{fmtDate(qt.validUntil)||"—"}</div>
                 {/* total */}
                 <div style={{padding:"8px 10px",fontSize:13,fontWeight:700,color:C.t1,display:"flex",alignItems:"center"}}>{idr(qt.totalAmt)}</div>
-                {/* expand arrow */}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0"}}>
-                  <span style={{fontSize:16,color:"#32363a",fontWeight:300,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>›</span>
+                {/* detail panel arrow */}
+                <div onClick={e=>{e.stopPropagation();setDetailQt(qt);setQtTab("general");}} style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 0",cursor:"pointer"}}>
+                  <span style={{fontSize:16,color:detailQt?.id===qt.id?C.primary:"#32363a",fontWeight:detailQt?.id===qt.id?700:300}}>›</span>
                 </div>
               </div>
 
@@ -575,7 +588,224 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
         })}
       </div>
       </div>
-    </div>
+    </div>{/* end left panel */}
+
+    {detailQt&&<>
+      {/* Splitter */}
+      <div onMouseDown={onSplitterDrag} style={{width:8,flexShrink:0,cursor:"col-resize",display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderLeft:`1px solid ${C.border}`,borderRight:`1px solid ${C.border}`,userSelect:"none",alignSelf:"stretch",zIndex:5}}>
+        <div style={{display:"flex",flexDirection:"column",gap:3,pointerEvents:"none"}}>
+          {[0,1,2,3,4].map(i=><div key={i} style={{width:3,height:3,borderRadius:"50%",background:C.t2,opacity:.5}}/>)}
+        </div>
+      </div>
+
+      {/* Detail Panel */}
+      {(()=>{
+        const qt=detailQt;
+        const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+        const rfq=rfqs.find(r=>r.id===qt.rfqId);
+        const rfqSapNo=rfq?(rfq.sapRfqNo||`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`):null;
+        const items=qt.items||[];
+        const TABS=["general","payment","items","notes","attachments","approval"];
+        const TAB_LABELS={general:"General Information",payment:"Delivery and Payment Terms",items:`Items (${items.length})`,notes:"Notes",attachments:"Attachments",approval:"Approval Details"};
+        const field=(label,val,link?)=>(
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
+            {link?<a href="#" onClick={e=>e.preventDefault()} style={{fontSize:13,color:C.primary,fontWeight:500,textDecoration:"none"}}>{val}</a>
+            :<div style={{fontSize:13,color:C.t1,fontWeight:500}}>{val||"—"}</div>}
+          </div>
+        );
+        const sHdr=(title)=><div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>{title}</div>;
+        const APPROVAL_STEPS=[
+          {type:"⚙",name:"1. Automatic Release of Supplier Quotation",status:"Supplier Quotation Released",processor:"Workflow System",recipient:"Recipients determined automatically"},
+          {type:"👤",name:"2. Procurement Officer Review",status:qt.status==="Submitted"?"Pending":qt.status==="Accepted"||qt.status==="Win"||qt.status==="Completed"?"Approved":"In Progress",processor:(VENDORS[qt.vendorId] as any)?.name||qt.vendorName,recipient:"Procurement Officer"},
+          {type:"👤",name:"3. Senior Buyer Approval",status:qt.status==="Win"||qt.status==="Completed"?"Approved":qt.status==="Accepted"?"In Review":"Pending",processor:"Siti Rahma",recipient:"Senior Buyer"},
+          {type:"👤",name:"4. Procurement Manager Final Approval",status:qt.status==="Completed"?"Approved":qt.status==="Win"?"In Review":"Pending",processor:"Ahmad Rizki",recipient:"Procurement Manager"},
+        ];
+        return(
+        <div style={{flex:`0 0 ${split}%`,position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",boxShadow:"-2px 0 10px rgba(0,0,0,0.08)"}}>
+          {/* Header */}
+          <div style={{padding:"14px 16px 0",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:700,color:C.t1}}>Quotation</div>
+                <div style={{fontSize:12,color:C.t2,fontFamily:"monospace",marginTop:2}}>{sapNo}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                <Badge s={qt.status}/>
+                <button onClick={()=>setDetailQt(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 2px"}}>×</button>
+              </div>
+            </div>
+            {/* Created by / Net Value / Bidder row */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 8px",fontSize:11,marginBottom:10}}>
+              <div><span style={{color:C.t2}}>Created By: </span><span style={{color:C.primary,fontWeight:600}}>{qt.vendorName}</span></div>
+              <div><span style={{color:C.t2}}>Created On: </span><span style={{color:C.t1}}>{fmtDate(qt.submittedDate)||"—"}</span></div>
+              <div><span style={{color:C.t2}}>Bidder: </span><span style={{color:C.primary,fontWeight:600}}>{qt.vendorName}</span></div>
+              <div style={{gridColumn:"1/-1",display:"flex",gap:16,marginTop:4}}>
+                <div><span style={{fontSize:12,color:C.t2}}>Net Value: </span><span style={{fontSize:14,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span><span style={{fontSize:11,color:C.t2,marginLeft:4}}>IDR</span></div>
+              </div>
+            </div>
+            {/* Tabs */}
+            <div style={{display:"flex",overflowX:"auto",gap:0}}>
+              {TABS.map(t=>(
+                <button key={t} onClick={()=>setQtTab(t)} style={{background:"none",border:"none",borderBottom:qtTab===t?`2px solid ${C.primary}`:"2px solid transparent",color:qtTab===t?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:qtTab===t?700:400,cursor:"pointer",padding:"8px 12px",whiteSpace:"nowrap",marginBottom:-1}}>
+                  {TAB_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div style={{flex:1,overflowY:"auto",padding:16}}>
+
+            {qtTab==="general"&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                  <div>
+                    {sHdr("Basic Data")}
+                    {field("Type","Internal Quotation")}
+                    {field("Supplier/Bidder",qt.vendorName,true)}
+                    {field("Address",(VENDORS[qt.vendorId] as any)?.address||"Indonesia")}
+                    {field("Country/Region Key","Indonesia")}
+                    {field("Quotation Submission Date",fmtDate(qt.submittedDate))}
+                  </div>
+                  <div>
+                    {sHdr("Request for Quotation")}
+                    {field("RFQ",rfqSapNo?`Int. Sourcing Req. (${rfqSapNo})`:(rfq?.title||qt.rfqId),true)}
+                    {field("Quotation Deadline",fmtDate(qt.validUntil))}
+                    {field("RFQ Description",rfq?.title||qt.rfqTitle)}
+                    {field("RFQ Number",qt.rfqId)}
+                  </div>
+                  <div>
+                    {sHdr("Follow-On Document")}
+                    {field("Follow-On Document Type","PO Project (PO03)")}
+                    {field("SAP Quotation No",sapNo)}
+                    {field("Status",qt.status)}
+                    {field("Valid Until",fmtDate(qt.validUntil))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {qtTab==="payment"&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 24px"}}>
+                  <div>
+                    {sHdr("Payment Terms")}
+                    {field("Payment Terms","Due within 14 Days (Z014)")}
+                    {field("Days 1","14")}
+                    {field("Days 2","0")}
+                    {field("Days Net","0")}
+                  </div>
+                  <div>
+                    {sHdr("Cash Discount")}
+                    {field("CD Percentage 1","0.000")}
+                    {field("CD Percentage 2","0.000")}
+                    {field("Incoterms Version","Incoterms 2020 (2020)")}
+                    {field("Incoterms","Ex Works (EXW)")}
+                  </div>
+                  <div>
+                    {sHdr("Incoterms Locations")}
+                    {field("Incoterms Location 1","Ex-Work Toko")}
+                    {field("Incoterms Location 2","—")}
+                    {field("Currency","Indonesian Rupiah (IDR)")}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {qtTab==="items"&&(
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:10}}>Items ({items.length}) <span style={{fontSize:12,fontWeight:400,color:C.primary,marginLeft:8}}>Standard ▾</span></div>
+                {items.length===0&&<div style={{color:C.t2,fontSize:13}}>No items.</div>}
+                {items.map((it,i)=>{
+                  const rfqItem=rfq?.items?.[i];
+                  return(
+                  <div key={i} style={{border:`1px solid ${C.border}`,borderRadius:6,marginBottom:8,overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr 80px 80px 80px 80px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2}}>#</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2}}>Short Text</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2}}>Material</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"right"}}>Req. Qty</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"right"}}>Qt. Qty</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"right"}}>Awarded</div>
+                      <div style={{padding:"6px 8px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"right"}}>UoM</div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"40px 1fr 1fr 80px 80px 80px 80px",background:C.card}}>
+                      <div style={{padding:"8px",fontSize:12,fontWeight:700,color:C.t2}}>{String((i+1)*10).padStart(2,"0")}</div>
+                      <div style={{padding:"8px",fontSize:13,color:C.t1,fontWeight:600}}>{it.desc}</div>
+                      <div style={{padding:"8px",fontSize:12,color:C.primary,fontFamily:"monospace"}}>{rfqItem?.materialNo||"—"}</div>
+                      <div style={{padding:"8px",fontSize:12,color:C.t1,textAlign:"right"}}>{rfqItem?.qty||it.qty}</div>
+                      <div style={{padding:"8px",fontSize:12,color:C.t1,textAlign:"right"}}>{it.qty}</div>
+                      <div style={{padding:"8px",fontSize:12,color:qt.status==="Win"||qt.status==="Completed"?C.ok:C.t2,textAlign:"right",fontWeight:700}}>{qt.status==="Win"||qt.status==="Completed"?it.qty:"—"}</div>
+                      <div style={{padding:"8px",fontSize:12,color:C.t2,textAlign:"right"}}>{it.uom}</div>
+                    </div>
+                    <div style={{padding:"8px 12px",background:"rgba(0,112,242,0.04)",borderTop:`1px solid ${C.border}`,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,fontSize:12}}>
+                      <div><span style={{color:C.t2}}>Net Order Price: </span><span style={{fontWeight:600,color:C.t1}}>{idr(it.unitPrice)} IDR</span></div>
+                      <div><span style={{color:C.t2}}>Quotation Net Value: </span><span style={{fontWeight:600,color:C.t1}}>{idr(it.total)} IDR</span></div>
+                      <div><span style={{color:C.t2}}>Purchasing Info Record: </span><span style={{color:C.t2}}>—</span></div>
+                    </div>
+                  </div>
+                );})}
+              </div>
+            )}
+
+            {qtTab==="notes"&&(
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:10}}>Notes (0)</div>
+                <div style={{color:C.t2,fontSize:13,textAlign:"center",padding:"24px 0"}}>{qt.notes||"No Notes Available"}</div>
+              </div>
+            )}
+
+            {qtTab==="attachments"&&(
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:10}}>Attachments ({qt.files?.length||0})</div>
+                {(!qt.files||qt.files.length===0)&&<div style={{color:C.t2,fontSize:13,textAlign:"center",padding:"24px 0"}}>No attachments.</div>}
+                {qt.files?.map(f=>(
+                  <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:`1px solid ${C.border}`,borderRadius:6,marginBottom:8,background:C.subtle}}>
+                    <SapIcon name="document" size={22} color={C.primary}/>
+                    <div>
+                      <div style={{fontSize:13,color:C.primary,fontWeight:600}}>{f}</div>
+                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>Uploaded By: {qt.vendorName} · Source: DMS</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {qtTab==="approval"&&(
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12}}>Workflow Steps</div>
+                <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"36px 1fr 120px 140px 160px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                    {["Type","Name","Status","Processors","Recipients"].map((h,i)=>(
+                      <div key={i} style={{padding:"8px 10px",fontSize:11,fontWeight:700,color:C.t2}}>{h}</div>
+                    ))}
+                  </div>
+                  {APPROVAL_STEPS.map((step,i)=>(
+                    <div key={i} style={{display:"grid",gridTemplateColumns:"36px 1fr 120px 140px 160px",borderBottom:i<APPROVAL_STEPS.length-1?`1px solid ${C.border}`:"none",background:C.card}}>
+                      <div style={{padding:"10px",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>{step.type}</div>
+                      <div style={{padding:"10px",fontSize:13,color:C.t1,fontWeight:600}}>{step.name}</div>
+                      <div style={{padding:"10px"}}>
+                        <span style={{fontSize:11,padding:"2px 8px",borderRadius:10,fontWeight:700,
+                          background:step.status==="Approved"?C.okBg:step.status==="In Review"||step.status==="In Progress"?C.warnBg:step.status.includes("Released")?C.infoBg:C.subtle,
+                          color:step.status==="Approved"?C.ok:step.status==="In Review"||step.status==="In Progress"?C.warn:step.status.includes("Released")?C.info:C.t2}}>
+                          {step.status}
+                        </span>
+                      </div>
+                      <div style={{padding:"10px",fontSize:12,color:step.processor==="Workflow System"?C.primary:C.t1}}>{step.processor}</div>
+                      <div style={{padding:"10px",fontSize:12,color:C.t2}}>{step.recipient}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+        );
+      })()}
+    </>}
+  </div>
   );
 };
 
@@ -632,7 +862,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     e.preventDefault();
     const startX=e.clientX,startSplit=split;
     const containerW=containerRef.current?.offsetWidth||window.innerWidth;
-    const onMove=(me)=>{const dx=me.clientX-startX;setSplit(Math.min(75,Math.max(25,startSplit+(dx/containerW)*100)));};
+    const onMove=(me)=>{const dx=me.clientX-startX;setSplit(Math.min(75,Math.max(25,startSplit-(dx/containerW)*100)));};
     const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
   };
@@ -1175,6 +1405,6 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         );
       })()}
     </>}
-  </div>{/* end FCL container */}
+  </div>
   );
 };
