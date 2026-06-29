@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -1033,6 +1033,9 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     submittedFrom:"",submittedTo:"",
   };
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  const [expanded,setExpanded]=useState<Set<string>>(new Set());
+  const [allExpanded,setAllExpanded]=useState(false);
+  const toggleExpanded=(id:string)=>setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
@@ -1215,6 +1218,11 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400}}>({mine.length})</span>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(mine.map((i:any)=>i.id)));setAllExpanded(true);}}}
+              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+            </button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
             <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
               <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
             </button>
@@ -1229,6 +1237,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:900,tableLayout:"fixed",fontSize:FS.sm}}>
             <colgroup>
+              <col style={{width:28}}/>
               <col style={{width:32}}/>
               {COL_DEFS.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
@@ -1236,6 +1245,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
             <thead>
               <tr style={{background:TK.hdrBg,height:32}}>
+                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:28}}/>
                 <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
                   <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                 </th>
@@ -1258,7 +1268,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
             <tbody>
               {mine.length===0?(
-                <tr><td colSpan={11}>
+                <tr><td colSpan={12}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:C.t2,fontSize:FS.base}}>
                     <SapIcon name="document" size={36} color={C.t2}/>
                     <span style={{fontSize:FS.base,color:C.t2}}>No items found.</span>
@@ -1268,7 +1278,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                   ?grpResult.rows
                   :grpResult.flatMap((g:any)=>[{__grpHdr:true,key:g.key,groupKey:g.groupKey,count:g.rows.length},...g.rows])
                 )(buildGroups(mine,colGroup,COL_DEFS.map(c=>c.key)))).map((inv:any)=>{
-                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={11} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
+                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={12} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id);
                 const isHov=hovRow===inv.id;
                 const rowBg=view?.id===inv.id?C.selection:isSel?C.selection:isHov?TK.hovBg:TK.rowBg;
@@ -1277,12 +1287,19 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                   borderBottom:`1px solid ${TK.rowBorder}`,
                   fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle",
                 };
-                return(
-                  <tr key={inv.id}
+                const isExpanded=expanded.has(inv.id);
+                const hasItems=inv.items&&inv.items.length>0;
+                return(<React.Fragment key={inv.id}>
+                  <tr
                     onMouseEnter={()=>setHovRow(inv.id)}
                     onMouseLeave={()=>setHovRow(null)}
                     style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
 
+                    <td style={{...cs,padding:0,textAlign:"center",width:28}}>
+                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,padding:"0 6px",fontSize:14,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28}}>
+                        {isExpanded?"▾":"▸"}
+                      </button>}
+                    </td>
                     <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
                       <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                     </td>
@@ -1355,7 +1372,40 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       ›
                     </td>
                   </tr>
-                );
+                  {isExpanded&&hasItems&&(
+                    <tr style={{background:C.bg}}>
+                      <td colSpan={12} style={{padding:0,borderBottom:`1px solid ${TK.rowBorder}`}}>
+                        <div style={{paddingLeft:60,paddingBottom:8,paddingTop:4,paddingRight:8}}>
+                          <table style={{width:"100%",borderCollapse:"collapse",fontSize:FS.xs,tableLayout:"auto"}}>
+                            <thead>
+                              <tr style={{background:"#e8f1fb",height:28}}>
+                                {["PO Number","PO Item","Qty","UoM","Material ID","Material Description","Unit Price","VAT Code"].map(h=>(
+                                  <th key={h} style={{padding:"0 0.5rem",fontWeight:700,color:"#0854a0",textAlign:h==="Qty"||h==="Unit Price"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:FS.xs}}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {inv.items.map((item:any,idx:number)=>(
+                                <tr key={idx} style={{background:idx%2===0?C.card:C.subtle}}>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,whiteSpace:"nowrap"}}>{item.poNo||"—"}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t2,fontSize:FS.xs}}>{item.poItem||"—"}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right"}}>{item.qty??""}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t2,fontSize:FS.xs}}>{item.uom||"—"}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,fontFamily:"monospace"}}>{item.materialId||"—"}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs}}>{item.materialDesc||"—"}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{fmtAmt(item.unitPrice,inv.currency)}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t2,fontSize:FS.xs}}>{item.vatCode||"—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>);
               })}
             </tbody>
           </table>

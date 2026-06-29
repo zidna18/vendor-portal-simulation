@@ -56,6 +56,40 @@ export const WHT_TYPES = [
   {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
 ];
 // ── Invoice seed generator ─────────────────────────────────────
+const _genItems = (poNumbers:string[], seed:number) => {
+  const MATS = [
+    {id:"MAT-OFF-001",desc:"A4 Paper 80gsm",              uom:"Ream",     p:50000},
+    {id:"MAT-OFF-002",desc:"Stationery & Office Supplies", uom:"Set",      p:250000},
+    {id:"MAT-IT-001", desc:"Laptop 14\" Core i7",          uom:"Unit",     p:8000000},
+    {id:"MAT-IT-002", desc:"Monitor 24\" LED",             uom:"Unit",     p:2500000},
+    {id:"MAT-IT-003", desc:"Wireless Keyboard & Mouse",    uom:"Set",      p:350000},
+    {id:"MAT-SVC-001",desc:"Maintenance Service",          uom:"Man-Day",  p:2500000},
+    {id:"MAT-SVC-002",desc:"Consulting Service",           uom:"Man-Hour", p:500000},
+    {id:"MAT-MFG-001",desc:"Steel Pipe 2\" Sch.40",        uom:"Meter",    p:180000},
+    {id:"MAT-MFG-002",desc:"Industrial Valve DN50",        uom:"Pcs",      p:750000},
+    {id:"MAT-CHM-001",desc:"Lubricant Oil 20L",            uom:"Drum",     p:1200000},
+    {id:"MAT-ELC-001",desc:"Cable NYY 4x10mm",             uom:"Meter",    p:95000},
+    {id:"MAT-PPE-001",desc:"Safety Helmet",                uom:"Pcs",      p:250000},
+    {id:"MAT-FUL-001",desc:"HSD Diesel Fuel",              uom:"Liter",    p:14000},
+    {id:"MAT-CLN-001",desc:"Cleaning Chemical Supplies",   uom:"Liter",    p:45000},
+    {id:"MAT-MED-001",desc:"First Aid Kit",                uom:"Kit",      p:350000},
+  ];
+  const VAT_CODES = ["V1","V1","V1","V2","V0"];
+  let s = (seed+1)*1013904223;
+  const rng = () => { s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
+  const ri = (a:number,b:number)=>Math.floor(rng()*(b-a+1))+a;
+  const numItems = ri(1,3);
+  const items:any[]=[];
+  for(let i=0;i<numItems;i++){
+    const po=poNumbers[Math.floor(rng()*poNumbers.length)];
+    const mat=MATS[ri(0,MATS.length-1)];
+    const qty=ri(2,50);
+    const unitPrice=Math.round(mat.p*(0.8+rng()*0.4)/1000)*1000;
+    items.push({poNo:po,poItem:String((i+1)*10).padStart(5,"0"),qty,uom:mat.uom,materialId:mat.id,materialDesc:mat.desc,unitPrice,vatCode:VAT_CODES[ri(0,VAT_CODES.length-1)]});
+  }
+  return items;
+};
+
 const _genInvoices = () => {
   const V = [
     {id:"10000001",name:"PT Maju Bersama",   pfx:"MJB"},
@@ -188,12 +222,14 @@ const _genInvoices = () => {
       submittedAt, confirmedAt,
       convertedDocNo, clearingDocNo,
       rejReason: status==="Rejected"?rp(["Missing supporting documents.","PO number mismatch. Please verify.","Duplicate invoice detected.","Amount exceeds PO value. Revise and resubmit.","Faktur Pajak not valid. Check tax document number."]):"",
+      items: _genItems(poNumbers, i),
     });
   }
   return rows;
 };
 
-export const INIT_INV = [
+export const INIT_INV = (() => {
+  const base = [
   { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Posted",               sapDocNo:"5100000001/2025",      postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
@@ -203,7 +239,9 @@ export const INIT_INV = [
   { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   ..._genInvoices(),
-];
+  ];
+  return base.map((inv:any,idx:number)=>inv.items?inv:{...inv,items:_genItems(inv.poNumbers,idx+100)});
+})();
 export const INIT_RFQS = [
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
     items:[
