@@ -799,13 +799,17 @@ const ALL_VENDOR_FILTER_FIELDS = [
 
 // ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
 const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScreen,onToggleFullScreen,panelFlex}) => {
+  const [activeTab,setActiveTab]=useState("general");
   const canEdit     = ["Draft","Rejected"].includes(view.status);
   const canWithdraw = view.status==="Submitted";
   const pos         = (view.poNumbers||[view.poNumber]).filter(Boolean);
-  const Lbl = ({children}:any) => <div style={{fontSize:11,fontWeight:400,color:C.t2,marginBottom:2,lineHeight:1.3}}>{children}</div>;
-  const Val = ({children}:any) => <div style={{fontSize:13,color:C.t1,lineHeight:1.5,wordBreak:"break-word"}}>{children||"—"}</div>;
+  const totalAmt    = Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0);
+
+  const Lbl = ({children}:any) => <div style={{fontSize:11,color:C.t2,marginBottom:2,lineHeight:1.3}}>{children}</div>;
+  const Val = ({children,bold,blue}:any) => <div style={{fontSize:13,color:blue?C.primary:C.t1,fontWeight:bold?700:400,lineHeight:1.5,wordBreak:"break-word"}}>{children||"—"}</div>;
   const Sep = () => <div style={{height:1,background:C.border,margin:"10px 0"}}/>;
-  const SHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase" as const,letterSpacing:1,marginBottom:8}}>{children}</div>;
+  const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:12,color:C.t1,borderBottom:`1px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:4}}>{children}</div>;
+
   const btnStyle = (active:boolean) => ({
     background:"transparent",border:"none",
     color:active?C.t1:"#bfbfbf",
@@ -814,188 +818,252 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
     height:36,padding:"0 10px",display:"inline-flex" as const,alignItems:"center" as const,
     gap:5,opacity:active?1:0.4,
   });
-  const iconBtn = (onClick:any,icon:string,title:string) => (
-    <button onClick={onClick} title={title} style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",flexShrink:0}}>
-      <SapIcon name={icon} size={14} color={C.t2}/>
-    </button>
-  );
 
-  // Attachments helpers
   const files = view.files||[];
-  const FILE_META:Record<string,{icon:string,size:string}> = {
-    "invoice.pdf":      {icon:"pdf-attachment", size:"124 KB"},
-    "faktur_pajak.pdf": {icon:"pdf-attachment", size:"87 KB"},
+  const FILE_META:Record<string,{size:string}> = {
+    "invoice.pdf":      {size:"124 KB"},
+    "faktur_pajak.pdf": {size:"87 KB"},
   };
-  const getFileMeta = (f:string) => FILE_META[f]||{icon:f.endsWith(".pdf")?"pdf-attachment":"document",size:"—"};
+  const getFileMeta = (f:string) => FILE_META[f]||{size:"—"};
   const uploadDate = view.submittedAt||view.invoiceDate||"";
+
+  const TABS = [
+    {id:"general",    label:"General Information"},
+    {id:"purch",      label:"Purch. Doc. References"},
+    {id:"tax",        label:"Tax"},
+    {id:"attachments",label:"Attachments"},
+    {id:"docflow",    label:"Document Flow"},
+  ];
 
   return (
     <div style={{flex:panelFlex||"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",borderLeft:`1px solid ${C.border}`,boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
 
-      {/* ── Header (same as BrmInvoice) ── */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
-        <div>
-          <div style={{fontSize:15,fontWeight:700,color:C.t1,display:"flex",alignItems:"center",gap:6}}>
-            {view.invoiceNo}
-            {view.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 5px"}}>DPR</span>}
-          </div>
-          <div style={{fontSize:11,color:C.t2,marginTop:1}}>{view.vendorName} · {view.id}</div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <Badge s={view.status}/>
-          {iconBtn(onToggleFullScreen,fullScreen?"exit-full-screen":"full-screen",fullScreen?"Restore":"Full Screen")}
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 4px",marginLeft:2}}>×</button>
-        </div>
-      </div>
-
-      {/* ── Action toolbar (same style as BrmInvoice) ── */}
-      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:`1px solid ${C.border}`,background:C.card,height:40,flexShrink:0}}>
-        <button style={btnStyle(canEdit)} disabled={!canEdit} onClick={()=>canEdit&&onEdit(view)}>
-          <SapIcon name="edit" size={14} color={canEdit?C.t1:"#bfbfbf"}/>Edit
-        </button>
-        <button style={btnStyle(canWithdraw)} disabled={!canWithdraw} onClick={()=>canWithdraw&&onWithdraw(view.id)}>
-          <SapIcon name="undo" size={14} color={canWithdraw?C.t1:"#bfbfbf"}/>Withdraw
-        </button>
-      </div>
-
-      {/* ── Body (flat scroll, same structure as BrmInvoice) ── */}
-      <div style={{padding:"16px 20px",flex:1,overflowY:"auto"}}>
-
-        {/* Fields grid */}
-        <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-          {([
-            ["Invoice No.",    view.invoiceNo],
-            ["Pre-Invoice ID", view.id],
-            ["Vendor",         view.vendorName],
-            ["Vendor ID",      view.vendorId],
-            ["Company Code",   view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],
-            ["Invoice Date",   fmtDate(view.invoiceDate)],
-            ["Due Date",       fmtDate(view.dueDate)],
-            ["Total Amount",   fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)],
-            ["Faktur Pajak",   view.taxDoc],
-            ["Status",         null],
-            ["Document Type",  null],
-          ] as [string,any][]).map(([l,val])=>(
-            <div key={l}><Lbl>{l}</Lbl>
-              {l==="Status"?<Badge s={view.status}/>
-              :l==="Document Type"?<Val>{view.invoiceType||"Invoice"}</Val>
-              :<Val>{val}</Val>}
+      {/* ── Page header: title + action buttons ── */}
+      <div style={{padding:"10px 16px 0",background:C.subtle,borderBottom:"none",flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.2}}>
+              {view.invoiceType==="Supplier DPR"?"Supplier DPR":"Supplier Invoice"}
             </div>
+            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{view.id}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+            <button style={btnStyle(canEdit)} disabled={!canEdit} onClick={()=>canEdit&&onEdit(view)}>
+              <SapIcon name="edit" size={13} color={canEdit?C.t1:"#bfbfbf"}/>Edit
+            </button>
+            <button style={btnStyle(canWithdraw)} disabled={!canWithdraw} onClick={()=>canWithdraw&&onWithdraw(view.id)}>
+              <SapIcon name="undo" size={13} color={canWithdraw?C.t1:"#bfbfbf"}/>Withdraw
+            </button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
+            <button onClick={onToggleFullScreen} title={fullScreen?"Restore":"Full Screen"} style={{width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer"}}>
+              <SapIcon name={fullScreen?"exit-full-screen":"full-screen"} size={13} color={C.t2}/>
+            </button>
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 2px"}}>×</button>
+          </div>
+        </div>
+
+        {/* ── Key info strip (Gross Invoice Amount / Invoicing Party / Status / Approval) ── */}
+        <div style={{display:"flex",gap:0,marginTop:10,borderTop:`1px solid ${C.border}`,paddingTop:10,flexWrap:"wrap",rowGap:8}}>
+          <div style={{paddingRight:20,borderRight:`1px solid ${C.border}`,marginRight:20}}>
+            <Lbl>Gross Invoice Amount</Lbl>
+            <div style={{fontSize:16,fontWeight:700,color:C.t1,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(totalAmt,view.currency)}</div>
+          </div>
+          <div style={{paddingRight:20,borderRight:`1px solid ${C.border}`,marginRight:20}}>
+            <Lbl>Invoicing Party</Lbl>
+            <div style={{fontSize:13,color:C.primary,fontWeight:600}}>{view.vendorName}</div>
+            <div style={{fontSize:11,color:C.t2}}>{view.vendorId}</div>
+          </div>
+          <div style={{paddingRight:20,borderRight:`1px solid ${C.border}`,marginRight:20}}>
+            <Lbl>Invoice Status</Lbl>
+            <Badge s={view.status}/>
+          </div>
+          <div>
+            <Lbl>Document Type</Lbl>
+            <Val>{view.invoiceType||"Invoice"}</Val>
+          </div>
+        </div>
+
+        {/* ── Tab bar ── */}
+        <div style={{display:"flex",gap:0,marginTop:10,borderBottom:`1px solid ${C.border}`}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+              background:"none",border:"none",cursor:"pointer",
+              padding:"6px 12px",fontSize:12,fontFamily:"inherit",
+              color:activeTab===t.id?C.primary:C.t2,
+              fontWeight:activeTab===t.id?700:400,
+              borderBottom:activeTab===t.id?`2px solid ${C.primary}`:"2px solid transparent",
+              marginBottom:-1,whiteSpace:"nowrap" as const,
+            }}>{t.label}</button>
           ))}
         </div>
+      </div>
 
-        {/* PO Numbers */}
-        <div style={{marginBottom:12}}>
-          <Lbl>PO Numbers</Lbl>
-          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
-            {pos.length?pos.map((po:any,i:number)=>(
-              <span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>
-            )):<Val/>}
+      {/* ── Tab content ── */}
+      <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+
+        {/* ── GENERAL INFORMATION ── */}
+        {activeTab==="general"&&<>
+          <SecHdr>Basic Data</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
+            <div><Lbl>Transaction</Lbl><Val>{view.invoiceType||"Invoice"}</Val></div>
+            <div><Lbl>Invoice Date</Lbl><Val>{fmtDate(view.invoiceDate)}</Val></div>
+            <div><Lbl>Invoicing Party</Lbl><Val blue>{view.vendorName}</Val></div>
+            <div><Lbl>Company Code</Lbl><Val>{view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"}</Val></div>
+            <div><Lbl>Posting Date</Lbl><Val>{view.postedAt?fmtDate(view.postedAt):view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
+            <div><Lbl>Reference</Lbl><Val>{view.invoiceNo}</Val></div>
+            <div><Lbl>Gross Invoice Amount</Lbl><Val bold>{fmtAmt(totalAmt,view.currency)}</Val></div>
+            <div><Lbl>Due Date</Lbl><Val>{fmtDate(view.dueDate)}</Val></div>
+            <div><Lbl>Faktur Pajak</Lbl><Val>{view.taxDoc||"—"}</Val></div>
           </div>
-        </div>
 
-        {/* SAP doc card */}
-        {view.sapDocNo&&(
-          <div style={{marginBottom:12,padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
-            <SapIcon name="connected" size={14} color="#107e3e"/>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
-              <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
-              {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+          <SecHdr>Status &amp; Workflow</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
+            <div><Lbl>Invoice Status</Lbl><Badge s={view.status}/></div>
+            <div><Lbl>Approval Status</Lbl><Val>{["Confirmed","Posted","Converted to Invoice","Cleared"].includes(view.status)?"Approved":["Submitted","Under Review"].includes(view.status)?"Pending":"—"}</Val></div>
+            <div><Lbl>Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
+            <div><Lbl>Pre-Invoice ID</Lbl><Val>{view.id}</Val></div>
+            <div><Lbl>Vendor ID</Lbl><Val>{view.vendorId}</Val></div>
+            <div><Lbl>Approval Date</Lbl><Val>{view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
+          </div>
+
+          {view.status==="Rejected"&&view.rejReason&&(
+            <div style={{marginBottom:12,padding:12,background:C.errBg,border:`1px solid ${C.err}44`,borderRadius:4}}>
+              <div style={{fontWeight:700,fontSize:12,color:C.err,marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color={C.err}/>Rejection Reason</div>
+              <div style={{fontSize:13,color:C.t1}}>{view.rejReason}</div>
             </div>
-          </div>
-        )}
-        {(view.convertedDocNo||view.clearingDocNo)&&(
-          <div style={{marginBottom:12,padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4}}>
-            {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
-            {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
-          </div>
-        )}
+          )}
 
-        <Sep/>
-        {/* Dates grid */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
-          <div><Lbl>Invoice Date</Lbl><Val>{fmtDate(view.invoiceDate)}</Val></div>
-          <div><Lbl>Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
-          <div><Lbl>Approval Date</Lbl><Val>{view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
-        </div>
+          <SecHdr>Description</SecHdr>
+          <div style={{fontSize:13,color:C.t1,lineHeight:1.5,marginBottom:16}}>{view.desc||"—"}</div>
 
-        <Sep/>
-        {/* Tax & Financial */}
-        <SHdr>Tax &amp; Financial Breakdown</SHdr>
-        <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-          <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
-          <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-          {(view.additionalFee||0)>0&&<>
-            <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
-            <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
-          </>}
-          {view.whtType&&<>
-            <div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
-            <div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div>
-            <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
-          </>}
-          <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-          <div><Lbl>Total Amount</Lbl><Val style={{fontWeight:700,color:C.primary}}>{fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)}</Val></div>
-        </div>
-
-        <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-
-        <Sep/>
-        {/* Attachments — UploadCollection style */}
-        <SHdr>Attachments</SHdr>
-        <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",marginBottom:14}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",background:C.subtle,borderBottom:files.length?`1px solid ${C.border}`:"none"}}>
-            <span style={{fontWeight:600,fontSize:12,color:C.t1}}>Uploaded ({files.length})</span>
-            {canEdit&&<span style={{fontSize:11,color:C.t2,flex:1}}>Add new files and press Start to upload:</span>}
-            {!canEdit&&<span style={{flex:1}}/>}
-            {canEdit&&<button style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:3,padding:"0 8px",fontSize:11,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Start</button>}
-            {canEdit&&<button style={{width:22,height:22,background:"none",border:`1px solid ${C.border}`,borderRadius:3,cursor:"pointer",fontSize:14,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
-          </div>
-          {files.length===0&&<div style={{padding:"20px",textAlign:"center",color:C.t2,fontSize:12}}>No attachments uploaded.</div>}
-          {files.map((f:string,i:number)=>{
-            const m=getFileMeta(f);
-            return(
-              <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
-                onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
-                onMouseLeave={e=>(e.currentTarget.style.background=C.card)}>
-                <div style={{flexShrink:0,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
-                  <SapIcon name={m.icon} size={18} color={C.primary}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <button onClick={()=>onPdf(f)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f}</button>
-                  <div style={{fontSize:11,color:C.t2,marginTop:1}}>
-                    Uploaded By: <span style={{color:C.t1}}>{view.vendorName||"Vendor"}</span>
-                    {uploadDate&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(uploadDate)}</span></>}
-                    {" "}· File Size: <span style={{color:C.t1}}>{m.size}</span>
-                  </div>
-                </div>
-                {canEdit&&<button title="Remove" style={{width:22,height:22,background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,borderRadius:3}}
-                  onMouseEnter={e=>(e.currentTarget.style.color=C.err)}
-                  onMouseLeave={e=>(e.currentTarget.style.color=C.t2)}>✕</button>}
+          {view.sapDocNo&&(
+            <div style={{padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <SapIcon name="connected" size={14} color="#107e3e"/>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
+                <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
+                {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+          {(view.convertedDocNo||view.clearingDocNo)&&(
+            <div style={{padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4,marginBottom:12}}>
+              {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
+              {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
+            </div>
+          )}
+        </>}
 
-        {/* Rejection reason */}
-        {view.status==="Rejected"&&view.rejReason&&(
-          <div style={{marginBottom:12,padding:12,background:C.errBg,border:`1px solid ${C.err}44`,borderRadius:4}}>
-            <div style={{fontWeight:700,fontSize:12,color:C.err,marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color={C.err}/>Rejection Reason</div>
-            <div style={{fontSize:13,color:C.t1}}>{view.rejReason}</div>
+        {/* ── PURCHASING DOCUMENT REFERENCES ── */}
+        {activeTab==="purch"&&<>
+          <SecHdr>PO Numbers</SecHdr>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
+            {pos.length?pos.map((po:any,i:number)=>(
+              <span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"3px 10px",fontSize:13,fontFamily:"monospace",color:C.t1}}>{po}</span>
+            )):<span style={{fontSize:13,color:C.t2}}>—</span>}
           </div>
-        )}
 
-        {/* DocFlow */}
-        <DocFlow inv={view}/>
+          {view.items&&view.items.length>0&&<>
+            <SecHdr>Items ({view.items.length})</SecHdr>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{background:"#e8f1fb"}}>
+                    {["#","Short Text / PO Item","Amount","Quantity","Tax Code","Tax Rate"].map(h=>(
+                      <th key={h} style={{padding:"5px 8px",fontWeight:700,color:"#0854a0",textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:11}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.items.map((item:any,idx:number)=>(
+                    <tr key={idx} style={{background:idx%2===0?C.card:C.subtle}}>
+                      <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{idx+1}</td>
+                      <td style={{padding:"4px 8px",color:C.t1,fontSize:11}}>
+                        <div style={{fontFamily:"monospace",fontSize:10,color:C.primary}}>{item.poNo||"—"} / {item.poItem||"—"}</div>
+                        <div style={{color:C.t1}}>{item.materialDesc||"—"}</div>
+                      </td>
+                      <td style={{padding:"4px 8px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600,color:C.t1,fontSize:11}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),view.currency)}</td>
+                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t1,fontSize:11}}>{item.qty??""} {item.uom||""}</td>
+                      <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{item.vatCode||"—"}</td>
+                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t2,fontSize:11}}>11.000%(VST)</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>}
+        </>}
 
-        {/* SAP Integration */}
-        <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
-          <strong>SAP Integration:</strong>{" "}
-          {view.invoiceType==="Supplier DPR"
-            ?<>Routes to <code>SAP Build Process Automation</code> for Down Payment workflow.</>
-            :<>Calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks in S/4HANA → SAP Flexible Workflow for posting approval.</>}
-        </div>
+        {/* ── TAX ── */}
+        {activeTab==="tax"&&<>
+          <SecHdr>Financial Breakdown</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount (PPN 11%)</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {(view.additionalFee||0)>0&&<>
+              <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
+              <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
+            </>}
+            <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+            <div><Lbl>Total Amount</Lbl><Val bold blue>{fmtAmt(totalAmt,view.currency)}</Val></div>
+          </div>
+          {view.whtType&&<>
+            <SecHdr>Withholding Tax</SecHdr>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+              <div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
+              <div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div>
+              <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
+            </div>
+          </>}
+          <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:4}}>
+            <strong>SAP Integration:</strong>{" "}
+            {view.invoiceType==="Supplier DPR"
+              ?<>Routes to <code>SAP Build Process Automation</code> for Down Payment workflow.</>
+              :<>Calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → SAP Flexible Workflow for posting approval.</>}
+          </div>
+        </>}
+
+        {/* ── ATTACHMENTS ── */}
+        {activeTab==="attachments"&&<>
+          <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",background:C.subtle,borderBottom:files.length?`1px solid ${C.border}`:"none"}}>
+              <span style={{fontWeight:600,fontSize:12,color:C.t1}}>Uploaded ({files.length})</span>
+              {canEdit&&<span style={{fontSize:11,color:C.t2,flex:1}}>Add new files and press Start to upload:</span>}
+              {!canEdit&&<span style={{flex:1}}/>}
+              {canEdit&&<button style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:3,padding:"0 8px",fontSize:11,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Start</button>}
+              {canEdit&&<button style={{width:22,height:22,background:"none",border:`1px solid ${C.border}`,borderRadius:3,cursor:"pointer",fontSize:14,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
+            </div>
+            {files.length===0&&<div style={{padding:"20px",textAlign:"center",color:C.t2,fontSize:12}}>No attachments uploaded.</div>}
+            {files.map((f:string,i:number)=>{
+              const m=getFileMeta(f);
+              return(
+                <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
+                  onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+                  onMouseLeave={e=>(e.currentTarget.style.background=C.card)}>
+                  <div style={{flexShrink:0,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
+                    <SapIcon name="pdf-attachment" size={18} color={C.primary}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <button onClick={()=>onPdf(f)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f}</button>
+                    <div style={{fontSize:11,color:C.t2,marginTop:1}}>
+                      Uploaded By: <span style={{color:C.t1}}>{view.vendorName||"Vendor"}</span>
+                      {uploadDate&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(uploadDate)}</span></>}
+                      {" "}· File Size: <span style={{color:C.t1}}>{m.size}</span>
+                    </div>
+                  </div>
+                  {canEdit&&<button title="Remove" style={{width:22,height:22,background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,borderRadius:3}}
+                    onMouseEnter={e=>(e.currentTarget.style.color=C.err)}
+                    onMouseLeave={e=>(e.currentTarget.style.color=C.t2)}>✕</button>}
+                </div>
+              );
+            })}
+          </div>
+        </>}
+
+        {/* ── DOCUMENT FLOW ── */}
+        {activeTab==="docflow"&&<>
+          <DocFlow inv={view}/>
+        </>}
 
       </div>
     </div>
@@ -1244,18 +1312,19 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:900,tableLayout:"fixed",fontSize:FS.sm}}>
             <colgroup>
-              <col style={{width:28}}/>
               <col style={{width:32}}/>
+              <col style={{width:20}}/>
               {COL_DEFS.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
             </colgroup>
 
             <thead>
               <tr style={{background:TK.hdrBg,height:32}}>
-                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:28}}/>
                 <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
                   <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                 </th>
+                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:20}}/>
+
                 {COL_DEFS.map((col,ci)=>{
                   const sortVal=colSort[col.key]||"none";
                   const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
@@ -1302,13 +1371,13 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                     onMouseLeave={()=>setHovRow(null)}
                     style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
 
-                    <td style={{...cs,padding:0,textAlign:"center",width:28}}>
-                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.primary,padding:0,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",width:28,height:36}}>
-                        <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
-                      </button>}
-                    </td>
                     <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
                       <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                    </td>
+                    <td style={{...cs,padding:0,textAlign:"center",width:20}}>
+                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.primary,padding:0,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",width:20,height:36}}>
+                        <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                      </button>}
                     </td>
 
                     <td style={cs}>
@@ -1940,17 +2009,18 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",minWidth:1000,tableLayout:"fixed",fontSize:FS.sm}}>
             <colgroup>
-              <col style={{width:28}}/>
               <col style={{width:32}}/>
+              <col style={{width:20}}/>
               {COL_DEFS_BRM.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
             </colgroup>
             <thead>
               <tr style={{background:TK.hdrBg,height:32}}>
-                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:28}}/>
                 <th style={{padding:"0 0 0 10px",borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"center"}}>
                   <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                 </th>
+                <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:20}}/>
+
                 {COL_DEFS_BRM.map(col=>{
                   const sortVal=colSort[col.key]||"none";
                   const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
@@ -1988,13 +2058,13 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 return(<React.Fragment key={inv.id}>
                   <tr onMouseEnter={()=>setHovRow(inv.id)} onMouseLeave={()=>setHovRow(null)}
                     style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
-                    <td style={{...cs,padding:0,textAlign:"center",width:28}}>
-                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.primary,padding:0,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",width:28,height:36}}>
-                        <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
-                      </button>}
-                    </td>
                     <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
                       <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                    </td>
+                    <td style={{...cs,padding:0,textAlign:"center",width:20}}>
+                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.primary,padding:0,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",width:20,height:36}}>
+                        <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                      </button>}
                     </td>
                     {/* Status — first data column */}
                     <td style={cs}>
