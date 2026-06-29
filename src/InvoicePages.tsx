@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -793,7 +793,7 @@ const ALL_VENDOR_FILTER_FIELDS = [
 ];
 
 // ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
-const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw}) => {
+const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScreen,onToggleFullScreen,panelFlex}) => {
   const [tab,setTab] = useState("general");
   const tabs = [
     {id:"general",   label:"General Information"},
@@ -817,21 +817,28 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw}) => {
   );
   const pos = (view.poNumbers||[view.poNumber]).filter(Boolean);
 
+  const iconBtn = (onClick:any, icon:string, title:string) => (
+    <button onClick={onClick} title={title} style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",flexShrink:0}}>
+      <SapIcon name={icon} size={14} color={C.t2}/>
+    </button>
+  );
+
   return (
-    <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",borderLeft:`1px solid ${C.border}`,background:C.card,boxShadow:"-2px 0 8px rgba(0,0,0,0.07)"}}>
+    <div style={{flex:panelFlex||"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden"}}>
 
       {/* ── Object Header ── */}
       <div style={{background:C.subtle,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
         {/* Title row */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px 8px"}}>
-          <div>
-            <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.2}}>{view.invoiceNo}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"10px 12px 8px"}}>
+          <div style={{minWidth:0,flex:1,marginRight:8}}>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{view.invoiceNo}</div>
             <div style={{fontSize:11,color:C.t2,marginTop:2}}>{view.id}</div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {canEdit&&<button onClick={()=>onEdit(view)} style={{background:"transparent",border:`1px solid ${C.primary}`,color:C.primary,borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28}}>Edit</button>}
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            {canEdit&&<button onClick={()=>onEdit(view)} style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28}}>Edit</button>}
             {canWithdraw&&<button onClick={()=>onWithdraw(view.id)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28}}>Withdraw</button>}
-            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:C.t2,lineHeight:1,padding:"0 2px",marginLeft:2,display:"flex",alignItems:"center"}}><SapIcon name="decline" size={16} color={C.t2}/></button>
+            {iconBtn(onToggleFullScreen, fullScreen?"exit-full-screen":"full-screen", fullScreen?"Restore":"Full Screen")}
+            {iconBtn(onClose, "decline", "Close")}
           </div>
         </div>
         {/* Key attribute chips */}
@@ -991,6 +998,21 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw}) => {
 export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
+  const [split,setSplit]=useState(60); // left panel %
+  const [fullScreen,setFullScreen]=useState(false);
+  const containerRef=useRef<HTMLDivElement>(null);
+  const onSplitterDrag=(e:React.MouseEvent)=>{
+    e.preventDefault();
+    const startX=e.clientX, startSplit=split;
+    const containerW=containerRef.current?.offsetWidth||window.innerWidth;
+    const onMove=(me:MouseEvent)=>{
+      const dx=me.clientX-startX;
+      setSplit(Math.min(75,Math.max(30,startSplit+(dx/containerW)*100)));
+    };
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  };
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
   const [vhOpen,setVhOpen]=useState<null|"companyCode"|"status"|"currency"|"whtType">(null);
   const [colSort,setColSort]=useState<Record<string,string>>({});
@@ -1095,8 +1117,8 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const FS={base:14,sm:12,xs:11};
 
   return (
-    <div style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
-      <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
+    <div ref={containerRef} style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif",overflow:"hidden"}}>
+      <div style={{flex:view&&!fullScreen?`0 0 ${split}%`:"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease",display:fullScreen?"none":"block"}}>
 
       <div style={{marginBottom:14}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1,letterSpacing:0.1}}>Invoice Management</div>
@@ -1344,7 +1366,24 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </div>
       </div>
       </div>
-      {view&&<VendorInvoiceDetailPanel view={view} onClose={()=>setView(null)} onPdf={setPdfView} onEdit={inv=>{setEd(inv);setForm(true);}} onWithdraw={withdraw}/>}
+      {view&&<>
+        {/* Draggable splitter */}
+        {!fullScreen&&(
+          <div onMouseDown={onSplitterDrag}
+            style={{width:8,flexShrink:0,cursor:"col-resize",display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderLeft:`1px solid ${C.border}`,borderRight:`1px solid ${C.border}`,userSelect:"none",alignSelf:"stretch",zIndex:5}}>
+            <div style={{display:"flex",flexDirection:"column",gap:3,pointerEvents:"none"}}>
+              {[0,1,2,3,4].map(i=><div key={i} style={{width:3,height:3,borderRadius:"50%",background:C.t2,opacity:0.5}}/>)}
+            </div>
+          </div>
+        )}
+        <VendorInvoiceDetailPanel
+          view={view} onClose={()=>{setView(null);setFullScreen(false);}}
+          onPdf={setPdfView} onEdit={inv=>{setEd(inv);setForm(true);}}
+          onWithdraw={withdraw} fullScreen={fullScreen}
+          onToggleFullScreen={()=>setFullScreen(f=>!f)}
+          panelFlex={fullScreen?"1":`0 0 ${100-split}%`}
+        />
+      </>}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
       {colMenu&&(
