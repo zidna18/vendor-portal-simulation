@@ -12,7 +12,7 @@ import { VendorHome, BrmHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
 
 // ── Shell Bar ──────────────────────────────────────────────────
-const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSettings}) => {
+const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const [menuOpen,setMenuOpen]=useState(false);
   const [avatarOpen,setAvatarOpen]=useState(false);
   const ac=avtColor(user.id); const ini=avtIni(user.name);
@@ -41,7 +41,6 @@ const Shell = ({user,onLogout,section,setSection,theme,onToggleTheme,onOpenSetti
           </div>
         )}
         <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
-          <button onClick={onToggleTheme} title="Toggle theme" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name={theme==="dark"?"brightness-high":"night-mode"} size={14} color="#fff"/></button>
           {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>}
           {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
           <div style={{position:"relative"}}>
@@ -206,54 +205,186 @@ const Login = ({onLogin}) => {
 };
 
 // ── Settings Modal ─────────────────────────────────────────────
-const SettingsModal = ({settings,onUpdate,onClose}) => {
-  const btnStyle = (active) => ({
-    display:"flex",alignItems:"center",gap:10,padding:"10px 14px",marginBottom:8,
-    borderRadius:6,border:`2px solid ${active?C.primary:C.border}`,
-    background:active?C.infoBg:C.card,cursor:"pointer",width:"100%",textAlign:"left" as const,
-    fontFamily:"inherit",
-  });
+const SettingsModal = ({settings,onUpdate,onClose,theme,onThemeChange,user}) => {
+  const [nav,setNav]=useState("appearance");
+
   const NUM_FMTS = [
-    {v:"comma", sample:"1,234,567.89", desc:"Comma — thousand separator, dot — decimal"},
-    {v:"dot",   sample:"1.234.567,89", desc:"Dot — thousand separator, comma — decimal"},
+    {v:"comma", sample:"1,234,567.89", desc:"Comma thousand sep, dot decimal"},
+    {v:"dot",   sample:"1.234.567,89", desc:"Dot thousand sep, comma decimal"},
   ];
   const DATE_FMTS = [
-    {v:"YYYY-MM-DD", ex:"2025-06-25"},
-    {v:"DD/MM/YYYY", ex:"25/06/2025"},
-    {v:"MM/DD/YYYY", ex:"06/25/2025"},
-    {v:"DD.MM.YYYY", ex:"25.06.2025"},
-    {v:"MM.DD.YYYY", ex:"06.25.2025"},
-    {v:"DD-MM-YYYY", ex:"25-06-2025"},
-    {v:"YYYY/MM/DD", ex:"2025/06/25"},
+    {v:"YYYY-MM-DD", ex:"2025-06-25"},{v:"DD/MM/YYYY", ex:"25/06/2025"},
+    {v:"MM/DD/YYYY", ex:"06/25/2025"},{v:"DD.MM.YYYY", ex:"25.06.2025"},
+    {v:"DD-MM-YYYY", ex:"25-06-2025"},{v:"YYYY/MM/DD", ex:"2025/06/25"},
   ];
-  return (
-    <Modal title="Settings" onClose={onClose} width={520}>
-      <div style={{marginBottom:6,fontWeight:700,fontSize:14,color:C.t1}}>Number Format</div>
-      <div style={{fontSize:13,color:C.t2,marginBottom:12}}>Controls thousand and decimal separators for all amounts.</div>
-      {NUM_FMTS.map(f=>(
-        <button key={f.v} style={btnStyle(settings.numFmt===f.v)} onClick={()=>onUpdate({numFmt:f.v})}>
-          <input type="radio" readOnly checked={settings.numFmt===f.v} style={{accentColor:C.primary,flexShrink:0}}/>
+
+  const THEMES = [
+    {v:"light", label:"SAP Quartz Light", desc:"Light background, default SAP Fiori theme",
+      preview:<svg viewBox="0 0 72 48" xmlns="http://www.w3.org/2000/svg" style={{width:72,height:48,borderRadius:3,border:"1px solid #d9d9d9"}}>
+        <rect width="72" height="48" fill="#f5f6f7"/>
+        <rect width="72" height="9" fill="#354a5f"/>
+        <rect x="4" y="13" width="20" height="31" fill="#e8ebee"/>
+        <rect x="28" y="13" width="40" height="4" fill="#0a6ed1" rx="1"/>
+        <rect x="28" y="20" width="40" height="2" fill="#d9d9d9" rx="1"/>
+        <rect x="28" y="25" width="35" height="2" fill="#d9d9d9" rx="1"/>
+        <rect x="28" y="30" width="38" height="2" fill="#d9d9d9" rx="1"/>
+        <rect x="28" y="35" width="30" height="2" fill="#d9d9d9" rx="1"/>
+      </svg>},
+    {v:"dark", label:"SAP Quartz Dark", desc:"Dark background, high-contrast dark theme",
+      preview:<svg viewBox="0 0 72 48" xmlns="http://www.w3.org/2000/svg" style={{width:72,height:48,borderRadius:3,border:"1px solid #454545"}}>
+        <rect width="72" height="48" fill="#1c2228"/>
+        <rect width="72" height="9" fill="#29354a"/>
+        <rect x="4" y="13" width="20" height="31" fill="#243040"/>
+        <rect x="28" y="13" width="40" height="4" fill="#5ab0ff" rx="1"/>
+        <rect x="28" y="20" width="40" height="2" fill="#454545" rx="1"/>
+        <rect x="28" y="25" width="35" height="2" fill="#454545" rx="1"/>
+        <rect x="28" y="30" width="38" height="2" fill="#454545" rx="1"/>
+        <rect x="28" y="35" width="30" height="2" fill="#454545" rx="1"/>
+      </svg>},
+  ];
+
+  const NAV_ITEMS = [
+    {id:"account",    icon:"employee",        label:"User Account",        sub:user?.name||""},
+    {id:"appearance", icon:"palette",         label:"Appearance",          sub:theme==="dark"?"SAP Quartz Dark":"SAP Quartz Light"},
+    {id:"language",   icon:"world",           label:"Language and Region", sub:"American English"},
+    {id:"numfmt",     icon:"number-sign",     label:"Number Format",       sub:settings.numFmt==="comma"?"1,234,567.89":"1.234.567,89"},
+    {id:"datefmt",    icon:"appointment-2",   label:"Date Format",         sub:settings.dateFmt},
+  ];
+
+  const sideW=220, contentW=460;
+
+  const renderContent=()=>{
+    if(nav==="account") return (
+      <div style={{padding:"28px 32px"}}>
+        <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:24}}>User Account</div>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,padding:"18px 20px",background:C.subtle,borderRadius:6,border:`1px solid ${C.border}`}}>
+          {(()=>{const {avtColor,avtIni}=({avtColor:(id)=>({bg:"#354a5f",fg:"#fff"}),avtIni:(n)=>n?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"??"});const ac={bg:"#354a5f",fg:"#fff"};const ini=user?.name?.split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase()||"??";return(<div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg,flexShrink:0}}>{ini}</div>);})()}
           <div>
-            <div style={{fontWeight:700,fontSize:14,color:C.t1,fontFamily:"monospace"}}>{f.sample}</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{f.desc}</div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t1}}>{user?.name}</div>
+            <div style={{fontSize:13,color:C.t2,marginTop:3}}>{user?.role==="vendor"?"Supplier":"BRM Employee"}</div>
+            {user?.title&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{user.title}</div>}
+            {user?.email&&<div style={{fontSize:12,color:C.info,marginTop:4}}>{user.email}</div>}
           </div>
-        </button>
-      ))}
-      <Sep/>
-      <div style={{marginBottom:6,fontWeight:700,fontSize:14,color:C.t1}}>Date Format</div>
-      <div style={{fontSize:13,color:C.t2,marginBottom:12}}>Controls how dates are displayed across the portal.</div>
-      <div style={{display:"grid",gridTemplateColumns:g2(),gap:8}}>
-        {DATE_FMTS.map(f=>(
-          <button key={f.v} style={{...btnStyle(settings.dateFmt===f.v),flexDirection:"column",alignItems:"flex-start",gap:2}} onClick={()=>onUpdate({dateFmt:f.v})}>
-            <div style={{display:"flex",alignItems:"center",gap:8,width:"100%"}}>
-              <input type="radio" readOnly checked={settings.dateFmt===f.v} style={{accentColor:C.primary,flexShrink:0}}/>
-              <span style={{fontWeight:700,fontSize:12,color:C.t1,fontFamily:"monospace"}}>{f.v}</span>
+        </div>
+        {user?.vendorId&&<div style={{fontSize:13,color:C.t2,padding:"10px 14px",background:C.infoBg,borderRadius:4,border:`1px solid ${C.border}`}}>Vendor ID: <strong style={{color:C.t1}}>{user.vendorId}</strong></div>}
+      </div>
+    );
+
+    if(nav==="appearance") return (
+      <div style={{padding:"28px 32px"}}>
+        <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:6}}>Appearance</div>
+        <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.border}`,marginBottom:24}}>
+          {["Theme","Display Settings"].map((t,i)=>(
+            <div key={t} style={{padding:"8px 16px",fontSize:13,fontWeight:600,color:i===0?C.primary:C.t2,borderBottom:i===0?`2px solid ${C.primary}`:"2px solid transparent",cursor:"pointer",marginBottom:-1}}>{t}</div>
+          ))}
+        </div>
+        <div style={{marginBottom:12,fontSize:12,fontWeight:700,color:C.t2,letterSpacing:.5,textTransform:"uppercase"}}>SAP Quartz (Set)</div>
+        <div style={{display:"flex",flexDirection:"column",gap:2,marginBottom:20}}>
+          {THEMES.map(t=>(
+            <button key={t.v} onClick={()=>onThemeChange(t.v)}
+              style={{display:"flex",alignItems:"center",gap:16,padding:"12px 14px",background:theme===t.v?"#edf4ff":C.card,border:`1px solid ${theme===t.v?"#91c8f6":C.border}`,borderRadius:4,cursor:"pointer",textAlign:"left" as const,fontFamily:"inherit",transition:"background .1s",width:"100%"}}>
+              {t.preview}
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:theme===t.v?700:400,color:C.t1}}>{t.label}</div>
+                <div style={{fontSize:12,color:C.t2,marginTop:2}}>{t.desc}</div>
+              </div>
+              <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${theme===t.v?C.primary:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {theme===t.v&&<div style={{width:10,height:10,borderRadius:"50%",background:C.primary}}/>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
+    if(nav==="language") return (
+      <div style={{padding:"28px 32px"}}>
+        <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:20}}>Language and Region</div>
+        <div style={{padding:"12px 16px",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`,fontSize:13,color:C.t2}}>
+          <div style={{fontWeight:600,color:C.t1,marginBottom:4}}>Language</div>
+          <div>American English (en-US)</div>
+          <div style={{marginTop:10,fontSize:12,color:C.t2}}>Language settings are managed by your SAP system administrator.</div>
+        </div>
+      </div>
+    );
+
+    if(nav==="numfmt") return (
+      <div style={{padding:"28px 32px"}}>
+        <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:6}}>Number Format</div>
+        <div style={{fontSize:13,color:C.t2,marginBottom:20}}>Controls thousand and decimal separators for all amounts.</div>
+        {NUM_FMTS.map(f=>(
+          <button key={f.v} onClick={()=>onUpdate({numFmt:f.v})}
+            style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",marginBottom:8,background:settings.numFmt===f.v?"#edf4ff":C.card,border:`1px solid ${settings.numFmt===f.v?"#91c8f6":C.border}`,borderRadius:4,cursor:"pointer",width:"100%",textAlign:"left" as const,fontFamily:"inherit"}}>
+            <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${settings.numFmt===f.v?C.primary:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {settings.numFmt===f.v&&<div style={{width:10,height:10,borderRadius:"50%",background:C.primary}}/>}
             </div>
-            <div style={{fontSize:11,color:C.t2,paddingLeft:24}}>{f.ex}</div>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:C.t1,fontFamily:"monospace"}}>{f.sample}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{f.desc}</div>
+            </div>
           </button>
         ))}
       </div>
-    </Modal>
+    );
+
+    if(nav==="datefmt") return (
+      <div style={{padding:"28px 32px"}}>
+        <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:6}}>Date Format</div>
+        <div style={{fontSize:13,color:C.t2,marginBottom:20}}>Controls how dates are displayed across the portal.</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {DATE_FMTS.map(f=>(
+            <button key={f.v} onClick={()=>onUpdate({dateFmt:f.v})}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:settings.dateFmt===f.v?"#edf4ff":C.card,border:`1px solid ${settings.dateFmt===f.v?"#91c8f6":C.border}`,borderRadius:4,cursor:"pointer",textAlign:"left" as const,fontFamily:"inherit"}}>
+              <div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${settings.dateFmt===f.v?C.primary:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {settings.dateFmt===f.v&&<div style={{width:8,height:8,borderRadius:"50%",background:C.primary}}/>}
+              </div>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t1,fontFamily:"monospace"}}>{f.v}</div>
+                <div style={{fontSize:11,color:C.t2}}>{f.ex}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+    return null;
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:8,boxShadow:"0 8px 48px rgba(0,0,0,0.28)",width:sideW+contentW,maxWidth:"95vw",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:52,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+          <span style={{fontSize:16,fontWeight:700,color:C.t1}}>Settings</span>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:20,lineHeight:1,padding:4,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>×</button>
+        </div>
+        {/* Body */}
+        <div style={{display:"flex",flex:1,overflow:"hidden",minHeight:0}}>
+          {/* Left nav */}
+          <div style={{width:sideW,borderRight:`1px solid ${C.border}`,background:C.subtle,flexShrink:0,overflowY:"auto",padding:"8px 0"}}>
+            {NAV_ITEMS.map(item=>(
+              <button key={item.id} onClick={()=>setNav(item.id)}
+                style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 20px",background:nav===item.id?C.card:"none",border:"none",borderLeft:`3px solid ${nav===item.id?C.primary:"transparent"}`,cursor:"pointer",textAlign:"left" as const,fontFamily:"inherit",transition:"background .1s"}}>
+                <SapIcon name={item.icon} size={18} color={nav===item.id?C.primary:C.t2}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:nav===item.id?700:400,color:nav===item.id?C.t1:C.t1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.label}</div>
+                  {item.sub&&<div style={{fontSize:11,color:C.t2,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.sub}</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+          {/* Right content */}
+          <div style={{flex:1,overflowY:"auto"}}>
+            {renderContent()}
+          </div>
+        </div>
+        {/* Footer */}
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,padding:"12px 20px",borderTop:`1px solid ${C.border}`,flexShrink:0}}>
+          <button onClick={onClose} style={{padding:"0 16px",height:36,background:C.primary,border:`1px solid ${C.primary}`,borderRadius:4,color:"#fff",fontSize:14,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>Save</button>
+          <button onClick={onClose} style={{padding:"0 16px",height:36,background:"none",border:`1px solid ${C.border}`,borderRadius:4,color:C.t1,fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>Cancel</button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -278,7 +409,7 @@ export default function App() {
   const [user,setUser]=useState(null);
   const [section,setSection]=useState("dashboard");
   const [theme,setTheme]=useState("light");
-  const toggleTheme=()=>{const n=theme==="dark"?"light":"dark";applyTheme(n);setTheme(n);};
+  const changeTheme=(t)=>{applyTheme(t);setTheme(t);};
   const [settings,setSettings]=useState({numFmt:"comma",dateFmt:"YYYY-MM-DD"});
   const [showSettings,setShowSettings]=useState(false);
   const updateSettings=s=>{const n={...settings,...s};applySettings(n);setSettings(n);};
@@ -307,8 +438,8 @@ export default function App() {
   return (
     <ErrorBoundary>
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:14,color:C.t1}}>
-      <Shell user={user} onLogout={logout} section={section} setSection={setSection} theme={theme} onToggleTheme={toggleTheme} onOpenSettings={()=>setShowSettings(true)}/>
-      {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)}/>}
+      <Shell user={user} onLogout={logout} section={section} setSection={setSection} onOpenSettings={()=>setShowSettings(true)}/>
+      {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)} theme={theme} onThemeChange={changeTheme} user={user}/>}
       <div style={{minHeight:"calc(100vh - 46px)"}}>{render()}</div>
       <div style={{textAlign:"center",padding:"14px 0",fontSize:12,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>
         BRM Vendor Portal · Powered by SAP BTP & Accenture · © 2025 BRM
