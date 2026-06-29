@@ -1262,12 +1262,12 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
               <DateInp value={apvForm.targetDate} onChange={v=>apv("targetDate",v)}/>
             </div>
             <div style={{marginBottom:14}}>
-              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Budget Reference / Cost Center</label>
-              <Inp value={apvForm.budgetRef} onChange={v=>apv("budgetRef",v)} placeholder="e.g. CC-OPS-2025"/>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Budget Reference / Cost Center <span style={{fontSize:10,fontWeight:400,color:C.t2,marginLeft:4}}>View Only</span></label>
+              <div style={{padding:"7px 10px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:4,fontSize:13,color:C.t1,fontFamily:"monospace"}}>CC-PROC-2025-Q3</div>
             </div>
             <div style={{marginBottom:14}}>
-              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>WBS Element</label>
-              <Inp value={apvForm.wbsElement} onChange={v=>apv("wbsElement",v)} placeholder="e.g. WBS-MINE-001"/>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>WBS Element <span style={{fontSize:10,fontWeight:400,color:C.t2,marginLeft:4}}>View Only</span></label>
+              <div style={{padding:"7px 10px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:4,fontSize:13,color:C.t1,fontFamily:"monospace"}}>WBS-MINE-PRO-2025.001</div>
             </div>
           </div>
 
@@ -1283,9 +1283,30 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             <TA value={apvForm.remarks} onChange={v=>apv("remarks",v)} placeholder="Any additional notes for the committee..." rows={2}/>
           </div>
 
-          {/* Supporting Documents */}
+          {/* Attached Files (pre-populated from DMS) */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:8}}>Attached Files <span style={{fontSize:11,fontWeight:400,color:C.t2,marginLeft:4}}>Auto-attached from DMS</span></label>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {[
+                {name:"RFQ_Summary_Report.pdf",      by:"Ahmad Rizki",   date:"2025-06-30",size:"128 KB", icon:"pdf-attachment"},
+                {name:"Technical_Evaluation.xlsx",   by:"Siti Rahma",    date:"2025-07-01",size:"84 KB",  icon:"excel-attachment"},
+                {name:"Budget_Allocation_Letter.pdf",by:"Finance Dept",  date:"2025-07-02",size:"212 KB", icon:"pdf-attachment"},
+                {name:"Vendor_Qualification_Docs.zip",by:"Procurement",  date:"2025-07-03",size:"3.4 MB", icon:"attachment"},
+              ].map(f=>(
+                <div key={f.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:6}}>
+                  <SapIcon name={f.icon} size={20} color={C.primary}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:C.primary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:1}}>Uploaded by: {f.by} · {fmtDate(f.date)} · {f.size} · Source: DMS</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Supporting Documents checkboxes */}
           <div style={{marginBottom:18}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:8}}>Supporting Documents <span style={{fontSize:11,fontWeight:400,color:C.t2}}>(select all that apply)</span></label>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:8}}>Additional Supporting Documents <span style={{fontSize:11,fontWeight:400,color:C.t2}}>(select all that apply)</span></label>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px"}}>
               {COMMON_DOCS.map(doc=>(
                 <label key={doc} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:C.t1,cursor:"pointer"}}>
