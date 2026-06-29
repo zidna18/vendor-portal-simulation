@@ -4,80 +4,142 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A **single-file React + TypeScript prototype** of the "BRM Vendor Portal" — a UI simulation of a SAP BTP / S/4HANA vendor collaboration platform (Accenture demo). The entire app lives in `src/App.tsx` (~1553 lines). All data is in-memory mock data and all "SAP integration" is cosmetic copy (OData/API endpoint strings shown in the UI are illustrative, not real calls).
+A **multi-file React + TypeScript prototype** of the "BRM Vendor Portal" — a UI simulation of a SAP BTP / S/4HANA vendor collaboration platform (Accenture demo). All data is in-memory mock data. All "SAP integration" is cosmetic — OData/API endpoint strings shown in the UI are illustrative, not real calls.
 
-`BRM Vendor Portal_V.1.00.tsx` at the repo root is a **legacy standalone artifact-drop copy** intended for embedding in canvas/artifact runners. It is significantly lighter (~922 lines) and is no longer in sync with `src/App.tsx`. Default to editing `src/App.tsx` only; update the artifact copy only if the user explicitly requests it.
+`BRM Vendor Portal_V.1.00.tsx` at the repo root is a **legacy standalone artifact-drop copy** for canvas/artifact runners. It is significantly out of sync with `src/`. Default to editing `src/` only; update the artifact copy only if explicitly requested.
 
-**TypeScript note:** TypeScript is present (strict mode off) but typing is intentionally loose — most components and handlers use implicit `any`. Do not add type annotations or refactor toward stricter types unless asked.
+**TypeScript:** Strict mode is off. Typing is intentionally loose — most components and handlers use implicit `any`. Do not add type annotations or refactor toward stricter types unless asked.
 
-**Reference material:** The untracked `Reference/` folder contains local saved copies of SAP S/4HANA Cloud screens for design reference. Use them to match SAP Fiori UI patterns when implementing new features.
+**Reference material:** The untracked `Reference/` folder contains local saved copies of SAP S/4HANA Cloud screens. Use them to match SAP Fiori UI patterns when implementing new features.
 
-Runtime dependencies are `react` and `react-dom`. The app uses only `useState` and `useEffect` from React; `react-dom` mounts via `src/main.tsx` → `createRoot`. There is no router, state library, or UI component library.
+Runtime dependencies are `react` and `react-dom` only. No router, state library, or UI component library.
 
-## Running / iterating
+## Commands
 
 ```
-npm run dev      # Vite dev server (hot reload)
-npm run build    # production build
-npm run preview  # preview the production build locally
+npm run dev      # Vite dev server (hot reload) — primary development command
+npm run build    # TypeScript compile + production bundle
+npm run preview  # serve the production build locally
 ```
 
-There is no test suite. Entry point is `src/main.tsx` (standard Vite React bootstrap). `public/manifest.json` declares PWA metadata (standalone display, `BRM Vendor Portal` app name).
+There is no test suite. Entry point is `src/main.tsx`. Deployed to Vercel from `main` branch automatically.
 
-## File organization (top to bottom in `src/App.tsx`)
+## Source file ownership
 
-1. **Mock data** — `USERS`, `VENDORS` (static keyed map), `COMPANY_CODES`, `CURRENCIES`, `WHT_TYPES`, `INIT_INV`, `INIT_RFQS`, `INIT_QT`, helper `ccName()`
-2. **Theme** — `LIGHT` (SAP Fiori Quartz Light) / `DARK` (SAP Fiori Horizon Dark) palette objects, mutable `C`/`STC` bindings, `applyTheme()`
-3. **Helpers** — `SETTINGS` / `applySettings()`, `idr()`, `fmtAmt()`, `fmtDate()`, `parseToISO()`, `uid()`, `fmtPOs()`, responsive helpers (`VP`, `mob()`, `tab()`, `g2/g3/g4/pg()`)
-4. **UI primitives** — `Badge`, `Card`, `Btn`, `Inp`, `AmtInp`, `DateInp`, `Sel`, `TA`, `Lbl`, `Val`, `Sep`, `Modal`, `FilterBar`, `FioriBar`, `FField`, `Th`/`Td`
-5. **Shell** (sticky nav bar), **Login** (pre-auth, fixed dark-gradient)
-6. **Vendor pages** — `VendorHome`, `VendorProfile`, `VendorInvoice` (+ `InvoiceFormModal`, `PoValueHelp`), `VendorQuotation` (+ `QtFormModal`)
-7. **PDF preview** — `InvoiceDoc`, `FakturDoc`, `PdfViewer`
-8. **Document flow** — `DocFlow` (SAP Fiori horizontal ProcessFlow: PR→SQ→PO→GR→PINV→SINV)
-9. **BRM pages** — `BrmHome`, `BrmInvoice`, `BrmQuotation`, `BrmRfq` (RFQ creation form is inline here)
-10. **`SettingsModal`** — number format (comma/dot) and date format options
-11. **`App`** — default export, root state owner
+The app was split into modules for parallel team collaboration. Treat ownership boundaries carefully when merging:
+
+| File | Owner | Contents |
+|---|---|---|
+| `src/shared.tsx` | Shared | Mock data, theme, helpers, ALL UI primitives |
+| `src/InvoicePages.tsx` | Zidna | Invoice form, PDF viewer, DocFlow, VendorInvoice, BrmInvoice |
+| `src/QuotationRfqPages.tsx` | Colleague | VendorQuotation, BrmQuotation, BrmRfq |
+| `src/HomePages.tsx` | Shared | VendorHome, BrmHome |
+| `src/VendorProfile.tsx` | Shared | VendorProfile |
+| `src/App.tsx` | Shared | Shell, Login, SettingsModal, App root |
+
+**Critical ESM live-binding note:** `shared.tsx` uses `export let C`, `export let STC`, and module-level `SETTINGS`/`VP` objects. These are mutable bindings intentionally — `applyTheme()` swaps `C`/`STC` in place and all importing modules pick up the new values on re-render because ESM live exports. Do not convert them to `const` or copy them into local variables.
 
 ## Architecture
 
-State is held entirely in `App` (the root) and flows down as props — there is no router, context, or store. Navigation is a single `section` string in `App` state; `Shell` renders the nav bar and `App` switch-maps `section` → a page component. Login sets `user`; `user.role` (`"vendor"` | `"brm"`) selects which set of nav items and pages are reachable.
+State lives entirely in `App` (root component) and flows down as props. No context, no store, no router. Navigation is a single `section` string; `Shell` renders the nav bar and `App` switch-maps `section` → page component.
 
-**Navigation section IDs:** vendor uses `"dashboard"`, `"profile"`, `"invoice"`, `"quotation"`; BRM uses `"dashboard"`, `"brm-invoice"`, `"brm-quotation"`, `"brm-rfq"`.
-
-`App` also owns `settings` state (number/date format) and passes it to `SettingsModal`; format changes call `applySettings()` which mutates the module-level `SETTINGS` object so all helpers pick it up on next render.
-
-`App` has a `resize` listener that updates the module-level `VP.w` binding so the responsive helpers (`mob()`, `tab()`, etc.) return correct values on re-render.
+**Navigation section IDs:** vendor: `"dashboard"`, `"profile"`, `"invoice"`, `"quotation"`; BRM: `"dashboard"`, `"brm-invoice"`, `"brm-quotation"`, `"brm-rfq"`.
 
 ### Data: state arrays vs. static lookup
 
-Three domain data arrays are the app's source of truth, seeded from `INIT_INV` / `INIT_QT` / `INIT_RFQS` and owned by `App` as `invoices` / `quotations` / `rfqs`. Each page receives both the array and its setter and mutates immutably. There is **no persistence** — a reload resets everything.
+Three mutable domain arrays seeded at startup, owned by `App`:
 
-`VENDORS`, `COMPANY_CODES`, `CURRENCIES`, `WHT_TYPES` are separate **static `const`s** — they hold reference/master data and are never put in state. Pages read them directly.
+| State var | Init seed | Domain |
+|---|---|---|
+| `invoices` | `INIT_INV` | Vendor pre-invoices |
+| `quotations` | `INIT_QT` | Vendor quotations |
+| `rfqs` | `INIT_RFQS` | BRM RFQs |
 
-Two parallel role experiences operate on the same shared arrays:
-- **Vendor** pages filter every list by `user.vendorId` so a vendor only sees its own records.
-- **BRM** pages see all vendors' records and drive status transitions.
+Static master data (`VENDORS`, `COMPANY_CODES`, `CURRENCIES`, `WHT_TYPES`) are plain `const` objects — never put in state, read directly.
 
-### Status lifecycles (the heart of the domain)
+- **Vendor pages** filter every list by `user.vendorId`.
+- **BRM pages** see all records and drive status transitions.
 
-Status strings are the central mechanism; the `STC` map drives `Badge` colors and `FilterBar`/`FioriBar` options reference these exact strings — keep them in sync.
-- **Invoice**: `Draft` → `Submitted` → `Under Review` → `Confirmed` | `Rejected` (rejection requires `rejReason`; vendor can `Withdraw` a `Submitted` invoice back to `Draft`).
-- **Quotation**: `Draft` → `Submitted` → `Accepted` | `Rejected` | `Withdrawn`.
-- **RFQ**: `Open` → `Closed`; vendors quote only `Open` RFQs they are `targets` of.
+### Invoice status lifecycle
 
-### Conventions
+`Draft` → `Submitted` → `Under Review` → `Confirmed` → **`Posted`**
 
-- **Reusable primitives** are defined once near the top and used everywhere: `Card`, `Btn` (variants `primary`/`ghost`/`danger`/`success`/`neutral`), `Inp`, `AmtInp` (positive-only, rejects negatives), `DateInp` (respects `SETTINGS.dateFmt`), `Sel`, `TA`, `Lbl`, `Val`, `Sep`, `Modal`, `FilterBar` (pill tabs), `FioriBar` + `FField` (SAP Fiori compact filter bar with active token display), `Badge`, `Th`/`Td`. Build new UI from these rather than raw elements.
-- **Styling is 100% inline style objects** keyed off the `C` color palette and `STC` status-color map. There is no CSS file, Tailwind, or className styling. Use palette keys (`C.card`, `C.field`, `C.subtle`, `C.bg`, `C.border`, `C.t1`/`C.t2`, the `*Bg` status tints) rather than hardcoded hex.
-- **Light/dark theme**: `C` and `STC` are mutable module-level bindings (`let`), not consts. `applyTheme("light"|"dark")` swaps `C` and rebuilds `STC`; `App` re-renders so every component picks up the new palette. The `Login` screen keeps its own fixed dark-gradient.
-- **Responsive helpers**: `mob()` (< 768 px), `tab()` (< 1024 px), `g2/g3/g4()` produce CSS `gridTemplateColumns` strings that collapse to 1fr on mobile, `pg()` returns padding value. Always use these for layout grids rather than hardcoding breakpoints.
-- **Amount formatting**: use `fmtAmt(n, currency)` for multi-currency display; `idr(n)` is the IDR-only shorthand. Both respect `SETTINGS.numFmt`.
-- **Date formatting**: store dates as ISO `YYYY-MM-DD` strings internally; use `fmtDate(d)` for display and `parseToISO(raw)` to convert user input back to ISO. `DateInp` handles this automatically.
-- **Naming is terse by design**: single/short identifiers (`C`, `f`, `s`, `v`, `mi`, `mq`, `mr`, `flt`), `s(k,v)` form-field setters, `idr()` / `uid()`. Follow the surrounding density.
-- IDs for new records: `` `PI-${uid()}` ``, `` `QT-${uid()}` ``, `` `RFQ-${uid()}` `` inside save/publish handlers.
-- Validation is inline via `alert()` / `window.confirm()`. This is intentional prototype-grade UX.
-- The `useEffect` pattern for simulated async loads: local `loading` state + `setTimeout` in `useEffect` (see `VendorProfile`). Use the same pattern for new pages that simulate data fetching.
+Supplier DPR only: `Posted` → `Converted to Invoice` → `Cleared`
 
-### Demo credentials
+Rejection: any active status → `Rejected` (requires `rejReason`). Vendor can `Withdraw` a `Submitted` invoice back to `Draft`.
 
-All users share password `demo123`. Vendors: `vendor1` (PT Maju Bersama / `10000001`), `vendor2` (CV Sukses Mandiri / `10000002`). BRM: `brm.user` (Ahmad Rizki), `buyer1` (Siti Rahma). The login screen also has one-click quick-access buttons.
+**Invoice fields introduced recently:** `invoiceType` ("Invoice" | "Supplier DPR"), `sapDocNo`, `postedAt`, `convertedDocNo`, `clearingDocNo`. Supplier DPR type routes to SAP BPA Down Payment workflow; Invoice type routes to SAP Flexible Workflow via `API_SUPPLIERINVOICE_PROCESS_SRV`.
+
+**BRM actions by status:**
+- `Submitted` → Review | Accept (→ Confirmed) | Reject
+- `Confirmed` → Post to SAP (→ Posted, generates `sapDocNo`)
+- `Posted` + DPR → Convert to Invoice (→ `Converted to Invoice`)
+- `Converted to Invoice` → Clear (→ `Cleared`, generates `clearingDocNo`)
+
+### Other status lifecycles
+
+- **Quotation**: `Draft` → `Submitted` → `Accepted` | `Rejected` | `Withdrawn`
+- **RFQ**: `Open` → `Closed`; vendors quote only `Open` RFQs they are `targets` of
+
+`STC` drives `Badge` colors for all statuses — keep `STC` and status strings in sync when adding new ones.
+
+## Conventions
+
+### UI primitives (all in `src/shared.tsx`)
+Always build from these rather than raw elements:
+- `Btn` — variants: `primary`, `ghost`, `danger`, `success`, `neutral`. Prop `sm` for small.
+- `Inp`, `AmtInp` (positive-only), `DateInp` (respects `SETTINGS.dateFmt`), `Sel`, `TA`
+- `Modal` — standard dialog wrapper
+- `FioriBar` + `FField` — SAP Fiori compact filter bar with active token chips
+- `ValueHelpInp` + `ValueHelpDialog` — SAP-style F4 value help with Search & Select + Define Conditions tabs
+- `MultiValueInp` — token chip input with condition builder (used for Invoice No. filter)
+- `FilterBar` — pill tabs
+- `Badge` — status badge driven by `STC`
+- `SapIcon` — renders UI5 web component icons; falls back to text if CDN unavailable
+
+### SAP Fiori table pattern (used in VendorInvoice and BrmInvoice)
+Both invoice tables use identical structure — copy this pattern for new tables:
+- `TK` token object for colors, `FS` for font sizes
+- `<colgroup>` with `COL_DEFS` pixel widths, `tableLayout:"fixed"`
+- Clickable column headers open `ColumnSettingsPopup` (Sort By segmented button, Group By toggle, Resize width step input)
+- Group By is functional — `buildGroups()` helper in `InvoicePages.tsx` groups rows with `GroupHeaderRow` separators
+- Checkbox multi-select via `Set<string>` state
+- CSV export via `Blob` + `URL.createObjectURL`
+
+### Styling
+100% inline style objects keyed off `C` (palette) and `STC` (status colors). No CSS files, no Tailwind, no classNames. Use `C.card`, `C.field`, `C.subtle`, `C.bg`, `C.border`, `C.t1`/`C.t2`, `C.primary`, `C.*Bg` tints — never hardcoded hex unless it must not change with theme.
+
+### Responsive helpers
+`mob()` (< 768 px), `tab()` (< 1024 px), `g2/g3/g4()` → CSS `gridTemplateColumns` that collapse to `1fr` on mobile, `pg()` → page padding value. Use these for all layout grids.
+
+### Formatting
+- Amounts: `fmtAmt(n, currency)` for multi-currency; `idr(n)` for IDR-only shorthand. Both respect `SETTINGS.numFmt`.
+- Dates: store as ISO `YYYY-MM-DD`; display with `fmtDate(d)`; parse user input with `parseToISO(raw)`. `DateInp` handles this automatically.
+- New record IDs: `` `PI-${uid()}` ``, `` `QT-${uid()}` ``, `` `RFQ-${uid()}` ``
+
+### Validation
+Inline `alert()` / `window.confirm()` — intentional prototype-grade UX. Invoice-specific validations:
+- Duplicate invoice number check against `allInvoices` prop (passed to `InvoiceFormModal`)
+- PO reuse check — a PO used in any non-Rejected invoice cannot be reused
+
+## Login / demo credentials
+
+Password for all: `demo123`
+
+| Username | Role | Entity |
+|---|---|---|
+| `vendor1` | Vendor | PT Maju Bersama (`10000001`) |
+| `vendor2` | Vendor | CV Sukses Mandiri (`10000002`) |
+| `brm.user` | BRM | Ahmad Rizki — Procurement Manager |
+| `buyer1` | BRM | Siti Rahma — Senior Buyer |
+
+Login page matches SAP ID sign-in theme (light gray bg, white card, dotted username field, SAP® ID label). One-click quick-access buttons are in the card.
+
+## Mock data highlights
+
+`INIT_INV` has 8 invoices covering all statuses and both document types:
+- `PI-2025-0001` — Invoice, **Posted** (SAP doc `5100000001/2025`)
+- `PI-2025-0006` — Supplier DPR, **Posted** (SAP doc `BRMS/1000000001/2025`) — ready for Convert to Invoice demo
+- `PI-2025-0007` — Supplier DPR, **Confirmed** — ready for Post to SAP demo
+
+Five company codes: `BRMS`, `CPMS`, `GMIN`, `SHSI`, `LMRS` — all PT Bumi Resource Minerals group entities.
