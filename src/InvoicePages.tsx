@@ -1085,17 +1085,29 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const COL_DEFS_BRM = [
-  {key:"invoiceNo", label:"Invoice No.",   defW:175},
-  {key:"vendor",    label:"Vendor",        defW:155},
-  {key:"poNumber",  label:"PO Number",     defW:125},
-  {key:"compCode",  label:"Company Code",  defW:130},
-  {key:"invDate",   label:"Invoice Date",  defW:95},
-  {key:"dueDate",   label:"Due Date",      defW:95},
-  {key:"amount",    label:"Amount",        defW:115},
-  {key:"attach",    label:"Attachments",   defW:95},
-  {key:"status",    label:"Status",        defW:95},
-  {key:"actions",   label:"Actions",       defW:110},
+  {key:"invoiceNo",  label:"Invoice No.",     defW:175},
+  {key:"vendor",     label:"Vendor",          defW:145},
+  {key:"poNumber",   label:"PO Number",       defW:115},
+  {key:"compCode",   label:"Company Code",    defW:120},
+  {key:"invDate",    label:"Invoice Date",    defW:88},
+  {key:"submittedAt",label:"Submitted Date",  defW:88},
+  {key:"confirmedAt",label:"Approved Date",   defW:88},
+  {key:"amount",     label:"Amount",          defW:110},
+  {key:"sapDocNo",   label:"SAP Document",    defW:160},
+  {key:"status",     label:"Status",          defW:110},
+  {key:"actions",    label:"Actions",         defW:120},
 ];
+// Map internal status → document terminology shown in BRM view
+const BRM_STATUS_LABEL:Record<string,string> = {
+  "Draft":               "Draft",
+  "Submitted":           "Open",
+  "Under Review":        "On Progress",
+  "Confirmed":           "On Progress",
+  "Posted":              "Posted",
+  "Converted to Invoice":"Converted to Invoice",
+  "Cleared":             "Cleared to Invoice",
+  "Rejected":            "Rejected",
+};
 export const BrmInvoice = ({invoices,setInvoices}) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
@@ -1123,8 +1135,9 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   );
   const SORT_FIELDS_BRM:Record<string,(i:any)=>any>={
     invoiceNo:i=>i.invoiceNo, vendor:i=>i.vendorName, poNumber:i=>fmtPOs(i),
-    compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, dueDate:i=>i.dueDate,
-    amount:i=>Number(i.amount||0), attach:i=>i.files?.length||0, status:i=>i.status, actions:i=>i.status,
+    compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, submittedAt:i=>i.submittedAt||"",
+    confirmedAt:i=>i.confirmedAt||"", amount:i=>Number(i.amount||0),
+    sapDocNo:i=>i.sapDocNo||"", status:i=>i.status, actions:i=>i.status,
   };
   const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
   const list=[...listFiltered].sort((a,b)=>{
@@ -1331,17 +1344,34 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{ccName(inv.companyCode)}</div>
                     </td>
                     <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)||"—"}</span></td>
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>
+                    <td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>
                     <td style={{...cs,textAlign:"right"}}>
                       <span style={{fontWeight:600,fontSize:FS.sm}}>{fmtAmt(inv.amount,inv.currency)}</span>
                     </td>
+                    {/* SAP Document column */}
                     <td style={cs}>
-                      {inv.files?.length>=2
-                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={12} color="#107e3e"/>✓ {inv.files.length} file(s)</span>
-                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Incomplete</span>
-                      }
+                      {inv.sapDocNo?(
+                        <div>
+                          <div style={{display:"inline-flex",alignItems:"center",gap:4}}>
+                            <SapIcon name="connected" size={11} color="#107e3e"/>
+                            <span style={{fontFamily:"monospace",fontSize:FS.xs,fontWeight:700,color:"#107e3e"}}>{inv.sapDocNo}</span>
+                          </div>
+                          <div style={{fontSize:9,color:"#6a6d70",marginTop:1}}>{inv.invoiceType==="Supplier DPR"?"SAP FI (DPR)":"SAP MIRO"}</div>
+                          {inv.convertedDocNo&&<div style={{fontSize:9,color:"#0a6ed1",marginTop:1}}>Inv: {inv.convertedDocNo}</div>}
+                          {inv.clearingDocNo&&<div style={{fontSize:9,color:"#6a6d70",marginTop:1}}>Clr: {inv.clearingDocNo}</div>}
+                        </div>
+                      ):(
+                        <span style={{fontSize:FS.xs,color:"#bfbfbf"}}>—</span>
+                      )}
                     </td>
-                    <td style={cs}><Badge s={inv.status}/></td>
+                    {/* Status with BRM document terminology */}
+                    <td style={cs}>
+                      <Badge s={inv.status}/>
+                      {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
+                        <div style={{fontSize:9,color:"#6a6d70",marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
+                      )}
+                    </td>
                     <td style={cs}>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                         {inv.status==="Submitted"&&<>
