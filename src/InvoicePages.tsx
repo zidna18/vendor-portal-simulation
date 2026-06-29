@@ -266,114 +266,132 @@ export const DocFlow = ({inv}) => {
     return {po, prNo:`1000${n5(h)}`, sqNo:h%3!==2?`1800${n5(h+7)}`:null, grNos:Array.from({length:(h%2)+1},(_,i)=>`5000${n5(h+(i+1)*53)}`)};
   });
 
-  const sapAccNo = inv.status==="Confirmed" ? `5100${n5(seed(inv.id))}` : null;
-  const invSt    = inv.status==="Confirmed" ? "Confirmed" : inv.status==="Rejected" ? "Rejected" : "In Process";
+  const sapAccNo = ["Posted","Converted to Invoice","Cleared"].includes(inv.status) ? `${inv.sapDocNo||`5100${n5(seed(inv.id))}/2025`}` : null;
+  const invSt    = ["Confirmed","Posted","Converted to Invoice","Cleared"].includes(inv.status) ? "Posted" : inv.status==="Rejected" ? "Rejected" : "In Process";
+  const isCleared = inv.status==="Cleared";
 
   const allPRs = chains.map(c=>c.prNo);
   const allSQs = chains.map(c=>c.sqNo).filter(Boolean);
   const allPOs = pos;
   const allGRs = chains.flatMap(c=>c.grNos);
 
-  const stages = [
-    {ico:"request-for-quotation", badge:"PR",   label:"Purchase\nRequisition",   docs:allPRs,  status:"Completed", api:"A_PurchaseRequisitionItem"},
-    ...(allSQs.length>0?[{ico:"discussion-2",  badge:"SQ",   label:"Supplier\nQuotation",    docs:allSQs,    status:"Completed", api:"A_SupplierQuotation"}]:[]),
-    {ico:"document",              badge:"PO",   label:"Purchase\nOrder",          docs:allPOs,  status:"Active",    api:"A_PurchaseOrder"},
-    {ico:"shipping-status",       badge:"GR",   label:"Goods /\nSvc Receipt",     docs:allGRs,  status:"Posted",    api:"A_MaterialDocumentItem"},
-    {ico:"document-text",         badge:"PINV", label:"Pre-Invoice",               docs:[inv.id],status:invSt,       api:"BTP Vendor Portal"},
-    ...(sapAccNo?[{ico:"bank-account", badge:"SINV", label:"SAP Supplier\nInvoice", docs:[sapAccNo], status:"Posted", api:"SUPPLIERINVOICE_SRV"}]:[]),
+  // Phase lanes matching SAP Process Flow: Purchasing / Receiving / Invoicing / Accounting / Clearing
+  const PHASES = [
+    {
+      id:"purchasing", label:"Purchasing", ico:"cart",
+      docs:[
+        ...allPRs.map(d=>({type:"Purchase Requisition",no:d,status:"Completed",qty:null,postDate:"2025-04-10"})),
+        ...allSQs.map(d=>({type:"Supplier Quotation",no:d,status:"Completed",qty:null,postDate:"2025-04-18"})),
+        ...allPOs.map(d=>({type:"Purchase Order",no:d,status:"Active",qty:`1 LUM`,postDate:"2025-05-01"})),
+      ],
+    },
+    {
+      id:"receiving", label:"Receiving", ico:"shipping-status",
+      docs: allGRs.map((d,i)=>({type:"Goods Receipt",no:d,status:"Posted",qty:`${(0.5+i*0.1).toFixed(3)} LUM`,postDate:"2025-05-20"})),
+    },
+    {
+      id:"invoicing", label:"Invoicing", ico:"document-text",
+      docs:[{type:"Invoice Receipt",no:inv.id,status:invSt,qty:null,postDate:inv.submittedAt||inv.invoiceDate||""}],
+    },
+    ...(sapAccNo?[{
+      id:"accounting", label:"Accounting", ico:"accounting-document-verification",
+      docs:[{type:"Journal Entry",no:sapAccNo,status:"Posted",qty:null,postDate:inv.postedAt||""}],
+    }]:[]),
+    ...(isCleared&&inv.clearingDocNo?[{
+      id:"clearing", label:"Clearing", ico:"complete",
+      docs:[{type:"Clearing Entry",no:inv.clearingDocNo,status:"Posted",qty:null,postDate:""}],
+    }]:[]),
   ];
 
-  const stC  = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.ok:s==="Active"||s==="In Process"?C.info:s==="Rejected"?C.err:C.warn;
-  const stBg = s => s==="Completed"||s==="Posted"||s==="Confirmed"?C.okBg:s==="Active"||s==="In Process"?C.infoBg:s==="Rejected"?C.errBg:C.warnBg;
-  const stIco= s => s==="Completed"||s==="Posted"||s==="Confirmed"?"✓":s==="Rejected"?"✕":"○";
-  const stLbl= s => stIco(s)+" "+(s==="In Process"?"In Process":s);
+  // status styling — matches SAP Fiori: green=Posted/Completed, blue=Active/InProcess, red=Rejected, orange=warn
+  const stColor = (s:string) => s==="Posted"||s==="Completed"?"#107e3e":s==="Active"||s==="In Process"?"#0070f2":s==="Rejected"?"#bb0000":"#e9730c";
+  const stBgCol = (s:string) => s==="Posted"||s==="Completed"?"#f1fdf6":s==="Active"||s==="In Process"?"#e8f4fd":s==="Rejected"?"#fdf3f3":"#fef6ee";
+  const stIcon  = (s:string) => s==="Posted"||s==="Completed"?"✓":s==="Rejected"?"✕":"●";
+  const stLabel = (s:string) => s==="In Process"?"In Process":s;
 
-  const vert = mob();
+  // Phase circle color: completed/done = green, active = blue, future = #899898
+  const phaseColor = (ph:any) => {
+    const done = ph.docs.every((d:any)=>d.status==="Posted"||d.status==="Completed");
+    const active = ph.docs.some((d:any)=>d.status==="Active"||d.status==="In Process");
+    return done?"#107e3e":active?"#0070f2":"#899898";
+  };
 
   return (
     <>
       <Sep/>
-      <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Document Flow</div>
-      <div style={{fontSize:10,color:C.t2,marginBottom:10}}>📡 SAP S/4HANA — procurement chain from request to invoice posting</div>
+      <div style={{fontSize:11,color:C.t2,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:1,marginBottom:4}}>Document Flow</div>
+      <div style={{fontSize:10,color:C.t2,marginBottom:12,display:"flex",alignItems:"center",gap:4}}>
+        <SapIcon name="connected" size={11} color={C.t2}/> SAP S/4HANA — procurement chain from request to invoice posting
+      </div>
 
-      {!vert&&(
-        <div style={{overflowX:"auto",paddingBottom:8}}>
-          <div style={{display:"flex",alignItems:"flex-start",gap:0,minWidth:"max-content"}}>
-            {stages.map((st,i)=>{
-              const color=stC(st.status); const bg=stBg(st.status);
-              return (
-                <div key={i} style={{display:"flex",alignItems:"center",gap:0}}>
-                  <div style={{width:110,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 8px",boxShadow:"0 2px 8px rgba(0,0,0,0.09)",position:"relative",flexShrink:0}}>
-                    <div style={{position:"absolute",top:-8,right:-8,width:18,height:18,borderRadius:"50%",background:color,color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.22)"}}>
-                      {stIco(st.status)}
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:22,marginBottom:5}}><SapIcon name={st.ico} size={22} color={stC(st.status)}/></div>
-                      <div style={{fontSize:9,fontWeight:800,color:C.t2,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{st.badge}</div>
-                      <div style={{fontSize:10,fontWeight:700,color:C.t1,marginBottom:7,lineHeight:1.4,minHeight:28}}>
-                        {st.label.split("\n").map((l,j)=><div key={j}>{l}</div>)}
-                      </div>
-                      {st.docs.slice(0,2).map((d,j)=>(
-                        <div key={j} style={{fontFamily:"monospace",fontSize:8,color:C.primary,background:C.infoBg,borderRadius:3,padding:"2px 4px",marginBottom:2,wordBreak:"break-all",textAlign:"center"}}>{d}</div>
-                      ))}
-                      {st.docs.length>2&&<div style={{fontSize:8,color:C.t2,marginBottom:2}}>+{st.docs.length-2} more</div>}
-                      {st.docs.length>1&&<div style={{fontSize:8,color:C.t2,marginBottom:4}}>{st.docs.length} documents</div>}
-                      <div style={{marginTop:6,display:"inline-block",fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"2px 7px",border:`1px solid ${color}44`}}>
-                        {stLbl(st.status)}
-                      </div>
-                    </div>
+      <div style={{overflowX:"auto",paddingBottom:4}}>
+        <div style={{minWidth:"max-content"}}>
+
+          {/* ── Phase header row ── */}
+          <div style={{display:"flex",alignItems:"center",marginBottom:16}}>
+            {PHASES.map((ph,i)=>(
+              <React.Fragment key={ph.id}>
+                <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",minWidth:120}}>
+                  <div style={{width:40,height:40,borderRadius:"50%",background:phaseColor(ph),display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 0 3px ${phaseColor(ph)}33`}}>
+                    <SapIcon name={ph.ico} size={18} color="#fff"/>
                   </div>
-                  {i<stages.length-1&&(
-                    <div style={{display:"flex",alignItems:"center",flexShrink:0,width:28,marginTop:38}}>
-                      <div style={{flex:1,height:2,background:C.border}}/>
-                      <div style={{width:0,height:0,borderTop:"5px solid transparent",borderBottom:"5px solid transparent",borderLeft:`7px solid ${C.border}`}}/>
-                    </div>
-                  )}
+                  <div style={{fontSize:11,fontWeight:600,color:C.t1,marginTop:6,textAlign:"center" as const}}>{ph.label}</div>
                 </div>
-              );
-            })}
+                {i<PHASES.length-1&&(
+                  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",paddingBottom:20,color:"#899898",fontSize:14,fontWeight:700,letterSpacing:2,minWidth:32}}>›&thinsp;›&thinsp;›</div>
+                )}
+              </React.Fragment>
+            ))}
           </div>
-        </div>
-      )}
 
-      {vert&&(
-        <div style={{display:"flex",flexDirection:"column",gap:0}}>
-          {stages.map((st,i)=>{
-            const color=stC(st.status); const bg=stBg(st.status);
-            return (
-              <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"stretch"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,background:C.card,border:`2px solid ${color}`,borderRadius:8,padding:"10px 12px",position:"relative",boxShadow:"0 1px 4px rgba(0,0,0,0.07)"}}>
-                  <div style={{position:"absolute",top:-7,right:-7,width:16,height:16,borderRadius:"50%",background:color,color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{stIco(st.status)}</div>
-                  <span style={{flexShrink:0}}><SapIcon name={st.ico} size={22} color={stC(st.status)}/></span>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                      <span style={{fontSize:9,fontWeight:800,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 5px",letterSpacing:.5}}>{st.badge}</span>
-                      <span style={{fontSize:12,fontWeight:700,color:C.t1}}>{st.label.replace("\n"," ")}</span>
-                      <span style={{fontSize:9,fontWeight:700,color,background:bg,borderRadius:10,padding:"1px 7px",border:`1px solid ${color}44`,marginLeft:"auto",whiteSpace:"nowrap"}}>{stLbl(st.status)}</span>
-                    </div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {st.docs.slice(0,2).map((d,j)=><span key={j} style={{fontFamily:"monospace",fontSize:10,color:C.primary,background:C.infoBg,borderRadius:3,padding:"1px 6px"}}>{d}</span>)}
-                      {st.docs.length>2&&<span style={{fontSize:10,color:C.t2}}>+{st.docs.length-2} more</span>}
-                    </div>
-                  </div>
+          {/* ── Document cards row ── */}
+          <div style={{display:"flex",alignItems:"flex-start"}}>
+            {PHASES.map((ph,pi)=>(
+              <React.Fragment key={ph.id}>
+                <div style={{minWidth:120,display:"flex",flexDirection:"column" as const,gap:6}}>
+                  {ph.docs.map((doc:any,di:number)=>{
+                    const sc=stColor(doc.status); const sbg=stBgCol(doc.status);
+                    return(
+                      <div key={di} style={{
+                        background:"#fff",
+                        border:`1px solid #e0e0e0`,
+                        borderLeft:`3px solid ${sc}`,
+                        borderRadius:4,
+                        padding:"8px 10px",
+                        boxShadow:"0 1px 3px rgba(0,0,0,0.08)",
+                        fontSize:11,
+                        width:112,
+                      }}>
+                        <div style={{fontWeight:700,color:C.t1,fontSize:11,marginBottom:2,lineHeight:1.3}}>{doc.type}</div>
+                        <div style={{fontFamily:"monospace",fontSize:9,color:C.primary,marginBottom:5,wordBreak:"break-all" as const}}>{doc.no}</div>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:3,background:sbg,borderRadius:10,padding:"1px 6px",marginBottom:doc.qty||doc.postDate?4:0}}>
+                          <span style={{fontSize:9,fontWeight:800,color:sc}}>{stIcon(doc.status)}</span>
+                          <span style={{fontSize:9,fontWeight:600,color:sc}}>{stLabel(doc.status)}</span>
+                        </div>
+                        {doc.qty&&<div style={{fontSize:9,color:"#6a6d70",marginBottom:1}}>Quantity: <span style={{color:C.t1}}>{doc.qty}</span></div>}
+                        {doc.postDate&&<div style={{fontSize:9,color:"#6a6d70"}}>Posting Date: <span style={{color:C.t1}}>{fmtDate(doc.postDate)}</span></div>}
+                      </div>
+                    );
+                  })}
                 </div>
-                {i<stages.length-1&&(
-                  <div style={{display:"flex",justifyContent:"flex-start",paddingLeft:20}}>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:2}}>
-                      <div style={{width:2,height:14,background:C.border}}/>
-                      <div style={{width:0,height:0,borderLeft:"5px solid transparent",borderRight:"5px solid transparent",borderTop:`7px solid ${C.border}`}}/>
+                {pi<PHASES.length-1&&(
+                  <div style={{minWidth:32,flex:1,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:14}}>
+                    <div style={{display:"flex",alignItems:"center",gap:1,color:"#c0c0c0",fontSize:9,fontWeight:700,letterSpacing:1}}>
+                      <div style={{width:0,height:0,borderTop:"4px solid transparent",borderBottom:"4px solid transparent",borderLeft:"6px solid #c0c0c0"}}/>
                     </div>
                   </div>
                 )}
-              </div>
-            );
-          })}
+              </React.Fragment>
+            ))}
+          </div>
+
         </div>
-      )}
+      </div>
 
       {pos.length>1&&(
-        <div style={{fontSize:11,color:C.t2,marginTop:10,padding:"6px 10px",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
-          ℹ️ This invoice covers {pos.length} PO references with {allGRs.length} Goods Receipts across all lines.
+        <div style={{fontSize:11,color:C.info,marginTop:10,padding:"6px 10px",background:C.infoBg,borderRadius:4,border:`1px solid ${C.info}44`,display:"flex",alignItems:"center",gap:6}}>
+          <SapIcon name="message-information" size={13} color={C.info}/>
+          This invoice covers {pos.length} PO references with {allGRs.length} Goods Receipts across all lines.
         </div>
       )}
     </>
