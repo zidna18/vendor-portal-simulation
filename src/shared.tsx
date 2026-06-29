@@ -8,8 +8,25 @@ export const USERS = [
   { id:"B002", role:"brm",    username:"buyer1",   password:"demo123", name:"Siti Rahma",   title:"Senior Buyer" },
 ];
 export const VENDORS = {
-  "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",   bank:{name:"Bank Mandiri", acc:"1234-5678-9012", aname:"PT MAJU BERSAMA"},    cat:"Goods & Services", since:"2019-03-15", rep:"Budi Santoso",   status:"Active" },
-  "10000002":{ id:"10000002", name:"CV Sukses Mandiri",  tax:"02.345.678.9-012.000", addr:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", phone:"+62 21 5555-5678", email:"finance@suksesmandiri.co.id", bank:{name:"BCA",         acc:"9876-5432-1098", aname:"CV SUKSES MANDIRI"}, cat:"Services",         since:"2021-07-22", rep:"Dewi Kusuma",   status:"Active" },
+  "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",
+    banks:[
+      {no:1, name:"Bank Mandiri",           branch:"KCP Jakarta Sudirman",   acc:"1234-5678-9012",    aname:"PT MAJU BERSAMA",   currency:"IDR", swift:"BMRIIDJA", primary:true  },
+      {no:2, name:"Bank Central Asia (BCA)",branch:"KCP Jakarta Selatan",    acc:"8877-6655-4433",    aname:"PT MAJU BERSAMA",   currency:"IDR", swift:"CENAIDJA", primary:false },
+      {no:3, name:"Citibank N.A.",           branch:"Jakarta Branch",         acc:"4011-2233-4455-66", aname:"PT MAJU BERSAMA",   currency:"USD", swift:"CITIIDJX", primary:false },
+    ],
+    cat:"Goods & Services", since:"2019-03-15", rep:"Budi Santoso", status:"Active",
+    npwpAddress:"Jl. Sudirman No. 123, Jakarta Selatan 12190", pkp:"PKP", taxStatus:"Active",
+    certExpiry:"2027-03-14", website:"www.majubersama.co.id", fax:"+62 21 5555-1235",
+  },
+  "10000002":{ id:"10000002", name:"CV Sukses Mandiri",  tax:"02.345.678.9-012.000", addr:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", phone:"+62 21 5555-5678", email:"finance@suksesmandiri.co.id",
+    banks:[
+      {no:1, name:"Bank Central Asia (BCA)",branch:"KCP Jakarta Pusat",      acc:"9876-5432-1098",    aname:"CV SUKSES MANDIRI", currency:"IDR", swift:"CENAIDJA", primary:true  },
+      {no:2, name:"Bank Negara Indonesia",  branch:"Kantor Cabang Jakarta",  acc:"3344-5566-7788",    aname:"CV SUKSES MANDIRI", currency:"IDR", swift:"BNINIDJA", primary:false },
+    ],
+    cat:"Services", since:"2021-07-22", rep:"Dewi Kusuma", status:"Active",
+    npwpAddress:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", pkp:"Non-PKP", taxStatus:"Active",
+    certExpiry:"2026-07-21", website:"www.suksesmandiri.co.id", fax:"+62 21 5555-5679",
+  },
 };
 // SAP I_CompanyCode — five legal entities
 export const COMPANY_CODES = [

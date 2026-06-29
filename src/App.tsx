@@ -41,7 +41,6 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
           </div>
         )}
         <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
-          {!isMob&&<button onClick={onOpenSettings} title="Settings" style={{background:"rgba(255,255,255,0.12)",color:"#fff",border:"1px solid rgba(255,255,255,0.2)",cursor:"pointer",borderRadius:4,width:32,height:32,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>}
           {!isMob&&<div style={{textAlign:"right",marginLeft:4}}><div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.95)"}}>{user.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.55)"}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div></div>}
           <div style={{position:"relative"}}>
             <button onClick={()=>setAvatarOpen(o=>!o)} title={user.name} aria-label={`User menu: ${user.name}`} aria-expanded={avatarOpen} style={{width:36,height:36,borderRadius:"50%",background:ac.bg,border:`2px solid ${avatarOpen?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.35)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,color:ac.fg,cursor:"pointer",padding:0,outline:"none",flexShrink:0,transition:"border-color .15s,box-shadow .15s",boxShadow:avatarOpen?"0 0 0 3px rgba(255,255,255,0.22)":"none"}}>{ini}</button>
