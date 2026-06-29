@@ -2110,7 +2110,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
 
   return (
     <div ref={containerRef} style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif",overflow:"hidden"}}>
-      <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
+      <div style={{flex:view&&!fullScreen?`0 0 ${split}%`:"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease",display:fullScreen?"none":"block"}}>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:20,fontWeight:700,color:C.t1,letterSpacing:0.1}}>Invoice Management</div>
         <div style={{fontSize:FS.sm,color:C.t2,marginTop:3,display:"flex",alignItems:"center",gap:5}}>
