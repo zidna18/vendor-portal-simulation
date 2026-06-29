@@ -270,7 +270,8 @@ function AdaptFiltersDialog({open,onClose,visibleFields,onSave,draft,allFields,h
 export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
-  const toggle=id=>setExpanded(p=>({[id]:!p[id]}));
+  const [allExpanded,setAllExpanded]=useState(false);
+  const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
   const scrollRef=useRef<HTMLDivElement>(null);
   const drag=useRef({active:false,startX:0,scrollLeft:0});
   const onDragDown=(e)=>{if(!scrollRef.current)return;drag.current={active:true,startX:e.pageX-scrollRef.current.offsetLeft,scrollLeft:scrollRef.current.scrollLeft};scrollRef.current.style.cursor="grabbing";};
@@ -334,8 +335,18 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const acceptSel  =()=>{setQuotations(p=>p.map(q=>selIds.has(q.id)&&q.status==="Submitted"?{...q,status:"Accepted"}:q));setSelIds(new Set());};
   const rejectSel  =()=>{if(!window.confirm(`Reject ${selRows.filter(q=>q.status==="Submitted").length} quotation(s)?`))return;setQuotations(p=>p.map(q=>selIds.has(q.id)&&q.status==="Submitted"?{...q,status:"Win"}:q));setSelIds(new Set());};
 
-  const HDR_COLS=["","Status","SAP Quotation No","Quotation ID","RFQ Title","Vendor","Submitted","Valid Until","Total Amount",""];
-  const [colW,setColW]=useState([28,90,145,115,210,140,95,95,115,32]);
+  const exportQtCSV=()=>{
+    const rows=selIds.size>0?list.filter(q=>selIds.has(q.id)):list;
+    if(rows.length===0){alert("No quotations to export.");return;}
+    const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
+    const hdr=["SAP Quotation No","Quotation ID","RFQ ID","RFQ Title","Vendor ID","Vendor Name","Submitted Date","Valid Until","Total Amount","Status","Notes"];
+    const data=rows.map(q=>{const sapNo=q.sapQtNo||(q.submittedDate?`80${q.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,q.id,q.rfqId,q.rfqTitle,q.vendorId,q.vendorName,q.submittedDate,q.validUntil,q.totalAmt,q.status,q.notes].map(esc).join(",");});
+    const csv=[hdr.join(","),...data].join("\r\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download=`quotations_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+  };
+
+  const HDR_COLS=["","","Status","SAP Quotation No","Quotation ID","RFQ Title","Vendor","Submitted","Valid Until","Total Amount",""];
+  const [colW,setColW]=useState([28,32,90,145,115,210,140,95,95,115,32]);
   const colResize=useRef<{idx:number,startX:number,startW:number}|null>(null);
   const onResizeStart=(e,idx)=>{
     e.stopPropagation();e.preventDefault();
@@ -429,6 +440,16 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
             </>;
           })()}
         </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(q=>{m[q.id]=true;});setExpanded(m);setAllExpanded(true);}}}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/>{allExpanded?"Collapse All":"Expand All"}
+          </button>
+          <button onClick={exportQtCSV} title={selIds.size>0?`Export ${selIds.size} selected`:"Export all filtered"}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
+          </button>
+        </div>
       </div>
 
       <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:"0 0 8px 8px"}}>
@@ -465,6 +486,10 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                 {/* checkbox */}
                 <div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",justifyContent:"flex-start",padding:"10px 10px"}}>
                   <input type="checkbox" checked={isSel} onChange={()=>toggleSel(qt.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
+                </div>
+                {/* expand toggle */}
+                <div onClick={e=>{e.stopPropagation();toggle(qt.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px"}}>
+                  <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                 </div>
                 {/* status badge */}
                 <div style={{padding:"8px 10px",display:"flex",alignItems:"center"}}><Badge s={qt.status}/></div>
@@ -597,7 +622,20 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
+  const [allExpanded,setAllExpanded]=useState(false);
+  const [detailRfq,setDetailRfq]=useState<any>(null);
+  const [rfqTab,setRfqTab]=useState("general");
+  const [split,setSplit]=useState(52);
+  const containerRef=useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const onSplitterDrag=(e)=>{
+    e.preventDefault();
+    const startX=e.clientX,startSplit=split;
+    const containerW=containerRef.current?.offsetWidth||window.innerWidth;
+    const onMove=(me)=>{const dx=me.clientX-startX;setSplit(Math.min(75,Math.max(25,startSplit+(dx/containerW)*100)));};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  };
   const drag = useRef({active:false,startX:0,scrollLeft:0});
   const onDragDown = (e) => { if(!scrollRef.current)return; drag.current={active:true,startX:e.pageX-scrollRef.current.offsetLeft,scrollLeft:scrollRef.current.scrollLeft}; scrollRef.current.style.cursor="grabbing"; };
   const onDragMove = (e) => { if(!drag.current.active||!scrollRef.current)return; e.preventDefault(); const x=e.pageX-scrollRef.current.offsetLeft; scrollRef.current.scrollLeft=drag.current.scrollLeft-(x-drag.current.startX); };
@@ -653,7 +691,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     .filter(r=>!applied.estValMin  ||r.estVal>=Number(applied.estValMin))
     .filter(r=>!applied.estValMax  ||r.estVal<=Number(applied.estValMax));
   const getQts=rfqId=>quotations.filter(q=>q.rfqId===rfqId);
-  const toggle=id=>setExpanded(p=>({[id]:!p[id]}));
+  const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
   const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const publish=()=>{
@@ -665,8 +703,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   };
 
-  const HDR_COLS = ["Status","SAP RFQ No","RFQ Number","Description","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant","Quotations"];
-  const [colW, setColW] = useState([90,130,115,180,85,85,90,105,120,60,50,75]);
+  const HDR_COLS = ["","Status","SAP RFQ No","RFQ Number","Description","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant","Quotations"];
+  const [colW, setColW] = useState([32,90,130,115,180,85,85,90,105,120,60,50,75]);
   const colResize = useRef<{idx:number,startX:number,startW:number}|null>(null);
   const onResizeStart = (e,idx) => {
     e.stopPropagation(); e.preventDefault();
@@ -702,7 +740,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const gridCols2 = colW2.map(w=>`${w}px`).join(" ");
 
   return (
-    <div style={{padding:pg()}}>
+  <div ref={containerRef} style={{display:"flex",alignItems:"flex-start",overflow:"hidden",width:"100%"}}>
+    <div style={{flex:detailRfq?`0 0 ${100-split}%`:"1",padding:pg(),overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
           <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
@@ -754,7 +793,32 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
 
       <FilterBar opts={["All","Open","On Process","Complete","Closed"]} val={flt} onChange={setFlt}/>
 
-      <div style={{overflowX:"auto",borderRadius:8,border:`1px solid ${C.border}`}}>
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
+          <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/>{allExpanded?"Collapse All":"Expand All"}
+          </button>
+          <button onClick={()=>{
+            if(list.length===0){alert("No RFQs to export.");return;}
+            const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
+            const hdr=["SAP RFQ No","RFQ Number","Description","Status","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant"];
+            const data=list.map(r=>{const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,r.id,r.title,r.status,fmtDate(r.postedDate),fmtDate(r.postedDate),fmtDate(r.closingDate),r.postedBy,r.estVal,r.companyCode,r.plant].map(esc).join(",");});
+            const csv=[hdr.join(","),...data].join("\r\n");
+            const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download=`rfqs_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+          }} title="Export all filtered RFQs"
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
+          </button>
+        </div>
+      </div>
+
+      <div style={{overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`}}>
       <div style={{minWidth:rfqMinW,background:C.card}}>
         <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
           {HDR_COLS.map((h,i)=>(
@@ -784,6 +848,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 onMouseEnter={e=>e.currentTarget.style.background=C.infoBg}
                 onMouseLeave={e=>e.currentTarget.style.background=rowBg}
               >
+                <div onClick={e=>{e.stopPropagation();toggle(rfq.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
+                  <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                </div>
                 <div style={cell({justifyContent:"flex-start"})}><Badge s={rfq.status}/></div>
                 {(()=>{const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
                 <div style={cell({overflow:"hidden"})}>
@@ -798,9 +865,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 <div style={cell({fontSize:12,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
                 <div style={cell({fontSize:12,color:C.t2})}>{rfq.companyCode||"—"}</div>
                 <div style={cell({fontSize:12,color:C.t2})}>{rfq.plant||"—"}</div>
-                <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",overflow:"hidden"}}>
+                <div onClick={e=>{e.stopPropagation();setDetailRfq(rfq);setRfqTab("general");}} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",overflow:"hidden",cursor:"pointer"}}>
                   {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{qts.length}</span>}
-                  <span style={{fontSize:16,color:"#32363a",fontWeight:300,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)",marginLeft:"auto"}}>›</span>
+                  <span style={{fontSize:16,color:detailRfq?.id===rfq.id?C.primary:"#32363a",fontWeight:detailRfq?.id===rfq.id?700:300,marginLeft:"auto"}}>›</span>
                 </div>
               </div>
 
@@ -934,6 +1001,180 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           </div>
         </Modal>
       )}
-    </div>
+    </div>{/* end left panel */}
+
+    {detailRfq&&<>
+      {/* Splitter */}
+      <div onMouseDown={onSplitterDrag} style={{width:8,flexShrink:0,cursor:"col-resize",display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderLeft:`1px solid ${C.border}`,borderRight:`1px solid ${C.border}`,userSelect:"none",alignSelf:"stretch",zIndex:5}}>
+        <div style={{display:"flex",flexDirection:"column",gap:3,pointerEvents:"none"}}>
+          {[0,1,2,3,4].map(i=><div key={i} style={{width:3,height:3,borderRadius:"50%",background:C.t2,opacity:.5}}/>)}
+        </div>
+      </div>
+
+      {/* Detail Panel */}
+      {(()=>{
+        const r=detailRfq;
+        const qts=getQts(r.id);
+        const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+        const TABS=["general","items","quotations","notes"];
+        const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes"};
+        const field=(label,val)=>(
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
+            <div style={{fontSize:13,color:C.t1,fontWeight:500}}>{val||"—"}</div>
+          </div>
+        );
+        const sectionHdr=(title)=><div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>{title}</div>;
+        return(
+        <div style={{flex:`0 0 ${split}%`,position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",boxShadow:"-2px 0 10px rgba(0,0,0,0.08)"}}>
+          {/* Panel Header */}
+          <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.border}`,background:C.subtle,flexShrink:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.3}}>{r.title}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:3,fontFamily:"monospace"}}>{sapNo}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                <Badge s={r.status}/>
+                <button onClick={()=>setDetailRfq(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 2px",marginLeft:4}}>×</button>
+              </div>
+            </div>
+            {/* Metadata row */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:11}}>
+              <div><span style={{color:C.t2}}>Created By: </span><span style={{color:C.t1,fontWeight:600}}>{r.postedBy}</span></div>
+              <div><span style={{color:C.t2}}>Status: </span><span style={{color:C.t1,fontWeight:600}}>{r.status}</span></div>
+              <div><span style={{color:C.t2}}>Created On: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+              <div><span style={{color:C.t2}}>Target Value: </span><span style={{color:C.t1,fontWeight:600}}>{idr(r.estVal)}</span></div>
+              <div><span style={{color:C.t2}}>Publishing Date: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+              <div><span style={{color:C.t2}}>Quotation Deadline: </span><span style={{color:C.t1,fontWeight:600}}>{fmtDate(r.closingDate)}</span></div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0,overflowX:"auto"}}>
+            {TABS.map(t=>(
+              <button key={t} onClick={()=>setRfqTab(t)} style={{background:"none",border:"none",borderBottom:rfqTab===t?`2px solid ${C.primary}`:"2px solid transparent",color:rfqTab===t?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:rfqTab===t?700:400,cursor:"pointer",padding:"10px 14px",whiteSpace:"nowrap",transition:"color .15s",marginBottom:-1}}>
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
+
+            {rfqTab==="general"&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                  <div>
+                    {sectionHdr("Basic Data")}
+                    {field("RFQ Number",r.id)}
+                    {field("RFQ Type","Int. Sourcing Req. (RQ)")}
+                    {field("RFQ Description",r.title)}
+                    {field("Category",r.cat)}
+                    {field("Language Key","English (EN)")}
+                  </div>
+                  <div>
+                    {sectionHdr("Organization")}
+                    {field("Purchasing Organization",r.purchOrg)}
+                    {field("Company Code",r.companyCode)}
+                    {field("Plant",r.plant)}
+                    {field("Tender Admin",r.postedBy)}
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                  <div>
+                    {sectionHdr("Important Dates")}
+                    {field("Apply By",fmtDate(r.closingDate))}
+                    {field("Quotation Deadline",fmtDate(r.closingDate))}
+                    {field("Binding Period",fmtDate(r.closingDate))}
+                    {field("Publishing Date",fmtDate(r.postedDate))}
+                  </div>
+                  <div>
+                    {sectionHdr("Delivery & Payment")}
+                    {field("Payment Terms","Due within 14 Days (Z014)")}
+                    {field("Currency","Indonesian Rupiah (IDR)")}
+                    {field("Incoterms","Ex Works (EXW)")}
+                    {field("Target Value",idr(r.estVal))}
+                  </div>
+                </div>
+                <div>
+                  {sectionHdr("Scope")}
+                  <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{r.desc||"—"}</div>
+                </div>
+              </div>
+            )}
+
+            {rfqTab==="items"&&(
+              <div>
+                {(r.items||[]).length===0&&<div style={{color:C.t2,fontSize:13}}>No items.</div>}
+                {(r.items||[]).map((it,i)=>(
+                  <div key={i} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:10,background:C.subtle}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <span style={{fontSize:12,fontWeight:700,color:C.t2,minWidth:28}}>#{String(it.no).padStart(3,"0")}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:C.t1}}>{it.desc}</span>
+                      <span style={{marginLeft:"auto",background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 7px",fontSize:11,fontWeight:700}}>{it.type}</span>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px 16px",fontSize:12}}>
+                      {it.materialNo&&<div><span style={{color:C.t2}}>Mat. No: </span><span style={{fontFamily:"monospace",color:C.t1}}>{it.materialNo}</span></div>}
+                      {it.materialGroup&&<div><span style={{color:C.t2}}>Mat. Group: </span><span style={{color:C.t1}}>{it.materialGroup}</span></div>}
+                      <div><span style={{color:C.t2}}>Plant: </span><span style={{color:C.t1}}>{it.plant||r.plant||"—"}</span></div>
+                      <div><span style={{color:C.t2}}>Qty: </span><span style={{fontWeight:600,color:C.t1}}>{it.qty} {it.uom}</span></div>
+                      {it.acctAssign&&<div><span style={{color:C.t2}}>Acct: </span><span style={{color:C.t1}}>{it.acctAssign}</span></div>}
+                      {it.type==="Material"
+                        ?<div><span style={{color:C.t2}}>Req. Date: </span><span style={{color:C.t1}}>{fmtDate(it.requirementDate)||"—"}</span></div>
+                        :<div><span style={{color:C.t2}}>Period: </span><span style={{color:C.t1}}>{fmtDate(it.startDate)||"—"} – {fmtDate(it.endDate)||"—"}</span></div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {rfqTab==="quotations"&&(
+              <div>
+                {qts.length===0&&<div style={{color:C.t2,fontSize:13}}>No quotations received yet.</div>}
+                {qts.map(qt=>{
+                  const sapQtNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+                  return(
+                  <div key={qt.id} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:8,background:C.card}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{qt.vendorName}</div>
+                        <div style={{fontSize:11,color:C.t2,fontFamily:"monospace",marginTop:1}}>{qt.id} · SAP {sapQtNo}</div>
+                      </div>
+                      <Badge s={qt.status}/>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 12px",fontSize:12}}>
+                      <div><span style={{color:C.t2}}>Total: </span><span style={{fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span></div>
+                      <div><span style={{color:C.t2}}>Submitted: </span><span style={{color:C.t1}}>{fmtDate(qt.submittedDate)||"—"}</span></div>
+                      <div><span style={{color:C.t2}}>Valid Until: </span><span style={{color:C.t1}}>{fmtDate(qt.validUntil)||"—"}</span></div>
+                    </div>
+                    {qt.notes&&<div style={{marginTop:6,fontSize:11,color:C.t2,fontStyle:"italic"}}>{qt.notes}</div>}
+                  </div>
+                );})}
+              </div>
+            )}
+
+            {rfqTab==="notes"&&(
+              <div>
+                <div style={{fontSize:13,color:C.t1,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.desc||"No notes."}</div>
+                {r.targets&&r.targets.length>0&&(
+                  <div style={{marginTop:16}}>
+                    {sectionHdr("Invited Vendors")}
+                    {r.targets.map(vid=>(
+                      <div key={vid} style={{fontSize:13,color:C.t1,padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                        {VENDORS[vid]?.name||vid} <span style={{color:C.t2,fontSize:11}}>· {vid}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        </div>
+        );
+      })()}
+    </>}
+  </div>{/* end FCL container */}
   );
 };
