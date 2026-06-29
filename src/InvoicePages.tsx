@@ -829,14 +829,12 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
       {/* ── Object Header ── */}
       <div style={{background:C.subtle,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
         {/* Title row */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"10px 12px 8px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"10px 12px 6px"}}>
           <div style={{minWidth:0,flex:1,marginRight:8}}>
             <div style={{fontSize:15,fontWeight:700,color:C.t1,lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{view.invoiceNo}</div>
             <div style={{fontSize:11,color:C.t2,marginTop:2}}>{view.id}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-            {canEdit&&<button onClick={()=>onEdit(view)} style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28}}>Edit</button>}
-            {canWithdraw&&<button onClick={()=>onWithdraw(view.id)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28}}>Withdraw</button>}
             {iconBtn(onToggleFullScreen, fullScreen?"exit-full-screen":"full-screen", fullScreen?"Restore":"Full Screen")}
             {iconBtn(onClose, "decline", "Close")}
           </div>
@@ -859,6 +857,17 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
             </div>
           ))}
         </div>
+        {/* Action toolbar */}
+        {(canEdit||canWithdraw)&&(
+          <div style={{display:"flex",gap:6,padding:"6px 12px",borderBottom:`1px solid ${C.border}`,background:C.card}}>
+            {canEdit&&<button onClick={()=>onEdit(view)} style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 12px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="edit" size={12} color="#fff"/>Edit
+            </button>}
+            {canWithdraw&&<button onClick={()=>onWithdraw(view.id)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 12px",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="undo" size={12} color={C.t1}/>Withdraw
+            </button>}
+          </div>
+        )}
         {/* Tab bar */}
         <div style={{display:"flex",overflowX:"auto",paddingLeft:16}}>
           {tabs.map(t=>(
@@ -967,20 +976,62 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
           </>
         )}
 
-        {tab==="attachments"&&(
-          <>
-            {section("Attachments")}
-            <div style={{padding:"12px 16px"}}>
-              {(view.files||[]).length===0&&<div style={{color:C.t2,fontSize:12}}>No attachments.</div>}
-              {(view.files||[]).map((a:any)=>(
-                <button key={a} onClick={()=>onPdf(a)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,padding:"6px 0",textAlign:"left",fontFamily:"inherit",width:"100%"}}>
-                  <SapIcon name="document" size={14} color={C.primary}/>
-                  <span style={{textDecoration:"underline"}}>{a}</span>
-                </button>
-              ))}
+        {tab==="attachments"&&(()=>{
+          const files = view.files||[];
+          const FILE_META:Record<string,{icon:string,by:string,size:string}> = {
+            "invoice.pdf":      {icon:"pdf-attachment",   by:view.vendorName||"Vendor", size:"124 KB"},
+            "faktur_pajak.pdf": {icon:"pdf-attachment",   by:view.vendorName||"Vendor", size:"87 KB"},
+          };
+          const getIcon=(f:string)=>f.endsWith(".pdf")?"pdf-attachment":f.endsWith(".jpg")||f.endsWith(".png")?"attachment":"document";
+          const getMeta=(f:string)=>FILE_META[f]||{icon:getIcon(f),by:view.vendorName||"Vendor",size:"—"};
+          const uploadDate = view.submittedAt||view.invoiceDate||"";
+          const canUpload = ["Draft","Rejected"].includes(view.status);
+          return(
+            <div>
+              {/* Toolbar */}
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                <span style={{fontWeight:600,fontSize:13,color:C.t1}}>Uploaded ({files.length})</span>
+                {canUpload&&<span style={{fontSize:12,color:C.t2,flex:1}}>Add new files and press Start to upload pending files:</span>}
+                {!canUpload&&<span style={{fontSize:12,color:C.t2,flex:1}}/>}
+                {canUpload&&<button style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:26}}>Start</button>}
+                {canUpload&&<button style={{width:26,height:26,background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",fontSize:16,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:300}}>+</button>}
+              </div>
+              {/* File list */}
+              <div style={{border:`1px solid ${C.border}`,borderRadius:0,overflow:"hidden",margin:0}}>
+                {files.length===0&&(
+                  <div style={{padding:"32px 16px",textAlign:"center",color:C.t2,fontSize:13}}>
+                    <SapIcon name="document" size={32} color={C.t2}/><br/>No attachments uploaded.
+                  </div>
+                )}
+                {files.map((f:string,i:number)=>{
+                  const m=getMeta(f);
+                  return(
+                    <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card,transition:"background .08s"}}
+                      onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+                      onMouseLeave={e=>(e.currentTarget.style.background=C.card)}>
+                      <div style={{flexShrink:0,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
+                        <SapIcon name={m.icon} size={20} color={C.primary}/>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <button onClick={()=>onPdf(f)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {f}
+                        </button>
+                        <div style={{fontSize:11,color:C.t2,marginTop:2,lineHeight:1.4}}>
+                          Uploaded By: <span style={{color:C.t1}}>{m.by}</span>
+                          {uploadDate&&<> &middot; Uploaded On: <span style={{color:C.t1}}>{fmtDate(uploadDate)}</span></>}
+                          &middot; File Size: <span style={{color:C.t1}}>{m.size}</span>
+                        </div>
+                      </div>
+                      {canUpload&&<button title="Remove" style={{width:24,height:24,background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,borderRadius:3}}
+                        onMouseEnter={e=>(e.currentTarget.style.color=C.err)}
+                        onMouseLeave={e=>(e.currentTarget.style.color=C.t2)}>✕</button>}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </>
-        )}
+          );
+        })()}
 
         {tab==="note"&&(
           <>
@@ -1296,8 +1347,8 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                     style={{background:rowBg,transition:"background .08s",cursor:"default"}}>
 
                     <td style={{...cs,padding:0,textAlign:"center",width:28}}>
-                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,padding:"0 6px",fontSize:14,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28}}>
-                        {isExpanded?"▾":"▸"}
+                      {hasItems&&<button onClick={()=>toggleExpanded(inv.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.primary,padding:0,fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",width:28,height:36}}>
+                        <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                       </button>}
                     </td>
                     <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
