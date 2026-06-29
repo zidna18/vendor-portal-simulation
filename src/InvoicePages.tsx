@@ -1276,49 +1276,60 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           const canConvert  = status==="Posted"&&sel.every(i=>i.invoiceType==="Supplier DPR");
           const canClear    = status==="Converted to Invoice";
 
-          const tbBtn=(label,onClick,icon,active,variant?:"emphasized"|"negative"|"positive")=>{
-            const isEmp=active&&variant==="emphasized";
-            const isNeg=active&&variant==="negative";
-            const isPos=active&&variant==="positive";
-            const bg    = isEmp?"#0a6ed1":isNeg?"#bb0000":isPos?"#107e3e":"transparent";
-            const bdr   = isEmp?"1px solid #0a6ed1":isNeg?"1px solid #bb0000":isPos?"1px solid #107e3e":"none";
-            const color = active?(isEmp||isNeg||isPos?"#fff":"#32363a"):"#a9b4be";
-            const fw    = isEmp||isPos?"600":"400";
+          // SAP Fiori transparent button — exactly matches "Create / Upload / Copy / Reverse" style
+          // Active: dark text, no fill, no border; hover handled via onMouseEnter/Leave
+          // Inactive: same but 40% opacity, no cursor
+          const [hovBtn,setHovBtn]=useState<string|null>(null);
+          const tbBtn=(label,onClick,icon,active)=>{
+            const isHov=hovBtn===label&&active;
             return(
               <button key={label} onClick={active?onClick:undefined} disabled={!active}
+                onMouseEnter={()=>active&&setHovBtn(label)} onMouseLeave={()=>setHovBtn(null)}
                 title={active?undefined:`Select invoice(s) with applicable status to use "${label}"`}
-                style={{background:bg,border:bdr,color,borderRadius:4,padding:"0 0.5625rem",fontSize:14,
+                style={{
+                  background:isHov?"#f5f6f7":"transparent",
+                  border:"none",
+                  color:"#32363a",
+                  borderRadius:4,
+                  padding:"0 0.5625rem",
+                  fontSize:14,
                   fontFamily:"'72','72full',Arial,Helvetica,sans-serif",
-                  cursor:active?"pointer":"default",height:36,display:"inline-flex",alignItems:"center",
-                  gap:5,whiteSpace:"nowrap" as const,fontWeight:fw,letterSpacing:0,
-                  opacity:active?1:0.45,transition:"opacity .1s,color .1s"}}>
-                {icon&&<SapIcon name={icon} size={14} color={color}/>}
+                  cursor:active?"pointer":"default",
+                  height:36,
+                  display:"inline-flex",
+                  alignItems:"center",
+                  gap:5,
+                  whiteSpace:"nowrap" as const,
+                  fontWeight:"400",
+                  letterSpacing:0,
+                  opacity:active?1:0.4,
+                  transition:"background .08s,opacity .1s",
+                  flexShrink:0,
+                }}>
+                {icon&&<SapIcon name={icon} size={14} color="#32363a"/>}
                 <bdi>{label}</bdi>
               </button>
             );
           };
 
-          const sep=<div style={{width:1,height:20,background:"#d9d9d9",margin:"0 2px",flexShrink:0}}/>;
+          const sep=<div style={{width:1,height:20,background:"#d9d9d9",margin:"0 4px",flexShrink:0,alignSelf:"center"}}/>;
 
           return(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
               <div style={{display:"flex",alignItems:"center",gap:0}}>
                 <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText,marginRight:8}}>Invoices</span>
-                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:12}}>({list.length})</span>
-                {tbBtn("Review",       ()=>sel.forEach(i=>setUR(i.id)),                       "request-pending",canReview)}
-                {tbBtn("Accept",       ()=>sel.forEach(i=>accept(i.id)),                      "accept",         canAccept, "positive")}
-                {tbBtn("Reject",       ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject, "negative")}
+                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:8}}>({list.length})</span>
+                {tbBtn("Review",           ()=>sel.forEach(i=>setUR(i.id)),  "request-pending", canReview)}
+                {tbBtn("Accept",           ()=>sel.forEach(i=>accept(i.id)), "accept",           canAccept)}
+                {tbBtn("Reject",           ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject)}
                 {sep}
-                {tbBtn("Post to SAP",  ()=>sel.forEach(i=>postToSAP(i)),                      "upload-to-cloud",canPost,   "emphasized")}
-                {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)),                "switch-classes", canConvert,"emphasized")}
-                {tbBtn("Clear",        ()=>sel.forEach(i=>clearDPR(i)),                       "complete",       canClear)}
-                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:8}}>{sel.length} selected</span>}
+                {tbBtn("Post to SAP",      ()=>sel.forEach(i=>postToSAP(i)),   "upload-to-cloud",canPost)}
+                {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)), "switch-classes", canConvert)}
+                {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
+                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
               </div>
               <div style={{display:"flex",gap:2,alignItems:"center"}}>
-                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"}
-                  style={{background:"transparent",border:"none",color:"#32363a",borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5}}>
-                  <SapIcon name="excel-attachment" size={14} color="#32363a"/><bdi>Export</bdi>
-                </button>
+                {tbBtn("Export",exportCSV,"excel-attachment",true)}
               </div>
             </div>
           );
