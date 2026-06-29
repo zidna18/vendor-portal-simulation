@@ -50,9 +50,9 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 };
 
 // ── Invoice Form Modal ─────────────────────────────────────────
-export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
+export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[]}) => {
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
@@ -60,14 +60,33 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
   const save=draft=>{
     if(!draft&&!(f.poNumbers||[]).length){alert("Please add at least one PO Number before submitting.");return;}
     if(!draft&&!f.companyCode){alert("Please select a Company Code before submitting.");return;}
-    if(!draft&&!f.taxDoc){alert("Please enter Faktur Pajak number before submitting.");return;}
+    if(!draft&&!f.taxDoc&&f.invoiceType==="Invoice"){alert("Please enter Faktur Pajak number before submitting.");return;}
     if(!draft&&(f.files||[]).length<2){alert("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.");return;}
+    // Duplicate invoice number check
+    const dupNo=allInvoices.find(i=>i.id!==f.id&&i.invoiceNo.trim().toLowerCase()===f.invoiceNo.trim().toLowerCase());
+    if(dupNo){alert(`Invoice number "${f.invoiceNo}" already exists (${dupNo.id}). Please use a unique invoice number.`);return;}
+    // PO reuse check
+    const usedPOs=(f.poNumbers||[]).filter(po=>allInvoices.some(i=>i.id!==f.id&&(i.poNumbers||[]).includes(po)&&i.status!=="Rejected"));
+    if(usedPOs.length>0){alert(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`);return;}
     const obj={...f,status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
   };
   return (
     <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
       <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
+        <div style={{gridColumn:"1/-1",padding:"10px 12px",background:"#fef6ee",borderRadius:4,border:"1px solid #f5c98a",display:"flex",alignItems:"center",gap:16,marginBottom:4}}>
+          <SapIcon name="information" size={14} color="#c87941"/>
+          <span style={{fontSize:12,color:"#6a6d70",fontWeight:700}}>Document Type:</span>
+          {[["Invoice","Standard supplier invoice (PO-based, Indonesian vendor)"],["Supplier DPR","Supplier Down Payment Request (non-PO GR or foreign vendor)"]].map(([t,hint])=>(
+            <label key={t} title={hint} style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:13,color:f.invoiceType===t?"#0a6ed1":"#32363a",fontWeight:f.invoiceType===t?700:400}}>
+              <input type="radio" checked={f.invoiceType===t} onChange={()=>s("invoiceType",t)} style={{accentColor:"#0a6ed1",cursor:"pointer"}}/>
+              {t}
+            </label>
+          ))}
+          <span style={{fontSize:11,color:"#c87941",marginLeft:"auto"}}>
+            {f.invoiceType==="Supplier DPR"?"Non-Indonesian vendor or pre-payment without GR · Routes to SAP BPA Down Payment workflow":"Indonesian vendor · Routes to SAP Flexible Workflow (Supplier Invoice)"}
+          </span>
+        </div>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
           <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
@@ -107,7 +126,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName}) => {
         </div>
         <div><Lbl>WHT Base Amount</Lbl><AmtInp value={f.whtBase} onChange={v=>s("whtBase",v)}/></div>
         <div><Lbl>WHT Amount</Lbl><AmtInp value={f.whtAmt} onChange={v=>s("whtAmt",v)}/></div>
-        <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) *</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
+        <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) {f.invoiceType==="Invoice"?"*":""}</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
       <div style={{padding:14,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
@@ -948,6 +967,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                         fontFamily:"inherit",
                       }}>{inv.invoiceNo}</button>
                       <div style={{fontSize:FS.xs,color:"#6a6d70",lineHeight:1.4}}>{inv.id}</div>
+                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
                     </td>
 
                     <td style={cs}>
@@ -1038,11 +1058,15 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
             {!view.files?.length&&<Val/>}</div>
           <DocFlow inv={view}/>
-          {view.rejReason&&<div style={{padding:10,background:C.errBg,borderRadius:4,fontSize:12,color:C.err,marginTop:12}}><strong>Rejection Reason:</strong> {view.rejReason}</div>}
-          {view.status==="Confirmed"&&<div style={{padding:10,background:C.okBg,borderRadius:4,fontSize:12,color:C.ok,marginTop:12}}>✓ Invoice confirmed by BRM. SAP Supplier Invoice created via <code>API_SUPPLIERINVOICE_PROCESS_SRV</code>. Flexible Workflow initiated for payment approval.</div>}
+          {view.status==="Rejected"&&view.rejReason&&(
+            <div style={{padding:12,background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:4,marginTop:12}}>
+              <div style={{fontWeight:700,fontSize:12,color:"#bb0000",marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color="#bb0000"/>Rejection Reason from Client</div>
+              <div style={{fontSize:13,color:"#32363a"}}>{view.rejReason}</div>
+            </div>
+          )}
         </Modal>
       )}
-      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name}/>}
+      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
       {colMenu&&(
         <ColumnSettingsPopup
@@ -1123,6 +1147,29 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
   const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
   const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
+  const postToSAP=(inv)=>{
+    const isInv=inv.invoiceType==="Invoice";
+    const num=(100000000+Math.floor(Math.random()*899999999)).toString();
+    const docNo=isInv?`${num.slice(0,10)}/2025`:`${inv.companyCode||"BRMS"}/${num}/2025`;
+    if(window.confirm(`Post to SAP S/4HANA?\n\nDocument: ${inv.invoiceNo}\nType: ${inv.invoiceType||"Invoice"}\nSimulated SAP Doc No: ${docNo}\n\nThis will call API_SUPPLIERINVOICE_PROCESS_SRV and trigger the SAP workflow.`)){
+      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Posted",sapDocNo:docNo,postedAt:new Date().toISOString().split("T")[0]}:i));
+      if(view?.id===inv.id)setView(p=>({...p,status:"Posted",sapDocNo:docNo,postedAt:new Date().toISOString().split("T")[0]}));
+    }
+  };
+  const convertDPR=(inv)=>{
+    const docNo=`${(100000000+Math.floor(Math.random()*899999999)).toString().slice(0,10)}/2025`;
+    if(window.confirm(`Convert Down Payment Request to Supplier Invoice?\n\nDPR: ${inv.invoiceNo}\nSAP DPR Doc: ${inv.sapDocNo}\nNew SAP Invoice Doc: ${docNo}\n\nThis will call API_SUPPLIERINVOICE_PROCESS_SRV to create a posted invoice.`)){
+      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Converted to Invoice",convertedDocNo:docNo,convertedAt:new Date().toISOString().split("T")[0]}:i));
+      if(view?.id===inv.id)setView(p=>({...p,status:"Converted to Invoice",convertedDocNo:docNo}));
+    }
+  };
+  const clearDPR=(inv)=>{
+    const clrDoc=`${inv.companyCode||"BRMS"}/${(100000+Math.floor(Math.random()*899999)).toString()}/2025`;
+    if(window.confirm(`Clear Down Payment against Invoice?\n\nThis will call SAP API to create clearing document.\nSimulated Clearing Doc: ${clrDoc}`)){
+      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Cleared",clearingDocNo:clrDoc,clearedAt:new Date().toISOString().split("T")[0]}:i));
+      if(view?.id===inv.id)setView(p=>({...p,status:"Cleared",clearingDocNo:clrDoc}));
+    }
+  };
   const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const allSel=list.length>0&&selRows.size===list.length;
   const toggleAll=()=>setSelRows(allSel?new Set():new Set(list.map(i=>i.id)));
@@ -1276,6 +1323,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                     <td style={cs}>
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
                       <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{inv.vendorId}</div>
+                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
                     </td>
                     <td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>
                     <td style={cs}>
@@ -1305,6 +1353,15 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                           <button onClick={()=>accept(inv.id)} style={{background:"#107e3e",border:"1px solid #107e3e",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Accept</button>
                           <button onClick={()=>setRejM(inv)} style={{background:"transparent",border:"1px solid #bb0000",color:"#bb0000",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Reject</button>
                         </>}
+                        {inv.status==="Confirmed"&&(
+                          <button onClick={()=>postToSAP(inv)} style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Post to SAP</button>
+                        )}
+                        {inv.status==="Posted"&&inv.invoiceType==="Supplier DPR"&&(
+                          <button onClick={()=>convertDPR(inv)} style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Convert to Inv.</button>
+                        )}
+                        {inv.status==="Converted to Invoice"&&(
+                          <button onClick={()=>clearDPR(inv)} style={{background:C.card,border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Clear</button>
+                        )}
                       </div>
                     </td>
                     <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>›</td>
@@ -1324,8 +1381,8 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
       {view&&(
         <Modal title={`Invoice Review: ${view.invoiceNo}`} onClose={()=>setView(null)} width={680}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null]].map(([l,val])=>(
-              <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
+            {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null],["Document Type",null]].map(([l,val])=>(
+              <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:l==="Document Type"?<Val>{view.invoiceType||"Invoice"}</Val>:<Val>{val}</Val>}</div>
             ))}
           </div>
           <div style={{marginBottom:12}}>
@@ -1333,6 +1390,28 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
             <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
               {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
             </div>
+          </div>
+          {view.sapDocNo&&(
+            <div style={{marginBottom:12,padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10}}>
+              <SapIcon name="connected" size={14} color="#107e3e"/>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
+                <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
+                {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+              </div>
+            </div>
+          )}
+          {(view.convertedDocNo||view.clearingDocNo)&&(
+            <div style={{marginBottom:12,padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4}}>
+              {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
+              {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
+            </div>
+          )}
+          <Sep/>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:14}}>
+            <div><Lbl>Invoice Date</Lbl><Val>{fmtDate(view.invoiceDate)}</Val></div>
+            <div><Lbl>Vendor Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
+            <div><Lbl>Fully Approved Date</Lbl><Val>{view.confirmedAt?fmtDate(view.confirmedAt):"—"}</Val></div>
           </div>
           <Sep/>
           <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
@@ -1348,12 +1427,29 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           </div>
           <DocFlow inv={view}/>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:14,marginBottom:14}}>
-            <strong>SAP Integration:</strong> Accepting calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks invoice in S/4HANA → triggers Flexible Workflow for posting approval.
+            <strong>SAP Integration:</strong> {view.invoiceType==="Supplier DPR"
+              ? <>Approving routes to <code>SAP Build Process Automation</code> for Supplier Down Payment Request workflow until the document is posted in S/4HANA FI.</>
+              : <>Approving calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → parks invoice in S/4HANA as parked-complete → triggers SAP Flexible Workflow for posting approval.</>}
           </div>
           {["Submitted","Under Review"].includes(view.status)&&(
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
               <Btn v="danger" onClick={()=>{setRejM(view);setView(null);}}>Reject</Btn>
-              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Create SAP Invoice</Btn>
+              <Btn v="success" onClick={()=>accept(view.id)}>Accept & Approve</Btn>
+            </div>
+          )}
+          {view.status==="Confirmed"&&(
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="primary" onClick={()=>{postToSAP(view);}}>{view.invoiceType==="Supplier DPR"?"Post DPR to SAP BPA":"Post Invoice to SAP S/4HANA"}</Btn>
+            </div>
+          )}
+          {view.status==="Posted"&&view.invoiceType==="Supplier DPR"&&(
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="primary" onClick={()=>convertDPR(view)}>Convert DPR to Invoice</Btn>
+            </div>
+          )}
+          {view.status==="Converted to Invoice"&&(
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="neutral" onClick={()=>clearDPR(view)}>Clear DPR Against Invoice</Btn>
             </div>
           )}
         </Modal>
