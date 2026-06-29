@@ -1094,8 +1094,7 @@ const COL_DEFS_BRM = [
   {key:"confirmedAt",label:"Approved Date",   defW:88},
   {key:"amount",     label:"Amount",          defW:110},
   {key:"sapDocNo",   label:"SAP Document",    defW:160},
-  {key:"status",     label:"Status",          defW:110},
-  {key:"actions",    label:"Actions",         defW:120},
+  {key:"status",     label:"Status",          defW:130},
 ];
 // Map internal status → document terminology shown in BRM view
 const BRM_STATUS_LABEL:Record<string,string> = {
@@ -1137,7 +1136,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     invoiceNo:i=>i.invoiceNo, vendor:i=>i.vendorName, poNumber:i=>fmtPOs(i),
     compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, submittedAt:i=>i.submittedAt||"",
     confirmedAt:i=>i.confirmedAt||"", amount:i=>Number(i.amount||0),
-    sapDocNo:i=>i.sapDocNo||"", status:i=>i.status, actions:i=>i.status,
+    sapDocNo:i=>i.sapDocNo||"", status:i=>i.status,
   };
   const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
   const list=[...listFiltered].sort((a,b)=>{
@@ -1263,18 +1262,61 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
       )}
 
       <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
-        {/* Toolbar */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
-            <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400}}>({list.length})</span>
-          </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="excel-attachment" size={13} color="#32363a"/> Export
-            </button>
-          </div>
-        </div>
+        {/* Toolbar — SAP Fiori transparent button bar */}
+        {(()=>{
+          const sel=list.filter(i=>selRows.has(i.id));
+          const single=sel.length===1?sel[0]:null;
+          const allSameStatus=sel.length>0&&sel.every(i=>i.status===sel[0].status);
+          const status=allSameStatus?sel[0]?.status:null;
+          const tbBtn=(label,onClick,icon?,variant?:"default"|"emphasized"|"negative"|"positive")=>{
+            const isEmp=variant==="emphasized"; const isNeg=variant==="negative"; const isPos=variant==="positive";
+            const bg=isEmp?"#0a6ed1":isNeg?"#bb0000":isPos?"#107e3e":"transparent";
+            const border=isEmp?"1px solid #0a6ed1":isNeg?"1px solid #bb0000":isPos?"1px solid #107e3e":"none";
+            const color=isEmp||isNeg||isPos?"#fff":"#32363a";
+            return(
+              <button key={label} onClick={onClick} style={{background:bg,border,color,borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap" as const,fontWeight:isEmp||isPos?"600":"400",letterSpacing:0}}>
+                {icon&&<SapIcon name={icon} size={14} color={color}/>}
+                <bdi>{label}</bdi>
+              </button>
+            );
+          };
+          const sep=()=><div key={Math.random()} style={{width:1,height:20,background:"#d9d9d9",margin:"0 4px",flexShrink:0}}/>;
+          const actions:any[]=[];
+          if(sel.length===0){
+            // no selection — only non-destructive context-free actions
+          } else {
+            if(status==="Submitted"){
+              actions.push(tbBtn("Review",()=>sel.forEach(i=>setUR(i.id)),"request-pending"));
+              actions.push(tbBtn("Accept",()=>sel.forEach(i=>accept(i.id)),undefined,"positive"));
+              actions.push(tbBtn("Reject",()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",undefined));
+            } else if(status==="Under Review"){
+              actions.push(tbBtn("Accept",()=>sel.forEach(i=>accept(i.id)),undefined,"positive"));
+              actions.push(tbBtn("Reject",()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",undefined));
+            } else if(status==="Confirmed"){
+              actions.push(tbBtn("Post to SAP",()=>sel.forEach(i=>postToSAP(i)),"upload-to-cloud","emphasized"));
+            } else if(status==="Posted"&&sel.every(i=>i.invoiceType==="Supplier DPR")){
+              actions.push(tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)),"switch-classes","emphasized"));
+            } else if(status==="Converted to Invoice"){
+              actions.push(tbBtn("Clear",()=>sel.forEach(i=>clearDPR(i)),"complete",undefined));
+            }
+            if(actions.length>0) actions.push(sep());
+          }
+          return(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:2}}>
+                <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText,marginRight:8}}>Invoices</span>
+                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:16}}>({list.length})</span>
+                {actions}
+                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:4}}>{sel.length} selected</span>}
+              </div>
+              <div style={{display:"flex",gap:2,alignItems:"center"}}>
+                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected`:"Export all filtered"} style={{background:"transparent",border:"none",color:"#32363a",borderRadius:4,padding:"0 0.5625rem",fontSize:14,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",cursor:"pointer",height:36,display:"inline-flex",alignItems:"center",gap:5}}>
+                  <SapIcon name="excel-attachment" size={14} color="#32363a"/><bdi>Export</bdi>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Table */}
         <div style={{overflowX:"auto"}}>
@@ -1371,28 +1413,6 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
                         <div style={{fontSize:9,color:"#6a6d70",marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
                       )}
-                    </td>
-                    <td style={cs}>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {inv.status==="Submitted"&&<>
-                          <button onClick={()=>setUR(inv.id)} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Review</button>
-                          <button onClick={()=>accept(inv.id)} style={{background:"#107e3e",border:"1px solid #107e3e",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Accept</button>
-                          <button onClick={()=>setRejM(inv)} style={{background:"transparent",border:"1px solid #bb0000",color:"#bb0000",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Reject</button>
-                        </>}
-                        {inv.status==="Under Review"&&<>
-                          <button onClick={()=>accept(inv.id)} style={{background:"#107e3e",border:"1px solid #107e3e",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Accept</button>
-                          <button onClick={()=>setRejM(inv)} style={{background:"transparent",border:"1px solid #bb0000",color:"#bb0000",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Reject</button>
-                        </>}
-                        {inv.status==="Confirmed"&&(
-                          <button onClick={()=>postToSAP(inv)} style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Post to SAP</button>
-                        )}
-                        {inv.status==="Posted"&&inv.invoiceType==="Supplier DPR"&&(
-                          <button onClick={()=>convertDPR(inv)} style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Convert to Inv.</button>
-                        )}
-                        {inv.status==="Converted to Invoice"&&(
-                          <button onClick={()=>clearDPR(inv)} style={{background:C.card,border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.xs,fontFamily:"inherit",cursor:"pointer",height:22}}>Clear</button>
-                        )}
-                      </div>
                     </td>
                     <td style={{...cs,textAlign:"center",color:"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32}}>›</td>
                   </tr>
