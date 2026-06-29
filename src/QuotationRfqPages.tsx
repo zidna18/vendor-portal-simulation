@@ -302,7 +302,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const [vhOpen,setVhOpen]=useState<string|null>(null);
   const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
 
-  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed"];
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","Approved"];
   const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
 
   const activeTokens=[
@@ -426,7 +426,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
           selected={draft.statuses} onConfirm={s=>{sd("statuses",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
       )}
 
-      <FilterBar opts={["All","Draft","Submitted","Accepted","Win","Completed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Draft","Submitted","Accepted","Win","Approved","Completed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -587,6 +587,27 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
           );
         })}
       </div>
+
+      {/* Status Legend */}
+      <div style={{margin:"20px 0 4px",padding:"14px 18px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:8}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:.6}}>Quotation Status Legend</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"10px 24px"}}>
+          {[
+            {s:"Draft",      desc:"Quotation saved by supplier – not yet sent to client"},
+            {s:"Submitted",  desc:"Quotation formally sent by supplier to client"},
+            {s:"Accepted",   desc:"Quotation confirmed/acknowledged by client"},
+            {s:"Win",        desc:"Quotation awarded – approval workflow in progress"},
+            {s:"Approved",   desc:"Approval finalized – ready for PO creation in SAP"},
+            {s:"Completed",  desc:"Quotation did not win – RFQ has been closed"},
+          ].map(({s,desc})=>(
+            <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:280}}>
+              <Badge s={s}/>
+              <span style={{fontSize:12,color:C.t2}}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       </div>
     </div>{/* end left panel */}
 
