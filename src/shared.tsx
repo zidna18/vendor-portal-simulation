@@ -78,10 +78,13 @@ const _genItems = (poNumbers:string[], seed:number) => {
   let s = (seed+1)*1013904223;
   const rng = () => { s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
   const ri = (a:number,b:number)=>Math.floor(rng()*(b-a+1))+a;
-  const numItems = ri(1,3);
+  // Each PO must appear at least once; total items = max(poCount, 1-3)
+  const extraItems = ri(0,2);
+  const numItems = poNumbers.length + extraItems;
   const items:any[]=[];
   for(let i=0;i<numItems;i++){
-    const po=poNumbers[Math.floor(rng()*poNumbers.length)];
+    // First pass: one item per PO in order; extra items use random PO
+    const po = i < poNumbers.length ? poNumbers[i] : poNumbers[Math.floor(rng()*poNumbers.length)];
     const mat=MATS[ri(0,MATS.length-1)];
     const qty=ri(2,50);
     const unitPrice=Math.round(mat.p*(0.8+rng()*0.4)/1000)*1000;
