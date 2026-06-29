@@ -943,6 +943,31 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     .filter(r=>!applied.estValMax  ||r.estVal<=Number(applied.estValMax));
   const getQts=rfqId=>quotations.filter(q=>q.rfqId===rfqId);
   const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
+  const [selIds,setSelIds]=useState(new Set<string>());
+  const toggleSel=(id)=>setSelIds(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  const allSel=list.length>0&&list.every(r=>selIds.has(r.id));
+  const toggleAll=()=>setSelIds(allSel?new Set():new Set(list.map(r=>r.id)));
+  const [showApproval,setShowApproval]=useState(false);
+  const COMMITTEE_GROUPS={
+    "Bulk Material":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Budi Santoso",role:"Member"},{name:"Dewi Rahayu",role:"Member"},{name:"Eko Prasetyo",role:"Secretary"},{name:"Farida Hanum",role:"Member"}],
+    "Civil":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Gunawan Setiawan",role:"Member"},{name:"Hendra Wijaya",role:"Member"},{name:"Indah Pertiwi",role:"Secretary"},{name:"Joko Susilo",role:"Member"}],
+    "Plant":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Krisna Murti",role:"Member"},{name:"Lestari Wulandari",role:"Member"},{name:"Muhamad Fauzi",role:"Secretary"},{name:"Nita Sari",role:"Member"}],
+    "Mining":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Odi Pranata",role:"Member"},{name:"Putri Andini",role:"Member"},{name:"Rendra Kusuma",role:"Secretary"},{name:"Sari Dewi",role:"Member"}],
+    "General":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Toni Wahyudi",role:"Member"},{name:"Umar Hakim",role:"Member"},{name:"Vera Kusumawati",role:"Secretary"},{name:"Wahyu Nugroho",role:"Member"}],
+  };
+  const EMPTY_APV={committeeGroup:"",justification:"",targetDate:"",priority:"Normal",budgetRef:"",wbsElement:"",attachments:[] as string[],remarks:""};
+  const [apvForm,setApvForm]=useState(EMPTY_APV);
+  const apv=(k,v)=>setApvForm(p=>({...p,[k]:v}));
+  const COMMON_DOCS=["Technical Evaluation Report","Budget Approval Letter","Vendor Qualification Certificate","Scope of Work Document","Risk Assessment Report"];
+  const toggleDoc=(doc)=>setApvForm(p=>({...p,attachments:p.attachments.includes(doc)?p.attachments.filter(d=>d!==doc):[...p.attachments,doc]}));
+  const submitApproval=()=>{
+    if(!apvForm.committeeGroup){alert("Please select a Tender Committee Group.");return;}
+    if(!apvForm.justification){alert("Please provide approval justification.");return;}
+    if(!apvForm.targetDate){alert("Please set a target approval date.");return;}
+    const sel=list.filter(r=>selIds.has(r.id));
+    alert(`Approval request submitted for ${sel.length} RFQ(s) to ${apvForm.committeeGroup} Committee.\n\nRFQs: ${sel.map(r=>r.id).join(", ")}\nPriority: ${apvForm.priority}\nTarget Date: ${fmtDate(apvForm.targetDate)}`);
+    setShowApproval(false);setApvForm(EMPTY_APV);setSelIds(new Set());
+  };
   const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const publish=()=>{
@@ -954,8 +979,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   };
 
-  const HDR_COLS = ["","Status","SAP RFQ No","RFQ Number","Description","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant","Quotations"];
-  const [colW, setColW] = useState([32,90,130,115,180,85,85,90,105,120,60,50,75]);
+  const HDR_COLS = ["","","Status","SAP RFQ No","RFQ Number","Description","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant","Quotations"];
+  const [colW, setColW] = useState([28,32,90,130,115,180,85,85,90,105,120,60,50,75]);
   const colResize = useRef<{idx:number,startX:number,startW:number}|null>(null);
   const onResizeStart = (e,idx) => {
     e.stopPropagation(); e.preventDefault();
@@ -1046,9 +1071,15 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+          {selIds.size>0&&(
+            <button onClick={()=>setShowApproval(true)}
+              style={{background:C.primary,border:"none",color:"#fff",borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600}}>
+              <SapIcon name="workflow-tasks" size={13} color="#fff"/> Send for Approval ({selIds.size})
+            </button>
+          )}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -1073,9 +1104,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       <div style={{minWidth:rfqMinW,background:C.card}}>
         <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
           {HDR_COLS.map((h,i)=>(
-            <div key={i} style={{position:"relative",padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2,whiteSpace:"nowrap",overflow:"hidden",userSelect:"none"}}>
-              {h}
-              {i<HDR_COLS.length-1&&(
+            <div key={i} style={{position:"relative",padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2,whiteSpace:"nowrap",overflow:"hidden",userSelect:"none",display:"flex",alignItems:"center"}}>
+              {i===0?<input type="checkbox" checked={allSel} onChange={toggleAll} onClick={e=>e.stopPropagation()} style={{cursor:"pointer",accentColor:C.primary}}/>:h}
+              {i>0&&i<HDR_COLS.length-1&&(
                 <div onMouseDown={e=>onResizeStart(e,i)} style={{position:"absolute",right:0,top:0,width:5,height:"100%",cursor:"col-resize",zIndex:10,background:"transparent"}}
                   onMouseEnter={e=>(e.currentTarget.style.background=`${C.border}`)}
                   onMouseLeave={e=>(e.currentTarget.style.background="transparent")}/>
@@ -1099,6 +1130,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 onMouseEnter={e=>e.currentTarget.style.background=C.infoBg}
                 onMouseLeave={e=>e.currentTarget.style.background=rowBg}
               >
+                <div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 6px"}}>
+                  <input type="checkbox" checked={selIds.has(rfq.id)} onChange={()=>toggleSel(rfq.id)} style={{cursor:"pointer",accentColor:C.primary}}/>
+                </div>
                 <div onClick={e=>{e.stopPropagation();toggle(rfq.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
                   <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                 </div>
@@ -1187,6 +1221,87 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       </div>
 
 
+      {showApproval&&(
+        <Modal title="Send RFQ for Tender Committee Approval" onClose={()=>{setShowApproval(false);setApvForm(EMPTY_APV);}} width={640}>
+          {/* Selected RFQs summary */}
+          <div style={{background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:6,padding:"10px 14px",marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.info,marginBottom:6}}>Selected RFQs ({selIds.size})</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {list.filter(r=>selIds.has(r.id)).map(r=>(
+                <span key={r.id} style={{fontSize:11,background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",color:C.t1}}>{r.id} – {r.title.slice(0,30)}{r.title.length>30?"…":""}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Tender Committee Group */}
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Tender Committee Group <span style={{color:C.err}}>*</span></label>
+            <Sel value={apvForm.committeeGroup} onChange={v=>apv("committeeGroup",v)} opts={[{v:"",l:"— Select Committee Group —"},...Object.keys(COMMITTEE_GROUPS).map(g=>({v:g,l:g}))]}/>
+
+            {apvForm.committeeGroup&&(
+              <div style={{marginTop:10,border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
+                <div style={{background:C.subtle,padding:"6px 12px",fontSize:11,fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`}}>Committee Members</div>
+                {COMMITTEE_GROUPS[apvForm.committeeGroup].map((m,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 12px",fontSize:12,borderBottom:i<4?`1px solid ${C.border}`:"none",background:i%2===0?C.card:C.subtle}}>
+                    <span style={{fontWeight:600,color:C.t1}}>{m.name}</span>
+                    <span style={{color:m.role==="Chairperson"?C.primary:C.t2,fontWeight:m.role==="Chairperson"?700:400}}>{m.role}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Two-column grid */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Priority Level <span style={{color:C.err}}>*</span></label>
+              <Sel value={apvForm.priority} onChange={v=>apv("priority",v)} opts={[{v:"Normal",l:"Normal"},{v:"Urgent",l:"Urgent"},{v:"Critical",l:"Critical"}]}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Target Approval Date <span style={{color:C.err}}>*</span></label>
+              <DateInp value={apvForm.targetDate} onChange={v=>apv("targetDate",v)}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Budget Reference / Cost Center</label>
+              <Inp value={apvForm.budgetRef} onChange={v=>apv("budgetRef",v)} placeholder="e.g. CC-OPS-2025"/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>WBS Element</label>
+              <Inp value={apvForm.wbsElement} onChange={v=>apv("wbsElement",v)} placeholder="e.g. WBS-MINE-001"/>
+            </div>
+          </div>
+
+          {/* Justification */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Approval Justification / Notes <span style={{color:C.err}}>*</span></label>
+            <TA value={apvForm.justification} onChange={v=>apv("justification",v)} placeholder="Provide rationale for approval — business need, urgency, strategic alignment, etc." rows={3}/>
+          </div>
+
+          {/* Remarks */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Additional Remarks</label>
+            <TA value={apvForm.remarks} onChange={v=>apv("remarks",v)} placeholder="Any additional notes for the committee..." rows={2}/>
+          </div>
+
+          {/* Supporting Documents */}
+          <div style={{marginBottom:18}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:8}}>Supporting Documents <span style={{fontSize:11,fontWeight:400,color:C.t2}}>(select all that apply)</span></label>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px"}}>
+              {COMMON_DOCS.map(doc=>(
+                <label key={doc} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:C.t1,cursor:"pointer"}}>
+                  <input type="checkbox" checked={apvForm.attachments.includes(doc)} onChange={()=>toggleDoc(doc)} style={{accentColor:C.primary}}/>
+                  {doc}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+            <Btn v="neutral" onClick={()=>{setShowApproval(false);setApvForm(EMPTY_APV);}}>Cancel</Btn>
+            <Btn v="primary" onClick={submitApproval}>Submit for Approval</Btn>
+          </div>
+        </Modal>
+      )}
       {showForm&&(
         <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={800}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
