@@ -52,7 +52,7 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 // ── Invoice Form Modal ─────────────────────────────────────────
 export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[]}) => {
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
@@ -126,6 +126,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         </div>
         <div><Lbl>WHT Base Amount</Lbl><AmtInp value={f.whtBase} onChange={v=>s("whtBase",v)}/></div>
         <div><Lbl>WHT Amount</Lbl><AmtInp value={f.whtAmt} onChange={v=>s("whtAmt",v)}/></div>
+        <div><Lbl>Additional Fee</Lbl><AmtInp value={f.additionalFee||0} onChange={v=>s("additionalFee",v)}/></div>
+        <div>
+          <Lbl>Fee Category</Lbl>
+          <Sel value={f.feeCategory||""} onChange={v=>s("feeCategory",v)} opts={[{v:"",l:"— Select Fee Category —"},{v:"Stamp Duty Fee",l:"Stamp Duty Fee"},{v:"Interest / Penalty Fee",l:"Interest / Penalty Fee"}]}/>
+        </div>
         <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) {f.invoiceType==="Invoice"?"*":""}</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
       <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
@@ -866,7 +871,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
             ["Company Code",   view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],
             ["Invoice Date",   fmtDate(view.invoiceDate)],
             ["Due Date",       fmtDate(view.dueDate)],
-            ["Amount",         fmtAmt(view.amount,view.currency)],
+            ["Total Amount",   fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)],
             ["Faktur Pajak",   view.taxDoc],
             ["Status",         null],
             ["Document Type",  null],
@@ -919,13 +924,19 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
         {/* Tax & Financial */}
         <SHdr>Tax &amp; Financial Breakdown</SHdr>
         <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-          <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+          <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
           <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+          {(view.additionalFee||0)>0&&<>
+            <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
+            <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
+          </>}
           {view.whtType&&<>
             <div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
             <div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div>
             <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
           </>}
+          <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+          <div><Lbl>Total Amount</Lbl><Val style={{fontWeight:700,color:C.primary}}>{fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)}</Val></div>
         </div>
 
         <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
@@ -1375,8 +1386,8 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                           <table style={{width:"100%",borderCollapse:"collapse",fontSize:FS.xs,tableLayout:"auto"}}>
                             <thead>
                               <tr style={{background:"#e8f1fb",height:28}}>
-                                {["PO Number","PO Item","Qty","UoM","Material ID","Material Description","Unit Price","VAT Code"].map(h=>(
-                                  <th key={h} style={{padding:"0 0.5rem",fontWeight:700,color:"#0854a0",textAlign:h==="Qty"||h==="Unit Price"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:FS.xs}}>
+                                {["PO Number","PO Item","Qty","UoM","Material ID","Material Description","Unit Price","Item Amount","VAT Code"].map(h=>(
+                                  <th key={h} style={{padding:"0 0.5rem",fontWeight:700,color:"#0854a0",textAlign:h==="Qty"||h==="Unit Price"||h==="Item Amount"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:FS.xs}}>
                                     {h}
                                   </th>
                                 ))}
@@ -1392,6 +1403,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,fontFamily:"monospace"}}>{item.materialId||"—"}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs}}>{item.materialDesc||"—"}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{fmtAmt(item.unitPrice,inv.currency)}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),inv.currency)}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t2,fontSize:FS.xs}}>{item.vatCode||"—"}</td>
                                 </tr>
                               ))}
@@ -2041,8 +2053,8 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                           <table style={{width:"100%",borderCollapse:"collapse",fontSize:FS.xs,tableLayout:"auto"}}>
                             <thead>
                               <tr style={{background:"#e8f1fb",height:28}}>
-                                {["PO Number","PO Item","Qty","UoM","Material ID","Material Description","Unit Price","VAT Code"].map(h=>(
-                                  <th key={h} style={{padding:"0 0.5rem",fontWeight:700,color:"#0854a0",textAlign:h==="Qty"||h==="Unit Price"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:FS.xs}}>{h}</th>
+                                {["PO Number","PO Item","Qty","UoM","Material ID","Material Description","Unit Price","Item Amount","VAT Code"].map(h=>(
+                                  <th key={h} style={{padding:"0 0.5rem",fontWeight:700,color:"#0854a0",textAlign:h==="Qty"||h==="Unit Price"||h==="Item Amount"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:FS.xs}}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
@@ -2056,6 +2068,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,fontFamily:"monospace"}}>{item.materialId||"—"}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs}}>{item.materialDesc||"—"}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{fmtAmt(item.unitPrice,inv.currency)}</td>
+                                  <td style={{padding:"4px 0.5rem",color:C.t1,fontSize:FS.xs,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),inv.currency)}</td>
                                   <td style={{padding:"4px 0.5rem",color:C.t2,fontSize:FS.xs}}>{item.vatCode||"—"}</td>
                                 </tr>
                               ))}
@@ -2135,7 +2148,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
               {/* Body — flat scroll, same as VendorInvoiceDetailPanel */}
               <div style={{padding:"16px 20px",flex:1,overflowY:"auto"}}>
                 <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-                  {([["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Status",null],["Document Type",null]] as [string,any][]).map(([l,val])=>(
+                  {([["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Vendor",view.vendorName],["Vendor ID",view.vendorId],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Total Amount",fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)],["Faktur Pajak",view.taxDoc],["Status",null],["Document Type",null]] as [string,any][]).map(([l,val])=>(
                     <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:l==="Document Type"?<Val>{view.invoiceType||"Invoice"}</Val>:<Val>{val}</Val>}</div>
                   ))}
                 </div>
@@ -2168,9 +2181,15 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 <Sep/>
                 <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax &amp; Financial Breakdown</div>
                 <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-                  <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+                  <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
                   <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+                  {(view.additionalFee||0)>0&&<>
+                    <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
+                    <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
+                  </>}
                   {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
+                  <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
+                  <div><Lbl>Total Amount</Lbl><Val style={{fontWeight:700,color:C.primary}}>{fmtAmt(Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0),view.currency)}</Val></div>
                 </div>
                 <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
                 <Sep/>
