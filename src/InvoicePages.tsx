@@ -792,6 +792,202 @@ const ALL_VENDOR_FILTER_FIELDS = [
   {id:"submittedDate",label:"Submitted Date",   defaultOn:false},
 ];
 
+// ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
+const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw}) => {
+  const [tab,setTab] = useState("general");
+  const tabs = [
+    {id:"general",   label:"General Information"},
+    {id:"purch",     label:"Purch. Doc. References"},
+    {id:"tax",       label:"Tax"},
+    {id:"attachments",label:"Attachments"},
+    {id:"note",      label:"Note"},
+  ];
+  const canEdit = ["Draft","Rejected"].includes(view.status);
+  const canWithdraw = view.status==="Submitted";
+  const fieldLbl:any = {fontSize:11,fontWeight:400,color:C.t2,marginBottom:3,lineHeight:1.3};
+  const fieldVal:any = {fontSize:13,color:C.t1,lineHeight:1.5,wordBreak:"break-word"};
+  const section = (title:string) => (
+    <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.7,padding:"12px 16px 6px",borderBottom:`1px solid ${C.border}`}}>{title}</div>
+  );
+  const Field = ({label,children}:any) => (
+    <div style={{padding:"8px 0"}}>
+      <div style={fieldLbl}>{label}</div>
+      <div style={fieldVal}>{children||"—"}</div>
+    </div>
+  );
+  const pos = (view.poNumbers||[view.poNumber]).filter(Boolean);
+
+  return (
+    <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",borderLeft:`1px solid ${C.border}`,background:C.card,boxShadow:"-2px 0 8px rgba(0,0,0,0.07)"}}>
+
+      {/* ── Object Header ── */}
+      <div style={{background:C.subtle,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+        {/* Title row */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px 8px"}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.2}}>{view.invoiceNo}</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{view.id}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {canEdit&&<button onClick={()=>onEdit(view)} style={{background:"transparent",border:`1px solid ${C.primary}`,color:C.primary,borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28}}>Edit</button>}
+            {canWithdraw&&<button onClick={()=>onWithdraw(view.id)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 10px",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28}}>Withdraw</button>}
+            <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:C.t2,lineHeight:1,padding:"0 2px",marginLeft:2,display:"flex",alignItems:"center"}}><SapIcon name="decline" size={16} color={C.t2}/></button>
+          </div>
+        </div>
+        {/* Key attribute chips */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:"0 24px",padding:"0 16px 10px",borderBottom:`1px solid ${C.border}`}}>
+          {[
+            ["Gross Invoice Amount", fmtAmt(view.amount,view.currency)],
+            ["Invoice Status",       null],
+            ["Invoice Date",         fmtDate(view.invoiceDate)],
+            ["Company Code",         view.companyCode||"—"],
+            ["Invoice Type",         view.invoiceType||"Invoice"],
+          ].map(([l,v]:any)=>(
+            <div key={l} style={{display:"flex",flexDirection:"column",minWidth:80,paddingRight:8}}>
+              <span style={{fontSize:10,color:C.t2,fontWeight:400,whiteSpace:"nowrap"}}>{l}:</span>
+              {l==="Invoice Status"
+                ? <Badge s={view.status}/>
+                : <span style={{fontSize:12,fontWeight:600,color:C.t1,whiteSpace:"nowrap"}}>{v}</span>
+              }
+            </div>
+          ))}
+        </div>
+        {/* Tab bar */}
+        <div style={{display:"flex",overflowX:"auto",paddingLeft:16}}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+              background:"none",border:"none",cursor:"pointer",
+              padding:"8px 12px 6px",fontSize:13,fontFamily:"inherit",
+              color:tab===t.id?C.primary:C.t2,fontWeight:tab===t.id?600:400,
+              borderBottom:tab===t.id?`2px solid ${C.primary}`:"2px solid transparent",
+              whiteSpace:"nowrap",flexShrink:0,
+            }}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tab Content ── */}
+      <div style={{flex:1,overflowY:"auto"}}>
+
+        {tab==="general"&&(
+          <>
+            {section("Basic Data")}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 8px",padding:"0 16px"}}>
+              <Field label="Transaction">{view.invoiceType||"Invoice"}</Field>
+              <Field label="Invoice Date">{fmtDate(view.invoiceDate)}</Field>
+              <Field label="Invoicing Party (Vendor)">{view.vendorName||"—"}</Field>
+              <Field label="Company Code">{view.companyCode?`${view.companyCode} (${ccName(view.companyCode)})`:""}</Field>
+              <Field label="Posting Date">{fmtDate(view.submittedAt)||"—"}</Field>
+              <Field label="Pre-Invoice Reference">{view.id}</Field>
+              <Field label="Gross Invoice Amount">{fmtAmt(view.amount,view.currency)}</Field>
+              <Field label="Due Date">{fmtDate(view.dueDate)}</Field>
+              <Field label="Faktur Pajak">{view.taxDoc||"—"}</Field>
+              <Field label="Description" ><span style={{gridColumn:"1/-1"}}>{view.desc||"—"}</span></Field>
+            </div>
+            <div style={{borderTop:`1px solid ${C.border}`,marginTop:4}}/>
+            {section("Document Flow")}
+            <div style={{padding:"8px 0 0"}}><DocFlow inv={view}/></div>
+            {view.status==="Rejected"&&view.rejReason&&(
+              <div style={{margin:"12px 16px",padding:12,background:C.errBg,border:`1px solid ${C.err}44`,borderRadius:4}}>
+                <div style={{fontWeight:700,fontSize:12,color:C.err,marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color={C.err}/>Rejection Reason</div>
+                <div style={{fontSize:13,color:C.t1}}>{view.rejReason}</div>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab==="purch"&&(
+          <>
+            {section("Purchasing Document References")}
+            <div style={{padding:"12px 16px"}}>
+              <div style={fieldLbl}>Reference Document Category</div>
+              <div style={{...fieldVal,marginBottom:12}}>Purchase Order / Scheduling Agreement</div>
+              <div style={fieldLbl}>Purchase Order / Scheduling Agreement</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4,marginBottom:12}}>
+                {pos.length?pos.map((po:any,i:number)=>(
+                  <span key={i} style={{display:"inline-block",border:`1px solid ${C.border}`,borderRadius:2,padding:"3px 10px",fontSize:12,fontFamily:"monospace",color:C.primary,background:C.selection}}>{po}</span>
+                )):<span style={{color:C.t2,fontSize:12}}>—</span>}
+              </div>
+            </div>
+            <div style={{borderTop:`1px solid ${C.border}`}}/>
+            <div style={{padding:"0 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.7,padding:"10px 0 6px"}}>Items</div>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{background:C.subtle}}>
+                    {["Item","Short Text","Amount","Qty","Tax Code","Tax Rate"].map(h=>(
+                      <th key={h} style={{padding:"6px 8px",textAlign:h==="Amount"||h==="Qty"?"right":"left",fontWeight:700,color:C.t2,fontSize:10,textTransform:"uppercase",letterSpacing:.4,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(view.items||[]).length===0?(
+                    <tr><td colSpan={6} style={{padding:"16px 8px",textAlign:"center",color:C.t2,fontSize:12}}>No line items</td></tr>
+                  ):(view.items||[]).map((it:any,i:number)=>(
+                    <tr key={i} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?C.card:C.subtle}}>
+                      <td style={{padding:"7px 8px",color:C.t2,fontWeight:600}}>{String(i+1).padStart(3,"0")}</td>
+                      <td style={{padding:"7px 8px",color:C.t1}}>{it.desc||it.shortText||"—"}</td>
+                      <td style={{padding:"7px 8px",textAlign:"right",fontWeight:600,color:C.t1,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(it.amount,view.currency)}</td>
+                      <td style={{padding:"7px 8px",textAlign:"right",color:C.t1}}>{it.qty||"—"}</td>
+                      <td style={{padding:"7px 8px",color:C.t2}}>{it.taxCode||"V1"}</td>
+                      <td style={{padding:"7px 8px",color:C.t2}}>{it.taxRate||"11.00% (VST)"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {tab==="tax"&&(
+          <>
+            {section("Tax")}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 8px",padding:"0 16px"}}>
+              <Field label="VAT Base Amount">{fmtAmt(view.vatBase||0,view.currency)}</Field>
+              <Field label="VAT Amount">{fmtAmt(view.vatAmt||0,view.currency)}</Field>
+            </div>
+            {view.whtType&&(
+              <>
+                {section("Withholding Tax")}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 8px",padding:"0 16px"}}>
+                  <Field label="WHT Type" ><span style={{gridColumn:"1/-1"}}>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</span></Field>
+                  <Field label="WHT Base Amount">{fmtAmt(view.whtBase||0,view.currency)}</Field>
+                  <Field label="WHT Amount">{fmtAmt(view.whtAmt||0,view.currency)}</Field>
+                </div>
+              </>
+            )}
+            {!view.whtType&&<div style={{padding:"12px 16px",color:C.t2,fontSize:12}}>No withholding tax applicable.</div>}
+          </>
+        )}
+
+        {tab==="attachments"&&(
+          <>
+            {section("Attachments")}
+            <div style={{padding:"12px 16px"}}>
+              {(view.files||[]).length===0&&<div style={{color:C.t2,fontSize:12}}>No attachments.</div>}
+              {(view.files||[]).map((a:any)=>(
+                <button key={a} onClick={()=>onPdf(a)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,padding:"6px 0",textAlign:"left",fontFamily:"inherit",width:"100%"}}>
+                  <SapIcon name="document" size={14} color={C.primary}/>
+                  <span style={{textDecoration:"underline"}}>{a}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab==="note"&&(
+          <>
+            {section("Note")}
+            <div style={{padding:"12px 16px"}}>
+              <div style={{...fieldVal,minHeight:60,whiteSpace:"pre-wrap"}}>{view.desc||"—"}</div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
@@ -1148,53 +1344,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </div>
       </div>
       </div>
-      {view&&(
-        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid ${C.border}`,background:C.card,display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
-            <div>
-              <div style={{fontSize:15,fontWeight:700,color:C.t1}}>{view.invoiceNo}</div>
-              <div style={{fontSize:11,color:C.t2,marginTop:1}}>{view.id}</div>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <Badge s={view.status}/>
-              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
-            </div>
-          </div>
-          <div style={{padding:"16px 20px",flex:1}}>
-            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-              {[["Invoice No.",view.invoiceNo],["Pre-Invoice ID",view.id],["Company Code",view.companyCode?`${view.companyCode} – ${ccName(view.companyCode)}`:"—"],["Invoice Date",fmtDate(view.invoiceDate)],["Due Date",fmtDate(view.dueDate)],["Amount",fmtAmt(view.amount,view.currency)],["Faktur Pajak",view.taxDoc],["Submitted",fmtDate(view.submittedAt)]].map(([l,val])=>(
-                <div key={l}><Lbl>{l}</Lbl><Val>{val}</Val></div>
-              ))}
-            </div>
-            <div style={{marginBottom:12}}>
-              <Lbl>PO Numbers</Lbl>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
-                {(view.poNumbers||[view.poNumber]).filter(Boolean).map((po,i)=><span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,fontFamily:"monospace"}}>{po}</span>)}
-              </div>
-            </div>
-            <Sep/>
-            <div style={{fontWeight:700,fontSize:11,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Tax & Financial Breakdown</div>
-            <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
-              <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-              <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-              {view.whtType&&<><div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find(w=>w.v===view.whtType)?.l||view.whtType}</Val></div><div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div><div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div></>}
-            </div>
-            <div style={{marginBottom:12}}><Lbl>Description</Lbl><Val>{view.desc}</Val></div>
-            <div style={{marginBottom:12}}><Lbl>Status</Lbl><Badge s={view.status}/></div>
-            <div style={{marginBottom:12}}><Lbl>Attachments</Lbl>
-              {(view.files||[]).map(a=><button key={a} onClick={()=>setPdfView(a)} style={{display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,textDecoration:"underline",padding:"2px 0",textAlign:"left",fontFamily:"inherit"}}><SapIcon name="document" size={13} color={C.primary}/>{a}</button>)}
-              {!view.files?.length&&<Val/>}
-            </div>
-            <DocFlow inv={view}/>
-            {view.status==="Rejected"&&view.rejReason&&(
-              <div style={{padding:12,background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:4,marginTop:12}}>
-                <div style={{fontWeight:700,fontSize:12,color:"#bb0000",marginBottom:4,display:"flex",alignItems:"center",gap:5}}><SapIcon name="decline" size={13} color="#bb0000"/>Rejection Reason from Client</div>
-                <div style={{fontSize:13,color:"#32363a"}}>{view.rejReason}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {view&&<VendorInvoiceDetailPanel view={view} onClose={()=>setView(null)} onPdf={setPdfView} onEdit={inv=>{setEd(inv);setForm(true);}} onWithdraw={withdraw}/>}
       {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
       {colMenu&&(
