@@ -451,13 +451,13 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
   };
 
   const inpStyle:any={
-    flex:1,padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#32363a",
-    border:"1px solid #89919a",borderRadius:2,background:"#fff",outline:"none",
+    flex:1,padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:C.t1,
+    border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,outline:"none",
     boxSizing:"border-box" as const,
   };
   const opSelStyle:any={
-    padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:"#0a6ed1",
-    border:"1px solid #0a6ed1",borderRadius:2,background:"#fff",outline:"none",
+    padding:"5px 8px",fontSize:14,fontFamily:"inherit",color:C.info,
+    border:`1px solid ${C.info}`,borderRadius:2,background:C.field,outline:"none",
     minWidth:200,cursor:"pointer",
   };
 
@@ -474,10 +474,10 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
           {/* Operator + value row — wraps on narrow widths */}
           <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
             <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
-              <optgroup label="Include" style={{fontWeight:700,color:"#32363a"}}>
+              <optgroup label="Include" style={{fontWeight:700,color:C.t1}}>
                 {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
               </optgroup>
-              <optgroup label="Exclude" style={{fontWeight:700,color:"#32363a"}}>
+              <optgroup label="Exclude" style={{fontWeight:700,color:C.t1}}>
                 {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
               </optgroup>
             </select>
@@ -490,7 +490,7 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
             )}
             {isBetween&&(
               <>
-                <span style={{fontSize:13,color:"#6a6d70",flexShrink:0}}>and</span>
+                <span style={{fontSize:13,color:C.t2,flexShrink:0}}>and</span>
                 <input style={{...inpStyle,minWidth:100}} value={v2} onChange={e=>setV2(e.target.value)}
                   onKeyDown={e=>{if(e.key==="Enter")addCond();}}
                   placeholder="Value" aria-label="Second Value"/>
@@ -498,28 +498,28 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
             )}
             {!noVal&&(
               <button onClick={()=>{setV1("");setV2("");}}
-                style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
+                style={{background:"none",border:"none",color:C.info,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1,flexShrink:0}}>
                 ×
               </button>
             )}
             <button onClick={()=>addCond()}
-              style={{background:"#fff",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0}}>
+              style={{background:C.card,border:`1px solid ${C.primaryDk}`,color:C.primaryDk,borderRadius:4,padding:"5px 14px",fontSize:13,fontFamily:"inherit",fontWeight:600,cursor:"pointer",flexShrink:0}}>
               Add Condition
             </button>
           </div>
 
-          <div style={{minHeight:160,border:"1px solid #e5e5e5",borderRadius:2,padding:12,marginBottom:12,background:"#fff",overflowY:"auto"}}>
+          <div style={{minHeight:160,border:`1px solid ${C.border}`,borderRadius:2,padding:12,marginBottom:12,background:C.card,overflowY:"auto"}}>
             {conds.length===0?(
-              <div style={{color:"#0a6ed1",fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
+              <div style={{color:C.info,fontSize:14,padding:"8px 0"}}>No Conditions Selected</div>
             ):(
               conds.map((c,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?"1px solid #f2f2f2":"none",fontSize:13,color:"#32363a"}}>
-                  <span style={{color:"#6a6d70",minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 8px",borderBottom:i<conds.length-1?`1px solid ${C.border}`:"none",fontSize:13,color:C.t1}}>
+                  <span style={{color:C.t2,minWidth:180,fontSize:12,fontStyle:"italic"}}>{c.op}</span>
                   <span style={{flex:1,fontWeight:NO_VAL_OPS.has(c.op)?400:600}}>
                     {NO_VAL_OPS.has(c.op)?"—":BETWEEN_OPS.has(c.op)?`${c.v1}  –  ${c.v2}`:c.v1}
                   </span>
                   <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))}
-                    style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
+                    style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
                 </div>
               ))
             )}
@@ -529,10 +529,10 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
             <input value={pasteInput} onChange={e=>setPasteInput(e.target.value)}
               onPaste={handlePasteInput}
               placeholder="Paste multiple values here (one per line = one condition each)"
-              style={{...inpStyle,fontSize:12,color:"#6a6d70"}}/>
+              style={{...inpStyle,fontSize:12,color:C.t2}}/>
             {pasteInput&&(
               <button onClick={()=>setPasteInput("")}
-                style={{background:"none",border:"none",color:"#6a6d70",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+                style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
             )}
           </div>
         </div>
@@ -541,11 +541,11 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
           <span style={{fontSize:12,color:C.t2}}>{conds.length>0?`${conds.length} condition${conds.length!==1?"s":""} defined`:""}</span>
           <div style={{display:"flex",gap:8}}>
             <button onClick={onClose}
-              style={{background:"#fff",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>
+              style={{background:C.card,border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>
               Cancel
             </button>
             <button onClick={()=>onSave(conds)}
-              style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
+              style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"6px 20px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>
               OK
             </button>
           </div>
@@ -579,7 +579,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
     <>
       <div style={{
         display:"flex",flexWrap:"wrap",alignItems:"center",gap:4,
-        border:"1px solid #89919a",borderRadius:2,background:"#fff",
+        border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,
         minHeight:34,padding:"3px 30px 3px 6px",position:"relative",
         boxSizing:"border-box" as const,cursor:"text",
       }}
@@ -588,15 +588,15 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
         {conditions.map((c,i)=>(
           <span key={i} style={{
             display:"inline-flex",alignItems:"center",gap:3,
-            background:"#e8f2fb",border:"1px solid #0a6ed1",borderRadius:4,
-            padding:"1px 4px 1px 6px",fontSize:11,color:"#0a6ed1",
+            background:C.selection,border:`1px solid ${C.info}44`,borderRadius:4,
+            padding:"1px 4px 1px 6px",fontSize:11,color:C.info,
             lineHeight:1.6,flexShrink:0,maxWidth:160,overflow:"hidden",
           }}>
             <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {condLabel(c)}
             </span>
             <button onClick={e=>{e.stopPropagation();onChange(conditions.filter((_,j)=>j!==i));}}
-              style={{background:"none",border:"none",color:"#0a6ed1",cursor:"pointer",fontSize:13,padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
+              style={{background:"none",border:"none",color:C.info,cursor:"pointer",fontSize:13,padding:"0 1px",lineHeight:1,flexShrink:0}}>×</button>
           </span>
         ))}
 
@@ -612,7 +612,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
           style={{
             flex:1,minWidth:60,border:"none",outline:"none",
             background:"transparent",fontSize:14,padding:0,
-            fontFamily:"inherit",color:"#32363a",
+            fontFamily:"inherit",color:C.t1,
           }}/>
 
         <button
@@ -621,7 +621,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
           style={{
             position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",
             background:"none",border:"none",cursor:"pointer",
-            color:"#6a6d70",padding:"2px 3px",lineHeight:1,
+            color:C.t2,padding:"2px 3px",lineHeight:1,
             display:"flex",alignItems:"center",justifyContent:"center",
           }}>
           <SapIcon name="value-help" size={16} color="#6a6d70"/>
@@ -639,8 +639,31 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
   );
 };
 
+// ── Invoice Status Icon (matches RFQ Management style) ─────────
+const InvoiceStatusIcon = ({s}) => {
+  const map:Record<string,{shape:string,color:string}> = {
+    "Draft":               {shape:"square",  color:"#8c8c8c"},
+    "Submitted":           {shape:"square",  color:"#0070F2"},
+    "Under Review":        {shape:"triangle",color:"#E9730C"},
+    "Confirmed":           {shape:"circle",  color:"#188918"},
+    "Posted":              {shape:"circle",  color:"#0070F2"},
+    "Converted to Invoice":{shape:"circle",  color:"#188918"},
+    "Cleared":             {shape:"circle",  color:"#188918"},
+    "Rejected":            {shape:"square",  color:"#BB0000"},
+  };
+  const m = map[s]||{shape:"square",color:"#8c8c8c"};
+  if(m.shape==="triangle") return (
+    <svg width="14" height="14" viewBox="0 0 14 14" style={{flexShrink:0,marginTop:1}}>
+      <polygon points="7,1 13,13 1,13" fill={m.color}/>
+    </svg>
+  );
+  if(m.shape==="circle") return <div style={{width:13,height:13,borderRadius:"50%",background:m.color,flexShrink:0}}/>;
+  return <div style={{width:13,height:13,borderRadius:2,background:m.color,flexShrink:0}}/>;
+};
+
 // ── Column Settings Popup ──────────────────────────────────────
 const COL_DEFS = [
+  {key:"status",     label:"Status",        defW:120},
   {key:"invoiceNo",  label:"Invoice No.",   defW:200},
   {key:"poNumber",   label:"PO Number",     defW:140},
   {key:"compCode",   label:"Company Code",  defW:150},
@@ -648,7 +671,6 @@ const COL_DEFS = [
   {key:"dueDate",    label:"Due Date",      defW:100},
   {key:"amount",     label:"Amount",        defW:120},
   {key:"attach",     label:"Attachments",   defW:100},
-  {key:"status",     label:"Status",        defW:100},
   {key:"actions",    label:"Actions",       defW:90},
 ];
 const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidth,onClose}:any) => {
@@ -661,49 +683,49 @@ const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidt
   return(
     <>
       <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:499}}/>
-      <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(x,window.innerWidth-270),top:Math.min(y,window.innerHeight-320),zIndex:500,background:"#fff",border:"1px solid #e5e5e5",borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.18)",width:260,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(x,window.innerWidth-270),top:Math.min(y,window.innerHeight-320),zIndex:500,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.18)",width:260,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13}}>
         {/* Title */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px 8px",borderBottom:"1px solid #e5e5e5"}}>
-          <span style={{fontWeight:700,fontSize:14,color:"#32363a"}}>Column Settings</span>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#6a6d70",padding:"0 2px",lineHeight:1}}>×</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px 8px",borderBottom:`1px solid ${C.border}`}}>
+          <span style={{fontWeight:700,fontSize:14,color:C.t1}}>Column Settings</span>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.t2,padding:"0 2px",lineHeight:1}}>×</button>
         </div>
         {/* Sort By */}
         <div style={{padding:"10px 14px 8px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Sort By</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Sort By</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{color:"#32363a",fontSize:13}}>{col}</span>
-            <div style={{display:"flex",border:"1px solid #bfbfbf",borderRadius:4,overflow:"hidden"}}>
+            <span style={{color:C.t1,fontSize:13}}>{col}</span>
+            <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
               {seg.map((s,i)=>(
                 <button key={s.title} title={s.title} onClick={()=>onSort(vals[i])}
-                  style={{width:32,height:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",borderRight:i<2?"1px solid #bfbfbf":"none",cursor:"pointer",background:sort===vals[i]?"#0a6ed1":"#fff",padding:0}}>
-                  <SapIcon name={s.icon} size={14} color={sort===vals[i]?"#fff":"#6a6d70"}/>
+                  style={{width:32,height:28,display:"flex",alignItems:"center",justifyContent:"center",border:"none",borderRight:i<2?`1px solid ${C.border}`:"none",cursor:"pointer",background:sort===vals[i]?C.primary:C.card,padding:0}}>
+                  <SapIcon name={s.icon} size={14} color={sort===vals[i]?"#fff":C.t2}/>
                 </button>
               ))}
             </div>
           </div>
         </div>
-        <div style={{height:1,background:"#e5e5e5",margin:"0 14px"}}/>
+        <div style={{height:1,background:C.border,margin:"0 14px"}}/>
         {/* Group By */}
         <div style={{padding:"10px 14px 8px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Group By</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Group By</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{color:"#32363a",fontSize:13}}>{col}</span>
-            <div onClick={toggleGrp} style={{width:40,height:22,borderRadius:11,background:grp?"#0a6ed1":"#bfbfbf",cursor:"pointer",position:"relative",transition:"background .15s",flexShrink:0}}>
-              <div style={{position:"absolute",top:3,left:grp?20:3,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
+            <span style={{color:C.t1,fontSize:13}}>{col}</span>
+            <div onClick={toggleGrp} style={{width:40,height:22,borderRadius:11,background:grp?C.primary:C.border,cursor:"pointer",position:"relative",transition:"background .15s",flexShrink:0}}>
+              <div style={{position:"absolute",top:3,left:grp?20:3,width:16,height:16,borderRadius:"50%",background:C.card,transition:"left .15s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/>
             </div>
           </div>
         </div>
-        <div style={{height:1,background:"#e5e5e5",margin:"0 14px"}}/>
+        <div style={{height:1,background:C.border,margin:"0 14px"}}/>
         {/* More Column Settings */}
         <div style={{padding:"10px 14px 12px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>More Column Settings</div>
+          <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>More Column Settings</div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{color:"#32363a",fontSize:13}}>Resize column width (pixel)</span>
-            <div style={{display:"flex",alignItems:"center",border:"1px solid #bfbfbf",borderRadius:4,overflow:"hidden",height:28}}>
-              <button onClick={()=>{const n=clamp(w-1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:"#f5f5f5",border:"none",borderRight:"1px solid #bfbfbf",cursor:"pointer",fontSize:16,color:"#32363a",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
+            <span style={{color:C.t1,fontSize:13}}>Resize column width (pixel)</span>
+            <div style={{display:"flex",alignItems:"center",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",height:28}}>
+              <button onClick={()=>{const n=clamp(w-1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:C.subtle,border:"none",borderRight:`1px solid ${C.border}`,cursor:"pointer",fontSize:16,color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
               <input type="text" value={w} onChange={e=>{const n=parseInt(e.target.value)||w;setW(n);}} onBlur={()=>{const n=clamp(w);setW(n);onWidth(n);}}
-                style={{width:42,textAlign:"center",border:"none",outline:"none",fontSize:13,fontFamily:"inherit",background:"#fff",height:"100%",padding:0}}/>
-              <button onClick={()=>{const n=clamp(w+1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:"#f5f5f5",border:"none",borderLeft:"1px solid #bfbfbf",cursor:"pointer",fontSize:16,color:"#32363a",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
+                style={{width:42,textAlign:"center",border:"none",outline:"none",fontSize:13,fontFamily:"inherit",background:C.field,color:C.t1,height:"100%",padding:0}}/>
+              <button onClick={()=>{const n=clamp(w+1);setW(n);onWidth(n);}} style={{width:24,height:"100%",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:16,color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
             </div>
           </div>
         </div>
@@ -744,11 +766,11 @@ function buildGroups(list:any[], colGroup:Record<string,boolean>, fields:string[
 }
 const GroupHeaderRow=({colSpan,label,count,icon}:any)=>(
   <tr>
-    <td colSpan={colSpan} style={{padding:"0 0.75rem",height:30,background:"#f7f7f7",borderBottom:"1px solid #e5e5e5",borderTop:"2px solid #0a6ed1",verticalAlign:"middle"}}>
+    <td colSpan={colSpan} style={{padding:"0 0.75rem",height:30,background:C.subtle,borderBottom:`1px solid ${C.border}`,borderTop:`2px solid ${C.primary}`,verticalAlign:"middle"}}>
       <div style={{display:"flex",alignItems:"center",gap:6}}>
-        <SapIcon name={icon||"group"} size={13} color="#0a6ed1"/>
-        <span style={{fontSize:12,fontWeight:700,color:"#0a6ed1"}}>{label}</span>
-        <span style={{fontSize:11,color:"#6a6d70",marginLeft:2}}>({count} item{count!==1?"s":""})</span>
+        <SapIcon name={icon||"group"} size={13} color={C.primary}/>
+        <span style={{fontSize:12,fontWeight:700,color:C.primary}}>{label}</span>
+        <span style={{fontSize:11,color:C.t2,marginLeft:2}}>({count} item{count!==1?"s":""})</span>
       </div>
     </td>
   </tr>
@@ -867,12 +889,12 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const toggleAll=()=>setSelRows(allSel?new Set():new Set(mine.map(i=>i.id)));
 
   const TK={
-    hdrBg:"#f2f2f2",   hdrBorder:"#e5e5e5", hdrText:"#6a6d70",
-    rowBg:"#ffffff",    rowBorder:"#e5e5e5",  rowText:"#232629",
-    hovBg:"#ededed",    selBg:"#e5f0fa",
-    link:"#0a6ed1",     linkHov:"#0854a0",
-    footerBg:"#fafafa", footerText:"#232629",
-    toolbarBg:"#ffffff",
+    hdrBg:C.subtle,      hdrBorder:C.border,    hdrText:C.t2,
+    rowBg:C.card,        rowBorder:C.border,     rowText:C.t1,
+    hovBg:C.hover,       selBg:C.selection,
+    link:C.primary,      linkHov:C.primaryDk,
+    footerBg:C.subtle,   footerText:C.t1,
+    toolbarBg:C.card,
   };
   const FS={base:14,sm:12,xs:11};
 
@@ -881,9 +903,9 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
       <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
 
       <div style={{marginBottom:14}}>
-        <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
-        <div style={{fontSize:FS.sm,color:"#6a6d70",marginTop:3,display:"flex",alignItems:"center",gap:5}}>
-          <SapIcon name="connected" size={12} color="#6a6d70"/>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1,letterSpacing:0.1}}>Invoice Management</div>
+        <div style={{fontSize:FS.sm,color:C.t2,marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+          <SapIcon name="connected" size={12} color={C.t2}/>
           Pre-Invoice → Custom CDS Table → SAP Supplier Invoice API (on BRM confirmation) → Flexible Workflow
         </div>
       </div>
@@ -901,7 +923,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",background:"#ffffff",outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
@@ -972,15 +994,15 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
-            <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400}}>({mine.length})</span>
+            <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400}}>({mine.length})</span>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="excel-attachment" size={13} color="#32363a"/> Export
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
             </button>
-            <div style={{width:1,height:20,background:"#d9d9d9",margin:"0 2px"}}/>
+            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
-              style={{background:"#0a6ed1",border:"1px solid #0a6ed1",color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
               <SapIcon name="add" size={13} color="#fff"/> Add Invoice
             </button>
           </div>
@@ -1008,7 +1030,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
                       style={{padding:"0 0.5rem",textAlign:isRight?"right":"left",fontSize:FS.sm,fontWeight:700,color:TK.hdrText,borderBottom:`1px solid ${TK.hdrBorder}`,whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,cursor:"pointer",position:"relative"}}
                       title={`Click to configure ${col.label}`}>
-                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:"#0a6ed1"}}>{sortIcon}</span>}
+                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:C.primary}}>{sortIcon}</span>}
                     </th>
                   );
                 })}
@@ -1019,9 +1041,9 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <tbody>
               {mine.length===0?(
                 <tr><td colSpan={11}>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:"#6a6d70",fontSize:FS.base}}>
-                    <SapIcon name="document" size={36} color="#c8cdd0"/>
-                    <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:C.t2,fontSize:FS.base}}>
+                    <SapIcon name="document" size={36} color={C.t2}/>
+                    <span style={{fontSize:FS.base,color:C.t2}}>No items found.</span>
                   </div>
                 </td></tr>
               ):((grpResult=>grpResult.mode==="flat"
@@ -1031,7 +1053,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                 if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={11} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id);
                 const isHov=hovRow===inv.id;
-                const rowBg=view?.id===inv.id?"#ddeeff":isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const rowBg=view?.id===inv.id?C.selection:isSel?C.selection:isHov?TK.hovBg:TK.rowBg;
                 const cs:any={
                   padding:"0 0.5rem",height:36,
                   borderBottom:`1px solid ${TK.rowBorder}`,
@@ -1048,13 +1070,20 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                     </td>
 
                     <td style={cs}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <InvoiceStatusIcon s={inv.status}/>
+                        <span style={{fontSize:FS.sm,fontWeight:600,color:TK.rowText,whiteSpace:"nowrap"}}>{inv.status}</span>
+                      </div>
+                    </td>
+
+                    <td style={cs}>
                       <button onClick={()=>setView(inv)} style={{
                         background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",
                         color:TK.link,fontSize:FS.sm,fontWeight:600,
                         textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",
                         fontFamily:"inherit",
                       }}>{inv.invoiceNo}</button>
-                      <div style={{fontSize:FS.xs,color:"#6a6d70",lineHeight:1.4}}>{inv.id}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2,lineHeight:1.4}}>{inv.id}</div>
                       {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
                     </td>
 
@@ -1064,7 +1093,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
                     <td style={cs}>
                       <span style={{fontSize:FS.sm,fontWeight:600,color:TK.link}}>{inv.companyCode||"—"}</span>
-                      <div style={{fontSize:FS.xs,color:"#6a6d70",lineHeight:1.4}}>{ccName(inv.companyCode)}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2,lineHeight:1.4}}>{ccName(inv.companyCode)}</div>
                     </td>
 
                     <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)}</span></td>
@@ -1087,8 +1116,6 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       }
                     </td>
 
-                    <td style={cs}><Badge s={inv.status}/></td>
-
                     <td style={cs}>
                       <div style={{display:"flex",gap:4}}>
                         {["Draft","Rejected"].includes(inv.status)&&(
@@ -1099,14 +1126,14 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                         )}
                         {inv.status==="Submitted"&&(
                           <button onClick={()=>withdraw(inv.id)}
-                            style={{background:"transparent",border:"1px solid #d9d9d9",color:"#32363a",borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:22}}>
+                            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:22}}>
                             Withdraw
                           </button>
                         )}
                       </div>
                     </td>
 
-                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?"#0a6ed1":"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>
+                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?C.primary:C.t2,fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>
                       ›
                     </td>
                   </tr>
@@ -1116,21 +1143,21 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           </table>
         </div>
 
-        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:"#fafafa",borderTop:`1px solid ${TK.hdrBorder}`}}>
-          <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{mine.length} item{mine.length!==1?"s":""}</span>
+        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:TK.footerBg,borderTop:`1px solid ${TK.hdrBorder}`}}>
+          <span style={{fontSize:FS.xs,color:C.t2}}>{mine.length} item{mine.length!==1?"s":""}</span>
         </div>
       </div>
       </div>
       {view&&(
-        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid #e5e5e5`,background:"#fff",display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid #e5e5e5`,background:"#f2f2f2",position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid ${C.border}`,background:C.card,display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
             <div>
-              <div style={{fontSize:15,fontWeight:700,color:"#32363a"}}>{view.invoiceNo}</div>
-              <div style={{fontSize:11,color:"#6a6d70",marginTop:1}}>{view.id}</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.t1}}>{view.invoiceNo}</div>
+              <div style={{fontSize:11,color:C.t2,marginTop:1}}>{view.id}</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <Badge s={view.status}/>
-              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#6a6d70",lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
+              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
             </div>
           </div>
           <div style={{padding:"16px 20px",flex:1}}>
@@ -1259,34 +1286,34 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
   if (!open) return null;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"#fff",width:560,maxHeight:620,borderRadius:8,boxShadow:"0 8px 32px rgba(0,0,0,0.24)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{background:C.card,width:560,maxHeight:620,borderRadius:8,boxShadow:"0 8px 32px rgba(0,0,0,0.24)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         {/* Header */}
-        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",borderBottom:"1px solid #d9d9d9",flexShrink:0}}>
-          <span style={{fontSize:16,fontWeight:700,color:"#32363a"}}>Adapt Filters</span>
+        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+          <span style={{fontSize:16,fontWeight:700,color:C.t1}}>Adapt Filters</span>
           <button
             onClick={() => { setLocalVisible(new Set(fields.filter(f=>f.defaultOn).map(f=>f.id))); }}
-            style={{background:"none",border:"none",color:"#0a6ed1",fontSize:13,cursor:"pointer",padding:"4px 8px"}}
+            style={{background:"none",border:"none",color:C.primary,fontSize:13,cursor:"pointer",padding:"4px 8px"}}
           >Reset</button>
         </div>
         {/* Sub-header */}
-        <div style={{height:40,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:"#f5f6f7",borderBottom:"1px solid #e5e5e5",flexShrink:0}}>
+        <div style={{height:40,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
           <select value={viewFilter} onChange={e=>setViewFilter(e.target.value as any)}
-            style={{width:80,height:28,border:"1px solid #d9d9d9",borderRadius:4,fontSize:13,background:"#fff",color:"#32363a"}}>
+            style={{width:80,height:28,border:`1px solid ${C.border}`,borderRadius:4,fontSize:13,background:C.field,color:C.t1}}>
             <option>All</option>
             <option>Active</option>
             <option>Inactive</option>
           </select>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button style={{background:"none",border:"none",color:"#0a6ed1",fontSize:13,cursor:"pointer"}}>Show Values</button>
+            <button style={{background:"none",border:"none",color:C.primary,fontSize:13,cursor:"pointer"}}>Show Values</button>
           </div>
         </div>
         {/* Search */}
         <div style={{padding:"8px 16px",flexShrink:0}}>
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:"#8a8d91",fontSize:14,pointerEvents:"none"}}>🔍</span>
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}>🔍</span>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search for Filters"
-              style={{width:"100%",height:32,border:"1px solid #d9d9d9",borderRadius:4,paddingLeft:28,paddingRight:8,fontSize:13,color:"#32363a",boxSizing:"border-box",outline:"none"}} />
+              style={{width:"100%",height:32,border:`1px solid ${C.border}`,borderRadius:4,paddingLeft:28,paddingRight:8,fontSize:13,color:C.t1,background:C.field,boxSizing:"border-box",outline:"none"}} />
           </div>
         </div>
         {/* Field list */}
@@ -1299,11 +1326,11 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
               <col style={{width:80}} />
             </colgroup>
             <thead>
-              <tr style={{background:"#f2f2f2",height:32}}>
-                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"center"}}></th>
-                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none"}}></th>
-                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"left",paddingLeft:8}}>Field Name</th>
-                <th style={{fontSize:11,fontWeight:700,color:"#6a6d70",textTransform:"uppercase",border:"none",textAlign:"center"}}>Active</th>
+              <tr style={{background:C.subtle,height:32}}>
+                <th style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",border:"none",textAlign:"center"}}></th>
+                <th style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",border:"none"}}></th>
+                <th style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",border:"none",textAlign:"left",paddingLeft:8}}>Field Name</th>
+                <th style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",border:"none",textAlign:"center"}}>Active</th>
               </tr>
             </thead>
             <tbody>
@@ -1311,10 +1338,10 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
                 const checked = localVisible.has(f.id);
                 const active = isFieldActive(f.id);
                 return (
-                  <tr key={f.id} style={{height:44,borderBottom:"1px solid #f2f2f2",cursor:"default"}}
-                    onMouseEnter={e=>(e.currentTarget.style.background="#f5f6f7")}
+                  <tr key={f.id} style={{height:44,borderBottom:`1px solid ${C.border}`,cursor:"default"}}
+                    onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
                     onMouseLeave={e=>(e.currentTarget.style.background="")}>
-                    <td style={{textAlign:"center",color:"#c8cdd0",fontSize:16,userSelect:"none"}}>⠿</td>
+                    <td style={{textAlign:"center",color:C.t2,fontSize:16,userSelect:"none"}}>⠿</td>
                     <td style={{textAlign:"center"}}>
                       <input type="checkbox" checked={checked}
                         onChange={e=>{
@@ -1322,10 +1349,10 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
                           if(e.target.checked) ns.add(f.id); else ns.delete(f.id);
                           setLocalVisible(ns);
                         }}
-                        style={{accentColor:"#0a6ed1",width:16,height:16,cursor:"pointer"}} />
+                        style={{accentColor:C.primary,width:16,height:16,cursor:"pointer"}} />
                     </td>
-                    <td style={{fontSize:14,color:"#32363a",paddingLeft:8}}>{f.label}</td>
-                    <td style={{textAlign:"center",fontSize:10,color:"#0a6ed1"}}>{checked && active ? "●" : ""}</td>
+                    <td style={{fontSize:14,color:C.t1,paddingLeft:8}}>{f.label}</td>
+                    <td style={{textAlign:"center",fontSize:10,color:C.primary}}>{checked && active ? "●" : ""}</td>
                   </tr>
                 );
               })}
@@ -1333,13 +1360,13 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
           </table>
         </div>
         {/* Footer */}
-        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,padding:"0 16px",borderTop:"1px solid #d9d9d9",flexShrink:0}}>
+        <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,padding:"0 16px",borderTop:`1px solid ${C.border}`,flexShrink:0}}>
           <button onClick={onClose}
-            style={{height:36,padding:"0 16px",borderRadius:4,border:"1px solid #d9d9d9",background:"#fff",fontSize:14,cursor:"pointer",color:"#32363a"}}>
+            style={{height:36,padding:"0 16px",borderRadius:4,border:`1px solid ${C.border}`,background:C.card,fontSize:14,cursor:"pointer",color:C.t1}}>
             Cancel
           </button>
           <button onClick={()=>{ onSave(localVisible); onClose(); }}
-            style={{height:36,padding:"0 16px",borderRadius:4,border:"none",background:"#0a6ed1",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+            style={{height:36,padding:"0 16px",borderRadius:4,border:"none",background:C.primary,color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>
             OK
           </button>
         </div>
@@ -1350,6 +1377,7 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const COL_DEFS_BRM = [
+  {key:"status",     label:"Status",          defW:130},
   {key:"invoiceNo",  label:"Invoice No.",     defW:175},
   {key:"vendor",     label:"Vendor",          defW:145},
   {key:"poNumber",   label:"PO Number",       defW:115},
@@ -1359,7 +1387,6 @@ const COL_DEFS_BRM = [
   {key:"confirmedAt",label:"Approved Date",   defW:88},
   {key:"amount",     label:"Amount",          defW:110},
   {key:"sapDocNo",   label:"SAP Document",    defW:160},
-  {key:"status",     label:"Status",          defW:130},
 ];
 // Map internal status → document terminology shown in BRM view
 const BRM_STATUS_LABEL:Record<string,string> = {
@@ -1485,16 +1512,16 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     a.download=`invoices_brm_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
   };
 
-  const TK={hdrBg:"#f2f2f2",hdrBorder:"#e5e5e5",hdrText:"#6a6d70",rowBg:"#ffffff",rowBorder:"#e5e5e5",rowText:"#232629",hovBg:"#ededed",selBg:"#e5f0fa",link:"#0a6ed1",toolbarBg:"#ffffff",footerBg:"#fafafa"};
+  const TK={hdrBg:C.subtle,hdrBorder:C.border,hdrText:C.t2,rowBg:C.card,rowBorder:C.border,rowText:C.t1,hovBg:C.hover,selBg:C.selection,link:C.primary,toolbarBg:C.card,footerBg:C.subtle};
   const FS={base:14,sm:12,xs:11};
 
   return (
     <div style={{display:"flex",alignItems:"flex-start",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
       <div style={{flex:view?"0 0 60%":"1",padding:mob()?"12px 10px":"20px 24px",overflowX:"hidden",minWidth:0,transition:"flex 0.15s ease"}}>
       <div style={{marginBottom:14}}>
-        <div style={{fontSize:20,fontWeight:700,color:"#32363a",letterSpacing:0.1}}>Invoice Management</div>
-        <div style={{fontSize:FS.sm,color:"#6a6d70",marginTop:3,display:"flex",alignItems:"center",gap:5}}>
-          <SapIcon name="connected" size={12} color="#6a6d70"/>
+        <div style={{fontSize:20,fontWeight:700,color:C.t1,letterSpacing:0.1}}>Invoice Management</div>
+        <div style={{fontSize:FS.sm,color:C.t2,marginTop:3,display:"flex",alignItems:"center",gap:5}}>
+          <SapIcon name="connected" size={12} color={C.t2}/>
           On Accept: API_SUPPLIERINVOICE_PROCESS_SRV → SAP Flexible Workflow (Parked → Posted)
         </div>
       </div>
@@ -1596,7 +1623,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 style={{
                   background:isHov?"#f5f6f7":"transparent",
                   border:"none",
-                  color:"#32363a",
+                  color:C.t1,
                   borderRadius:4,
                   padding:"0 0.5625rem",
                   fontSize:14,
@@ -1619,13 +1646,13 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
             );
           };
 
-          const sep=<div style={{width:1,height:20,background:"#d9d9d9",margin:"0 4px",flexShrink:0,alignSelf:"center"}}/>;
+          const sep=<div style={{width:1,height:20,background:C.border,margin:"0 4px",flexShrink:0,alignSelf:"center"}}/>;
 
           return(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 0.75rem",height:44,background:TK.toolbarBg,borderBottom:`1px solid ${TK.hdrBorder}`}}>
               <div style={{display:"flex",alignItems:"center",gap:0}}>
                 <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText,marginRight:8}}>Invoices</span>
-                <span style={{fontSize:FS.sm,color:"#6a6d70",fontWeight:400,marginRight:8}}>({list.length})</span>
+                <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400,marginRight:8}}>({list.length})</span>
                 {tbBtn("Review",           ()=>sel.forEach(i=>setUR(i.id)),  "request-pending", canReview)}
                 {tbBtn("Accept",           ()=>sel.forEach(i=>accept(i.id)), "accept",           canAccept)}
                 {tbBtn("Reject",           ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject)}
@@ -1633,7 +1660,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 {tbBtn("Post to SAP",      ()=>sel.forEach(i=>postToSAP(i)),   "upload-to-cloud",canPost)}
                 {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)), "switch-classes", canConvert)}
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
-                {sel.length>0&&<span style={{fontSize:FS.xs,color:"#6a6d70",marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
+                {sel.length>0&&<span style={{fontSize:FS.xs,color:C.t2,marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
               </div>
               <div style={{display:"flex",gap:2,alignItems:"center"}}>
                 {tbBtn("Export",exportCSV,"excel-attachment",true)}
@@ -1664,7 +1691,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
                       style={{padding:"0 0.5rem",textAlign:isRight?"right":"left",fontSize:FS.sm,fontWeight:700,color:TK.hdrText,borderBottom:`1px solid ${TK.hdrBorder}`,whiteSpace:"nowrap",userSelect:"none" as const,letterSpacing:0,cursor:"pointer"}}
                       title={`Click to configure ${col.label}`}>
-                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:"#0a6ed1"}}>{sortIcon}</span>}
+                      {col.label}{sortIcon&&<span style={{fontSize:9,marginLeft:3,color:C.primary}}>{sortIcon}</span>}
                     </th>
                   );
                 })}
@@ -1685,7 +1712,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 )(buildGroups(list,colGroup,COL_DEFS_BRM.map(c=>c.key)))).map((inv:any)=>{
                 if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={COL_DEFS_BRM.length+2} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id); const isHov=hovRow===inv.id;
-                const rowBg=view?.id===inv.id?"#ddeeff":isSel?"#e5f0fa":isHov?TK.hovBg:TK.rowBg;
+                const rowBg=view?.id===inv.id?C.selection:isSel?C.selection:isHov?TK.hovBg:TK.rowBg;
                 const cs:any={padding:"0 0.5rem",height:36,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle"};
                 return(
                   <tr key={inv.id} onMouseEnter={()=>setHovRow(inv.id)} onMouseLeave={()=>setHovRow(null)}
@@ -1693,21 +1720,31 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                     <td style={{...cs,padding:"0 0 0 10px",textAlign:"center",width:32}}>
                       <input type="checkbox" checked={isSel} onChange={()=>toggleSel(inv.id)} style={{cursor:"pointer",width:13,height:13,accentColor:"#0854a0"}}/>
                     </td>
+                    {/* Status — first data column */}
+                    <td style={cs}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <InvoiceStatusIcon s={inv.status}/>
+                        <span style={{fontSize:FS.sm,fontWeight:600,color:TK.rowText,whiteSpace:"nowrap"}}>{inv.status}</span>
+                      </div>
+                      {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
+                        <div style={{fontSize:9,color:C.t2,marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
+                      )}
+                    </td>
                     <td style={cs}>
                       <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:FS.sm,padding:0,fontFamily:"inherit",textAlign:"left"}}>
                         {inv.invoiceNo}
                       </button>
-                      <div style={{fontSize:FS.xs,color:"#8c8c8c",marginTop:1}}>{inv.id}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2,marginTop:1}}>{inv.id}</div>
                     </td>
                     <td style={cs}>
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
-                      <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{inv.vendorId}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
                       {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
                     </td>
                     <td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>
                     <td style={cs}>
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
-                      <div style={{fontSize:FS.xs,color:"#8c8c8c"}}>{ccName(inv.companyCode)}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2}}>{ccName(inv.companyCode)}</div>
                     </td>
                     <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>
                     <td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>
@@ -1723,22 +1760,15 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                             <SapIcon name="connected" size={11} color="#107e3e"/>
                             <span style={{fontFamily:"monospace",fontSize:FS.xs,fontWeight:700,color:"#107e3e"}}>{inv.sapDocNo}</span>
                           </div>
-                          <div style={{fontSize:9,color:"#6a6d70",marginTop:1}}>{inv.invoiceType==="Supplier DPR"?"SAP FI (DPR)":"SAP MIRO"}</div>
-                          {inv.convertedDocNo&&<div style={{fontSize:9,color:"#0a6ed1",marginTop:1}}>Inv: {inv.convertedDocNo}</div>}
-                          {inv.clearingDocNo&&<div style={{fontSize:9,color:"#6a6d70",marginTop:1}}>Clr: {inv.clearingDocNo}</div>}
+                          <div style={{fontSize:9,color:C.t2,marginTop:1}}>{inv.invoiceType==="Supplier DPR"?"SAP FI (DPR)":"SAP MIRO"}</div>
+                          {inv.convertedDocNo&&<div style={{fontSize:9,color:C.info,marginTop:1}}>Inv: {inv.convertedDocNo}</div>}
+                          {inv.clearingDocNo&&<div style={{fontSize:9,color:C.t2,marginTop:1}}>Clr: {inv.clearingDocNo}</div>}
                         </div>
                       ):(
-                        <span style={{fontSize:FS.xs,color:"#bfbfbf"}}>—</span>
+                        <span style={{fontSize:FS.xs,color:C.t2}}>—</span>
                       )}
                     </td>
-                    {/* Status with BRM document terminology */}
-                    <td style={cs}>
-                      <Badge s={inv.status}/>
-                      {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
-                        <div style={{fontSize:9,color:"#6a6d70",marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
-                      )}
-                    </td>
-                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?"#0a6ed1":"#8c8c8c",fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>›</td>
+                    <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?C.primary:C.t2,fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>›</td>
                   </tr>
                 );
               })}
@@ -1746,31 +1776,31 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           </table>
         </div>
         {/* Footer */}
-        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:"#fafafa",borderTop:`1px solid ${TK.hdrBorder}`}}>
-          <span style={{fontSize:FS.xs,color:"#6a6d70"}}>{list.length} item{list.length!==1?"s":""}</span>
+        <div style={{display:"flex",alignItems:"center",padding:"0 0.75rem",height:32,background:TK.footerBg,borderTop:`1px solid ${TK.hdrBorder}`}}>
+          <span style={{fontSize:FS.xs,color:C.t2}}>{list.length} item{list.length!==1?"s":""}</span>
         </div>
       </div>
       </div>
 
       {/* FCL Detail Panel */}
       {view&&(
-        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid #e5e5e5`,background:"#fff",display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
+        <div style={{flex:"0 0 40%",position:"sticky",top:0,maxHeight:"100vh",overflowY:"auto",borderLeft:`1px solid ${C.border}`,background:C.card,display:"flex",flexDirection:"column",boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
           {/* Panel header */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid #e5e5e5`,background:"#f2f2f2",position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"12px 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
             <div>
-              <div style={{fontSize:15,fontWeight:700,color:"#32363a",display:"flex",alignItems:"center",gap:6}}>
+              <div style={{fontSize:15,fontWeight:700,color:C.t1,display:"flex",alignItems:"center",gap:6}}>
                 {view.invoiceNo}
                 {view.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 5px"}}>DPR</span>}
               </div>
-              <div style={{fontSize:11,color:"#6a6d70",marginTop:1}}>{view.vendorName} · {view.id}</div>
+              <div style={{fontSize:11,color:C.t2,marginTop:1}}>{view.vendorName} · {view.id}</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <Badge s={view.status}/>
-              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#6a6d70",lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
+              <button onClick={()=>setView(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 4px",marginLeft:4}}>×</button>
             </div>
           </div>
           {/* Action toolbar */}
-          <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:`1px solid #e5e5e5`,background:"#fff",height:40,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:`1px solid ${C.border}`,background:C.card,height:40,flexShrink:0}}>
             {(()=>{
               const btnStyle=(active:boolean)=>({background:"transparent",border:"none",color:active?"#32363a":"#bfbfbf",fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:13,fontWeight:400,cursor:active?"pointer":"default",height:36,padding:"0 10px",display:"inline-flex",alignItems:"center",gap:5,opacity:active?1:0.4});
               const canReview=["Submitted"].includes(view.status);
@@ -1789,7 +1819,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 <button style={btnStyle(canReject)} disabled={!canReject} onClick={()=>canReject&&(setRejM(view),setView(null))}>
                   <SapIcon name="decline" size={14} color={canReject?"#32363a":"#bfbfbf"}/>Reject
                 </button>
-                <div style={{width:1,height:20,background:"#e5e5e5",margin:"0 4px"}}/>
+                <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
                 <button style={btnStyle(canPost)} disabled={!canPost} onClick={()=>canPost&&postToSAP(view)}>
                   <SapIcon name="upload-to-cloud" size={14} color={canPost?"#32363a":"#bfbfbf"}/>Post to SAP
                 </button>
