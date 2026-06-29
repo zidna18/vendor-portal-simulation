@@ -755,21 +755,53 @@ const GroupHeaderRow=({colSpan,label,count,icon}:any)=>(
 );
 
 // ── Vendor Invoice ─────────────────────────────────────────────
+const ALL_VENDOR_FILTER_FIELDS = [
+  {id:"invoiceNo",    label:"Invoice No.",      defaultOn:true },
+  {id:"companyCode",  label:"Company Code",     defaultOn:true },
+  {id:"status",       label:"Status",           defaultOn:true },
+  {id:"currency",     label:"Currency",         defaultOn:true },
+  {id:"invoiceDate",  label:"Invoice Date",     defaultOn:true },
+  {id:"poNumber",     label:"PO Number",        defaultOn:false},
+  {id:"invoiceType",  label:"Invoice Type",     defaultOn:false},
+  {id:"dueDate",      label:"Due Date",         defaultOn:false},
+  {id:"amountMin",    label:"Amount (From)",    defaultOn:false},
+  {id:"amountMax",    label:"Amount (To)",      defaultOn:false},
+  {id:"whtType",      label:"WHT Type",         defaultOn:false},
+  {id:"submittedDate",label:"Submitted Date",   defaultOn:false},
+];
+
 export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
-  const [vhOpen,setVhOpen]=useState<null|"companyCode"|"status"|"currency">(null);
+  const [vhOpen,setVhOpen]=useState<null|"companyCode"|"status"|"currency"|"whtType">(null);
   const [colSort,setColSort]=useState<Record<string,string>>({});
   const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS.map(c=>[c.key,c.defW])));
   const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
   const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
-  const emptyF={invoiceNoConds:[] as Cond[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:""};
+  const [adaptOpen,setAdaptOpen]=useState(false);
+  const [visibleFields,setVisibleFields]=useState<Set<string>>(
+    new Set(ALL_VENDOR_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
+  );
+  const emptyF={
+    invoiceNoConds:[] as Cond[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],
+    dateFrom:"",dateTo:"",
+    poNumbers:[] as string[],invoiceTypes:[] as string[],
+    dueDateFrom:"",dueDateTo:"",
+    amountMin:"",amountMax:"",
+    whtTypes:[] as string[],
+    submittedFrom:"",submittedTo:"",
+  };
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
   const go=()=>setActive({...draft});
   const reset=()=>{setDraft({...emptyF});setActive({...emptyF});};
-  const clr=k=>{if(k==="dateRange"){setActive(p=>({...p,dateFrom:"",dateTo:""}));setDraft(p=>({...p,dateFrom:"",dateTo:""}));}else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}))}else{setActive(p=>({...p,[k]:[]}));setDraft(p=>({...p,[k]:[]}))}};
+  const clr=k=>{
+    const dateKeys:Record<string,string[]>={dateRange:["dateFrom","dateTo"],dueDateRange:["dueDateFrom","dueDateTo"],submittedDate:["submittedFrom","submittedTo"]};
+    if(dateKeys[k]){const [a,b]=dateKeys[k];setActive(p=>({...p,[a]:"", [b]:""}));setDraft(p=>({...p,[a]:"", [b]:""}));}
+    else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}));}
+    else{setActive(p=>({...p,[k]:[]}));setDraft(p=>({...p,[k]:[]}));}
+  };
   const v=VENDORS[user.vendorId];
   const exportCSV=()=>{
     const rows=selRows.size>0?mine.filter(i=>selRows.has(i.id)):mine;
@@ -789,7 +821,16 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
     (active.currencies.length===0||active.currencies.includes(i.currency))&&
     (!active.dateFrom||i.invoiceDate>=active.dateFrom)&&
-    (!active.dateTo||i.invoiceDate<=active.dateTo)
+    (!active.dateTo||i.invoiceDate<=active.dateTo)&&
+    (active.poNumbers.length===0||active.poNumbers.some(p=>(i.poNumbers||[i.poNumber]).includes(p)))&&
+    (active.invoiceTypes.length===0||active.invoiceTypes.includes(i.invoiceType||"Invoice"))&&
+    (!active.dueDateFrom||i.dueDate>=active.dueDateFrom)&&
+    (!active.dueDateTo||i.dueDate<=active.dueDateTo)&&
+    (!active.amountMin||Number(i.amount)>=Number(active.amountMin))&&
+    (!active.amountMax||Number(i.amount)<=Number(active.amountMax))&&
+    (active.whtTypes.length===0||active.whtTypes.includes(i.whtType||""))&&
+    (!active.submittedFrom||(i.submittedAt&&i.submittedAt>=active.submittedFrom))&&
+    (!active.submittedTo||(i.submittedAt&&i.submittedAt<=active.submittedTo))
   );
   const SORT_FIELDS:Record<string,(i:any)=>any>={
     invoiceNo:i=>i.invoiceNo, poNumber:i=>fmtPOs(i), compCode:i=>i.companyCode,
@@ -810,7 +851,14 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     active.statuses.length>0&&{label:"Status",val:active.statuses.length===1?active.statuses[0]:`${active.statuses.length} selected`,onClear:()=>clr("statuses")},
     active.companyCodes.length>0&&{label:"Company Code",val:active.companyCodes.length===1?`${active.companyCodes[0]} – ${ccName(active.companyCodes[0])}`:`${active.companyCodes.length} selected`,onClear:()=>clr("companyCodes")},
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
-    (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
+    (active.dateFrom||active.dateTo)&&{label:"Invoice Date",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
+    active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
+    active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
+    active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
+    active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
+    active.whtTypes.length>0&&{label:"WHT Type",val:active.whtTypes[0],onClear:()=>clr("whtTypes")},
+    (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>clr("submittedDate")},
   ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
@@ -839,18 +887,25 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </div>
       </div>
 
-      <FioriBar activeTokens={tokens} onGo={go} onReset={reset}>
-        <FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>
-        <FField label="Company Code">
+      <FioriBar activeTokens={tokens} onGo={go} onReset={reset} onAdaptFilters={()=>setAdaptOpen(true)} adaptFiltersCount={visibleFields.size}>
+        {visibleFields.has("invoiceNo")&&<FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>}
+        {visibleFields.has("companyCode")&&<FField label="Company Code">
           <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
-        </FField>
-        <FField label="Status">
+        </FField>}
+        {visibleFields.has("status")&&<FField label="Status">
           <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
-        </FField>
-        <FField label="Currency">
+        </FField>}
+        {visibleFields.has("currency")&&<FField label="Currency">
           <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
-        </FField>
-        <FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>
+        </FField>}
+        {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
+        {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",background:"#ffffff",outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
+        {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
+        {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
+        {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
+        {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))}/><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))}/></div></FField>}
       </FioriBar>
 
       {vhOpen==="companyCode"&&(
@@ -878,6 +933,38 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           onConfirm={s=>{sd("currencies",s);setVhOpen(null);}}
           onClose={()=>setVhOpen(null)}/>
       )}
+      {vhOpen==="whtType"&&(
+        <ValueHelpDialog title="WHT Type"
+          cols={[{key:"v",label:"WHT Code",width:100},{key:"l",label:"Description",width:360}]}
+          rows={WHT_TYPES.filter(w=>w.v)} keyField="v" labelField="l"
+          selected={draft.whtTypes}
+          onConfirm={s=>{setDraft(d=>({...d,whtTypes:s}));setVhOpen(null);}}
+          onClose={()=>setVhOpen(null)}/>
+      )}
+
+      <AdaptFiltersDialog
+        open={adaptOpen}
+        onClose={()=>setAdaptOpen(false)}
+        visibleFields={visibleFields}
+        onSave={s=>{setVisibleFields(s);setAdaptOpen(false);}}
+        draft={draft}
+        allFields={ALL_VENDOR_FILTER_FIELDS}
+        hasValue={(id)=>{
+          if(id==="invoiceNo")   return draft.invoiceNoConds.length>0;
+          if(id==="companyCode") return draft.companyCodes.length>0;
+          if(id==="status")      return draft.statuses.length>0;
+          if(id==="currency")    return draft.currencies.length>0;
+          if(id==="invoiceDate") return !!(draft.dateFrom||draft.dateTo);
+          if(id==="poNumber")    return draft.poNumbers.length>0;
+          if(id==="invoiceType") return draft.invoiceTypes.length>0;
+          if(id==="dueDate")     return !!(draft.dueDateFrom||draft.dueDateTo);
+          if(id==="amountMin")   return !!draft.amountMin;
+          if(id==="amountMax")   return !!draft.amountMax;
+          if(id==="whtType")     return draft.whtTypes.length>0;
+          if(id==="submittedDate") return !!(draft.submittedFrom||draft.submittedTo);
+          return false;
+        }}
+      />
 
       <div style={{border:`1px solid ${TK.hdrBorder}`,background:TK.rowBg}}>
 
@@ -1103,13 +1190,16 @@ const ALL_FILTER_FIELDS = [
   { id:"rejReason",      label:"Rejection Reason",      defaultOn:false },
 ];
 
-function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft }: {
+function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFields, hasValue }: {
   open: boolean;
   onClose: () => void;
   visibleFields: Set<string>;
   onSave: (fields: Set<string>) => void;
   draft: any;
+  allFields?: {id:string,label:string,defaultOn:boolean}[];
+  hasValue?: (id:string)=>boolean;
 }) {
+  const fields = allFields || ALL_FILTER_FIELDS;
   const [localVisible, setLocalVisible] = useState<Set<string>>(new Set(visibleFields));
   const [search, setSearch] = useState("");
   const [viewFilter, setViewFilter] = useState<"All"|"Active"|"Inactive">("All");
@@ -1123,6 +1213,7 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft }: {
   }, [open]);
 
   function isFieldActive(id: string): boolean {
+    if (hasValue) return hasValue(id);
     switch(id) {
       case "invoiceNo": return draft.invoiceNoConds?.length > 0;
       case "vendor": return draft.vendorIds?.length > 0;
@@ -1143,7 +1234,7 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft }: {
     }
   }
 
-  const displayFields = ALL_FILTER_FIELDS.filter(f => {
+  const displayFields = fields.filter(f => {
     if (search && !f.label.toLowerCase().includes(search.toLowerCase())) return false;
     if (viewFilter === "Active") return localVisible.has(f.id);
     if (viewFilter === "Inactive") return !localVisible.has(f.id);
@@ -1158,7 +1249,7 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft }: {
         <div style={{height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",borderBottom:"1px solid #d9d9d9",flexShrink:0}}>
           <span style={{fontSize:16,fontWeight:700,color:"#32363a"}}>Adapt Filters</span>
           <button
-            onClick={() => { setLocalVisible(new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))); }}
+            onClick={() => { setLocalVisible(new Set(fields.filter(f=>f.defaultOn).map(f=>f.id))); }}
             style={{background:"none",border:"none",color:"#0a6ed1",fontSize:13,cursor:"pointer",padding:"4px 8px"}}
           >Reset</button>
         </div>
