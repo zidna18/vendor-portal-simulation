@@ -1084,17 +1084,17 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 <div style={cell({justifyContent:"flex-start"})}><Badge s={rfq.status}/></div>
                 {(()=>{const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
                 <div style={cell({overflow:"hidden"})}>
-                  {sapNo==="—"?<span style={{fontSize:12,color:C.t2}}>—</span>:<a href="#" target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:12,fontWeight:600,color:C.primary,textDecoration:"none",borderBottom:`1px solid ${C.primary}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{sapNo}</a>}
+                  {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<a href="#" target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:13,fontWeight:600,color:C.primary,textDecoration:"none",borderBottom:`1px solid ${C.primary}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{sapNo}</a>}
                 </div>);})()}
-                <div style={cell({fontSize:12,fontWeight:700,color:C.primary})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.id}</span></div>
-                <div style={cell({fontSize:12,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.title}</span></div>
-                <div style={cell({fontSize:12,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
-                <div style={cell({fontSize:12,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
-                <div style={cell({fontSize:12,fontWeight:600,color:C.t1})}>{fmtDate(rfq.closingDate)}</div>
-                <div style={cell({fontSize:12,color:C.t2})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.postedBy}</span></div>
-                <div style={cell({fontSize:12,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
-                <div style={cell({fontSize:12,color:C.t2})}>{rfq.companyCode||"—"}</div>
-                <div style={cell({fontSize:12,color:C.t2})}>{rfq.plant||"—"}</div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.primary})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.id}</span></div>
+                <div style={cell({fontSize:13,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.title}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
+                <div style={cell({fontSize:13,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
+                <div style={cell({fontSize:13,fontWeight:600,color:C.t1})}>{fmtDate(rfq.closingDate)}</div>
+                <div style={cell({fontSize:13,color:C.t2})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.postedBy}</span></div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{rfq.companyCode||"—"}</div>
+                <div style={cell({fontSize:13,color:C.t2})}>{rfq.plant||"—"}</div>
                 <div onClick={e=>{e.stopPropagation();setDetailRfq(rfq);setRfqTab("general");}} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",overflow:"hidden",cursor:"pointer"}}>
                   {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{qts.length}</span>}
                   <span style={{fontSize:16,color:detailRfq?.id===rfq.id?C.primary:"#32363a",fontWeight:detailRfq?.id===rfq.id?700:300,marginLeft:"auto"}}>›</span>
