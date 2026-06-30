@@ -293,14 +293,14 @@ export const DocFlow = ({inv}) => {
       id:"invoicing", label:"Invoicing", ico:"document-text",
       docs:[{type:"Invoice Receipt",no:inv.id,status:invSt,qty:null,postDate:inv.submittedAt||inv.invoiceDate||""}],
     },
-    ...(sapAccNo?[{
+    {
       id:"accounting", label:"Accounting", ico:"accounting-document-verification",
-      docs:[{type:"Journal Entry",no:sapAccNo,status:"Posted",qty:null,postDate:inv.postedAt||""}],
-    }]:[]),
-    ...(isCleared&&inv.clearingDocNo?[{
+      docs: sapAccNo?[{type:"Journal Entry",no:sapAccNo,status:"Posted",qty:null,postDate:inv.postedAt||""}]:[],
+    },
+    {
       id:"clearing", label:"Clearing", ico:"complete",
-      docs:[{type:"Clearing Entry",no:inv.clearingDocNo,status:"Posted",qty:null,postDate:""}],
-    }]:[]),
+      docs: isCleared&&inv.clearingDocNo?[{type:"Clearing Entry",no:inv.clearingDocNo,status:"Posted",qty:null,postDate:""}]:[],
+    },
   ];
 
   // status styling — matches SAP Fiori: green=Posted/Completed, blue=Active/InProcess, red=Rejected, orange=warn
@@ -309,8 +309,9 @@ export const DocFlow = ({inv}) => {
   const stIcon  = (s:string) => s==="Posted"||s==="Completed"?"✓":s==="Rejected"?"✕":"●";
   const stLabel = (s:string) => s==="In Process"?"In Process":s;
 
-  // Phase circle color: completed/done = green, active = blue, future = #899898
+  // Phase circle: gray if no docs yet (future), green if all done, blue if active
   const phaseColor = (ph:any) => {
+    if(ph.docs.length===0)return"#899898";
     const done = ph.docs.every((d:any)=>d.status==="Posted"||d.status==="Completed");
     const active = ph.docs.some((d:any)=>d.status==="Active"||d.status==="In Process");
     return done?"#107e3e":active?"#0070f2":"#899898";
@@ -353,8 +354,8 @@ export const DocFlow = ({inv}) => {
                     const sc=stColor(doc.status); const sbg=stBgCol(doc.status);
                     return(
                       <div key={di} style={{
-                        background:"#fff",
-                        border:`1px solid #e0e0e0`,
+                        background:C.card,
+                        border:`1px solid ${C.border}`,
                         borderLeft:`3px solid ${sc}`,
                         borderRadius:4,
                         padding:"8px 10px",
@@ -368,8 +369,8 @@ export const DocFlow = ({inv}) => {
                           <span style={{fontSize:9,fontWeight:800,color:sc}}>{stIcon(doc.status)}</span>
                           <span style={{fontSize:9,fontWeight:600,color:sc}}>{stLabel(doc.status)}</span>
                         </div>
-                        {doc.qty&&<div style={{fontSize:9,color:"#6a6d70",marginBottom:1}}>Quantity: <span style={{color:C.t1}}>{doc.qty}</span></div>}
-                        {doc.postDate&&<div style={{fontSize:9,color:"#6a6d70"}}>Posting Date: <span style={{color:C.t1}}>{fmtDate(doc.postDate)}</span></div>}
+                        {doc.qty&&<div style={{fontSize:9,color:C.t2,marginBottom:1}}>Quantity: <span style={{color:C.t1}}>{doc.qty}</span></div>}
+                        {doc.postDate&&<div style={{fontSize:9,color:C.t2}}>Posting Date: <span style={{color:C.t1}}>{fmtDate(doc.postDate)}</span></div>}
                       </div>
                     );
                   })}
@@ -449,7 +450,6 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
 
   const addCond = (extraConds?:Cond[]) => {
     if(extraConds){setConds(p=>[...p,...extraConds]);return;}
-    if(!noVal&&!v1.trim()) return;
     setConds(p=>[...p,{op,v1:noVal?"":v1.trim(),v2:isBetween?v2.trim():""}]);
     setV1("");setV2("");
   };
@@ -685,16 +685,21 @@ const InvoiceStatusIcon = ({s}) => {
 };
 
 // ── Column Settings Popup ──────────────────────────────────────
+const fmtInvType=(t:string)=>t==="Supplier DPR"?"Down Payment Req":(t||"Invoice");
 const COL_DEFS = [
-  {key:"status",     label:"Status",        defW:120},
-  {key:"invoiceNo",  label:"Invoice No.",   defW:200},
-  {key:"poNumber",   label:"PO Number",     defW:140},
-  {key:"compCode",   label:"Company Code",  defW:150},
-  {key:"invDate",    label:"Invoice Date",  defW:100},
-  {key:"dueDate",    label:"Due Date",      defW:100},
-  {key:"amount",     label:"Amount",        defW:120},
-  {key:"attach",     label:"Attachments",   defW:100},
-  {key:"actions",    label:"Actions",       defW:90},
+  {key:"status",       label:"Status",        defW:120},
+  {key:"invoiceNo",    label:"Invoice No.",   defW:200},
+  {key:"invoiceType",  label:"Invoice Type",  defW:130},
+  {key:"poNumber",     label:"PO Number",     defW:140},
+  {key:"compCode",     label:"Company Code",  defW:150},
+  {key:"invDate",      label:"Invoice Date",  defW:100},
+  {key:"dueDate",      label:"Due Date",      defW:100},
+  {key:"totalAmt",     label:"Total Amount",    defW:130},
+  {key:"vatAmt",     label:"VAT Amount",      defW:110},
+  {key:"whtAmt",     label:"WHT Amount",      defW:110},
+  {key:"otherFee",   label:"Other Fee Amount",defW:120},
+  {key:"attach",     label:"Attachments",     defW:100},
+  {key:"actions",    label:"Actions",         defW:90},
 ];
 const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidth,onClose}:any) => {
   const [w,setW]=useState(width);
@@ -760,6 +765,58 @@ const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidt
     </>
   );
 };
+
+// ── View Settings Dialog ───────────────────────────────────────
+function ViewSettingsDialog({colDefs,hidden,onClose,onApply}:{
+  colDefs:{key:string,label:string}[],hidden:Set<string>,onClose:()=>void,onApply:(h:Set<string>)=>void
+}){
+  const [tab,setTab]=useState("columns");
+  const [search,setSearch]=useState("");
+  const [draft,setDraft]=useState(new Set(hidden));
+  const toggle=(key:string)=>setDraft(p=>{const n=new Set(p);n.has(key)?n.delete(key):n.add(key);return n;});
+  const filtered=colDefs.filter(c=>c.label.toLowerCase().includes(search.toLowerCase()));
+  const visCount=colDefs.filter(c=>!draft.has(c.key)).length;
+  const TABS=["Columns","Sort","Group"];
+  return(
+    <Modal title="View Settings" onClose={onClose} width={480}>
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:16}}>
+        {TABS.map(t=>{const tk=t.toLowerCase();return(
+          <button key={tk} onClick={()=>setTab(tk)} style={{background:"none",border:"none",borderBottom:tab===tk?`2px solid ${C.primary}`:"2px solid transparent",cursor:"pointer",padding:"6px 16px",fontSize:13,fontWeight:tab===tk?700:400,color:tab===tk?C.primary:C.t2,fontFamily:"inherit",marginBottom:-1}}>
+            {t}{tk==="columns"&&` (${visCount}/${colDefs.length})`}
+          </button>
+        );})}
+      </div>
+      {tab==="columns"&&(
+        <>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <span style={{fontSize:12,color:C.t2}}>{visCount} of {colDefs.length} columns visible</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search columns..."
+              style={{border:`1px solid ${C.border}`,borderRadius:2,padding:"4px 8px",fontSize:12,outline:"none",fontFamily:"inherit",width:170,color:C.t1,background:C.card}}/>
+          </div>
+          <div style={{maxHeight:320,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:2}}>
+            {filtered.map((col,i)=>(
+              <label key={col.key} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 12px",cursor:"pointer",background:i%2===0?C.subtle:C.card,borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",fontSize:13,color:C.t1,userSelect:"none" as const}}>
+                <input type="checkbox" checked={!draft.has(col.key)} onChange={()=>toggle(col.key)} style={{accentColor:C.primary,cursor:"pointer",width:14,height:14,flexShrink:0}}/>
+                {col.label}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+      {(tab==="sort"||tab==="group")&&(
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"32px 0",color:C.t2}}>
+          <SapIcon name="table-column" size={32} color={C.t2}/>
+          <span style={{fontSize:13}}>Click a column header to configure {tab} settings.</span>
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:20,paddingTop:16,borderTop:`1px solid ${C.border}`}}>
+        <button onClick={()=>setDraft(new Set())} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 1rem",fontSize:13,fontFamily:"inherit",cursor:"pointer",height:32}}>Reset</button>
+        <button onClick={onClose} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 1rem",fontSize:13,fontFamily:"inherit",cursor:"pointer",height:32}}>Cancel</button>
+        <button onClick={()=>{onApply(draft);onClose();}} style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 1rem",fontSize:13,fontFamily:"inherit",cursor:"pointer",height:32,fontWeight:600}}>OK</button>
+      </div>
+    </Modal>
+  );
+}
 
 // ── Group-by helpers ───────────────────────────────────────────
 const GRP_KEY:Record<string,(i:any)=>string>={
@@ -1112,6 +1169,9 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
   const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS.map(c=>[c.key,c.defW])));
   const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
   const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
+  const [hiddenCols,setHiddenCols]=useState<Set<string>>(new Set());
+  const [vsOpen,setVsOpen]=useState(false);
+  const visCols=COL_DEFS.filter(c=>!hiddenCols.has(c.key));
   const [adaptOpen,setAdaptOpen]=useState(false);
   const [visibleFields,setVisibleFields]=useState<Set<string>>(
     new Set(ALL_VENDOR_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
@@ -1189,7 +1249,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Invoice Date",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
-    active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
     (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
     active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
@@ -1237,7 +1297,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
@@ -1319,6 +1379,9 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
               <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
             </button>
+            <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="action-settings" size={14} color={C.t1}/>
+            </button>
             <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
               style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
@@ -1332,7 +1395,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <colgroup>
               <col style={{width:32}}/>
               <col style={{width:20}}/>
-              {COL_DEFS.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
+              {visCols.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
             </colgroup>
 
@@ -1343,10 +1406,10 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                 </th>
                 <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:20}}/>
 
-                {COL_DEFS.map((col,ci)=>{
+                {visCols.map((col)=>{
                   const sortVal=colSort[col.key]||"none";
                   const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
-                  const isRight=col.key==="amount";
+                  const isRight=["totalAmt","vatAmt","whtAmt","otherFee"].includes(col.key);
                   return(
                     <th key={col.key}
                       onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
@@ -1362,7 +1425,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
 
             <tbody>
               {mine.length===0?(
-                <tr><td colSpan={12}>
+                <tr><td colSpan={visCols.length+3}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:C.t2,fontSize:FS.base}}>
                     <SapIcon name="document" size={36} color={C.t2}/>
                     <span style={{fontSize:FS.base,color:C.t2}}>No items found.</span>
@@ -1372,7 +1435,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                   ?grpResult.rows
                   :grpResult.flatMap((g:any)=>[{__grpHdr:true,key:g.key,groupKey:g.groupKey,count:g.rows.length},...g.rows])
                 )(buildGroups(mine,colGroup,COL_DEFS.map(c=>c.key)))).map((inv:any)=>{
-                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={12} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
+                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={visCols.length+3} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id);
                 const isHov=hovRow===inv.id;
                 const rowBg=view?.id===inv.id?C.selection:isSel?C.selection:isHov?TK.hovBg:TK.rowBg;
@@ -1398,66 +1461,60 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       </button>}
                     </td>
 
-                    <td style={cs}>
-                      <Badge s={inv.status}/>
-                    </td>
+                    {!hiddenCols.has("status")&&<td style={cs}><Badge s={inv.status}/></td>}
 
-                    <td style={cs}>
-                      <button onClick={()=>setView(inv)} style={{
-                        background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",
-                        color:TK.link,fontSize:FS.sm,fontWeight:600,
-                        textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",
-                        fontFamily:"inherit",
-                      }}>{inv.invoiceNo}</button>
+                    {!hiddenCols.has("invoiceNo")&&<td style={cs}>
+                      <button onClick={()=>setView(inv)} style={{background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",color:TK.link,fontSize:FS.sm,fontWeight:600,textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",fontFamily:"inherit"}}>{inv.invoiceNo}</button>
                       <div style={{fontSize:FS.xs,color:C.t2,lineHeight:1.4}}>{inv.id}</div>
-                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
-                    </td>
+                    </td>}
 
-                    <td style={cs}>
-                      <span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span>
-                    </td>
+                    {!hiddenCols.has("invoiceType")&&<td style={cs}>
+                      {inv.invoiceType==="Supplier DPR"
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#fef6ee",color:"#c87941",border:"1px solid #f5c98a",borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:700,whiteSpace:"nowrap" as const}}>Down Payment Req</span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:C.infoBg,color:C.info,border:`1px solid ${C.info}40`,borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:600,whiteSpace:"nowrap" as const}}>Invoice</span>
+                      }
+                    </td>}
 
-                    <td style={cs}>
+                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span></td>}
+
+                    {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontSize:FS.sm,fontWeight:600,color:TK.link}}>{inv.companyCode||"—"}</span>
                       <div style={{fontSize:FS.xs,color:C.t2,lineHeight:1.4}}>{ccName(inv.companyCode)}</div>
-                    </td>
+                    </td>}
 
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)}</span></td>
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)}</span></td>
+                    {!hiddenCols.has("invDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)}</span></td>}
+                    {!hiddenCols.has("dueDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)}</span></td>}
 
-                    <td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontSize:FS.sm,fontWeight:600,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(inv.amount,inv.currency)}</span>
-                    </td>
+                    {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt((inv.amount||0)+(inv.vatAmt||0)+(inv.additionalFee||0),inv.currency)}</span>
+                    </td>}
+                    {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>
+                    </td>}
+                    {!hiddenCols.has("whtAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.whtAmt?fmtAmt(inv.whtAmt,inv.currency):"—"}</span>
+                    </td>}
+                    {!hiddenCols.has("otherFee")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.additionalFee?fmtAmt(inv.additionalFee,inv.currency):"—"}</span>
+                    </td>}
 
-                    <td style={cs}>
+                    {!hiddenCols.has("attach")&&<td style={cs}>
                       {inv.files?.length>=2
-                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}>
-                            <SapIcon name="accept" size={13} color="#107e3e"/>
-                            <span style={{fontWeight:600}}>{inv.files.length} file(s)</span>
-                          </span>
-                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}>
-                            <SapIcon name="alert" size={13} color="#df6e0c"/>
-                            <span>Incomplete</span>
-                          </span>
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={13} color="#107e3e"/><span style={{fontWeight:600}}>{inv.files.length} file(s)</span></span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/><span>Incomplete</span></span>
                       }
-                    </td>
+                    </td>}
 
-                    <td style={cs}>
+                    {!hiddenCols.has("actions")&&<td style={cs}>
                       <div style={{display:"flex",gap:4}}>
                         {["Draft","Rejected"].includes(inv.status)&&(
-                          <button onClick={()=>{setEd(inv);setForm(true);}}
-                            style={{background:"transparent",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>
-                            Edit
-                          </button>
+                          <button onClick={()=>{setEd(inv);setForm(true);}} style={{background:"transparent",border:"1px solid #0854a0",color:"#0854a0",borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Edit</button>
                         )}
                         {inv.status==="Submitted"&&(
-                          <button onClick={()=>withdraw(inv.id)}
-                            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:22}}>
-                            Withdraw
-                          </button>
+                          <button onClick={()=>withdraw(inv.id)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.xs,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:22}}>Withdraw</button>
                         )}
                       </div>
-                    </td>
+                    </td>}
 
                     <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?C.primary:C.t2,fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>
                       ›
@@ -1465,7 +1522,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                   </tr>
                   {isExpanded&&hasItems&&(
                     <tr style={{background:C.bg}}>
-                      <td colSpan={12} style={{padding:0,borderBottom:`1px solid ${TK.rowBorder}`}}>
+                      <td colSpan={visCols.length+3} style={{padding:0,borderBottom:`1px solid ${TK.rowBorder}`}}>
                         <div style={{paddingLeft:60,paddingBottom:8,paddingTop:4,paddingRight:8}}>
                           <table style={{width:"100%",borderCollapse:"collapse",fontSize:FS.xs,tableLayout:"auto"}}>
                             <thead>
@@ -1539,6 +1596,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
           onClose={()=>setColMenu(null)}/>
       )}
+      {vsOpen&&<ViewSettingsDialog colDefs={COL_DEFS} hidden={hiddenCols} onClose={()=>setVsOpen(false)} onApply={h=>{setHiddenCols(new Set(h));setVsOpen(false);}}/>}
     </div>
   );
 };
@@ -1708,16 +1766,20 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const COL_DEFS_BRM = [
-  {key:"status",     label:"Status",          defW:130},
-  {key:"invoiceNo",  label:"Invoice No.",     defW:175},
-  {key:"vendor",     label:"Vendor",          defW:145},
-  {key:"poNumber",   label:"PO Number",       defW:115},
-  {key:"compCode",   label:"Company Code",    defW:120},
-  {key:"invDate",    label:"Invoice Date",    defW:88},
-  {key:"submittedAt",label:"Submitted Date",  defW:88},
-  {key:"confirmedAt",label:"Approved Date",   defW:88},
-  {key:"amount",     label:"Amount",          defW:110},
-  {key:"sapDocNo",   label:"SAP Document",    defW:160},
+  {key:"status",       label:"Status",          defW:130},
+  {key:"invoiceNo",    label:"Invoice No.",     defW:175},
+  {key:"invoiceType",  label:"Invoice Type",    defW:130},
+  {key:"vendor",       label:"Vendor",          defW:145},
+  {key:"poNumber",     label:"PO Number",       defW:115},
+  {key:"compCode",     label:"Company Code",    defW:120},
+  {key:"invDate",      label:"Invoice Date",    defW:88},
+  {key:"submittedAt",  label:"Submitted Date",  defW:88},
+  {key:"confirmedAt",  label:"Approved Date",   defW:88},
+  {key:"totalAmt",   label:"Total Amount",     defW:115},
+  {key:"vatAmt",     label:"VAT Amount",       defW:100},
+  {key:"whtAmt",     label:"WHT Amount",       defW:100},
+  {key:"otherFee",   label:"Other Fee Amount", defW:110},
+  {key:"sapDocNo",   label:"SAP Document",     defW:160},
 ];
 // Map internal status → document terminology shown in BRM view
 const BRM_STATUS_LABEL:Record<string,string> = {
@@ -1785,7 +1847,6 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
             <button style={btnStyle(canAccept)} disabled={!canAccept} onClick={()=>canAccept&&onAccept(view.id)}><SapIcon name="accept" size={13} color={canAccept?C.t1:"#bfbfbf"}/>Accept</button>
             <button style={btnStyle(canReject)} disabled={!canReject} onClick={()=>canReject&&onReject(view)}><SapIcon name="decline" size={13} color={canReject?C.t1:"#bfbfbf"}/>Reject</button>
             <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
-            <button style={btnStyle(canPost)} disabled={!canPost} onClick={()=>canPost&&onPost(view)}><SapIcon name="upload-to-cloud" size={13} color={canPost?C.t1:"#bfbfbf"}/>Post</button>
             <button style={btnStyle(canConvert)} disabled={!canConvert} onClick={()=>canConvert&&onConvert(view)}><SapIcon name="convert" size={13} color={canConvert?C.t1:"#bfbfbf"}/>Convert</button>
             <button style={btnStyle(canClear)} disabled={!canClear} onClick={()=>canClear&&onClear(view)}><SapIcon name="complete" size={13} color={canClear?C.t1:"#bfbfbf"}/>Clear</button>
             <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
@@ -2004,6 +2065,9 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   const [colWidth,setColWidth]=useState<Record<string,number>>(Object.fromEntries(COL_DEFS_BRM.map(c=>[c.key,c.defW])));
   const [colGroup,setColGroup]=useState<Record<string,boolean>>({});
   const [colMenu,setColMenu]=useState<{key:string,label:string,x:number,y:number}|null>(null);
+  const [hiddenCols,setHiddenCols]=useState<Set<string>>(new Set());
+  const [vsOpen,setVsOpen]=useState(false);
+  const visCols=COL_DEFS_BRM.filter(c=>!hiddenCols.has(c.key));
   const [adaptOpen, setAdaptOpen] = useState(false);
   const [visibleFields, setVisibleFields] = useState<Set<string>>(
     new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
@@ -2073,7 +2137,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers?.length>0&&{label:"PO Number",val:active.poNumbers.length===1?active.poNumbers[0]:`${active.poNumbers.length} selected`,onClear:()=>clr("poNumbers")},
-    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
     (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
     (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
@@ -2153,7 +2217,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
         {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
@@ -2264,11 +2328,10 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
               <div style={{display:"flex",alignItems:"center",gap:0}}>
                 <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText,marginRight:8}}>Invoices</span>
                 <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400,marginRight:8}}>({list.length})</span>
-                {tbBtn("Review",           ()=>sel.forEach(i=>setUR(i.id)),  "request-pending", canReview)}
+                {tbBtn("Review",           ()=>sel.forEach(i=>setUR(i.id)),  "pending", canReview)}
                 {tbBtn("Accept",           ()=>sel.forEach(i=>accept(i.id)), "accept",           canAccept)}
                 {tbBtn("Reject",           ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject)}
                 {sep}
-                {tbBtn("Post to SAP",      ()=>sel.forEach(i=>postToSAP(i)),   "upload-to-cloud",canPost)}
                 {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)), "switch-classes", canConvert)}
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
                 {sel.length>0&&<span style={{fontSize:FS.xs,color:C.t2,marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
@@ -2280,6 +2343,9 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 </button>
                 <div style={{width:1,height:20,background:C.border}}/>
                 {tbBtn("Export",exportCSV,"excel-attachment",true)}
+                <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center"}}>
+                  <SapIcon name="action-settings" size={14} color={C.t1}/>
+                </button>
               </div>
             </div>
           );
@@ -2291,7 +2357,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
             <colgroup>
               <col style={{width:32}}/>
               <col style={{width:20}}/>
-              {COL_DEFS_BRM.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
+              {visCols.map(c=><col key={c.key} style={{width:colWidth[c.key]}}/>)}
               <col style={{width:32}}/>
             </colgroup>
             <thead>
@@ -2301,10 +2367,10 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 </th>
                 <th style={{borderBottom:`1px solid ${TK.hdrBorder}`,width:20}}/>
 
-                {COL_DEFS_BRM.map(col=>{
+                {visCols.map(col=>{
                   const sortVal=colSort[col.key]||"none";
                   const sortIcon=sortVal==="asc"?"▲":sortVal==="desc"?"▼":null;
-                  const isRight=col.key==="amount";
+                  const isRight=["totalAmt","vatAmt","whtAmt","otherFee"].includes(col.key);
                   return(
                     <th key={col.key}
                       onClick={e=>{e.stopPropagation();setColMenu(p=>p?.key===col.key?null:{key:col.key,label:col.label,x:e.clientX,y:e.clientY+4});}}
@@ -2319,7 +2385,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
             </thead>
             <tbody>
               {list.length===0?(
-                <tr><td colSpan={COL_DEFS_BRM.length+3}>
+                <tr><td colSpan={visCols.length+3}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,padding:"48px 0",color:"#6a6d70"}}>
                     <SapIcon name="document" size={36} color="#c8cdd0"/>
                     <span style={{fontSize:FS.base,color:"#6a6d70"}}>No items found.</span>
@@ -2329,7 +2395,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                   ?grpResult.rows
                   :grpResult.flatMap((g:any)=>[{__grpHdr:true,key:g.key,groupKey:g.groupKey,count:g.rows.length},...g.rows])
                 )(buildGroups(list,colGroup,COL_DEFS_BRM.map(c=>c.key)))).map((inv:any)=>{
-                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={COL_DEFS_BRM.length+3} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
+                if(inv.__grpHdr)return <GroupHeaderRow key={`grp-${inv.groupKey}`} colSpan={visCols.length+3} label={inv.groupKey} count={inv.count} icon={GRP_ICON[inv.key]||"group"}/>;
                 const isSel=selRows.has(inv.id); const isHov=hovRow===inv.id;
                 const rowBg=view?.id===inv.id?C.selection:isSel?C.selection:isHov?TK.hovBg:TK.rowBg;
                 const cs:any={padding:"0 0.5rem",height:36,borderBottom:`1px solid ${TK.rowBorder}`,fontSize:FS.sm,color:TK.rowText,verticalAlign:"middle"};
@@ -2346,37 +2412,47 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                         <span style={{display:"inline-block",transition:"transform .18s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                       </button>}
                     </td>
-                    {/* Status — first data column */}
-                    <td style={cs}>
+                    {!hiddenCols.has("status")&&<td style={cs}>
                       <Badge s={inv.status}/>
                       {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
                         <div style={{fontSize:9,color:C.t2,marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
                       )}
-                    </td>
-                    <td style={cs}>
-                      <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:FS.sm,padding:0,fontFamily:"inherit",textAlign:"left"}}>
-                        {inv.invoiceNo}
-                      </button>
+                    </td>}
+                    {!hiddenCols.has("invoiceNo")&&<td style={cs}>
+                      <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:FS.sm,padding:0,fontFamily:"inherit",textAlign:"left"}}>{inv.invoiceNo}</button>
                       <div style={{fontSize:FS.xs,color:C.t2,marginTop:1}}>{inv.id}</div>
-                    </td>
-                    <td style={cs}>
+                    </td>}
+                    {!hiddenCols.has("invoiceType")&&<td style={cs}>
+                      {inv.invoiceType==="Supplier DPR"
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#fef6ee",color:"#c87941",border:"1px solid #f5c98a",borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:700,whiteSpace:"nowrap" as const}}>Down Payment Req</span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:C.infoBg,color:C.info,border:`1px solid ${C.info}40`,borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:600,whiteSpace:"nowrap" as const}}>Invoice</span>
+                      }
+                    </td>}
+                    {!hiddenCols.has("vendor")&&<td style={cs}>
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
-                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
-                    </td>
-                    <td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>
-                    <td style={cs}>
+                    </td>}
+                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>}
+                    {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{ccName(inv.companyCode)}</div>
-                    </td>
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>
-                    <td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>
-                    <td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontWeight:600,fontSize:FS.sm}}>{fmtAmt(inv.amount,inv.currency)}</span>
-                    </td>
-                    {/* SAP Document column */}
-                    <td style={cs}>
+                    </td>}
+                    {!hiddenCols.has("invDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>}
+                    {!hiddenCols.has("submittedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>}
+                    {!hiddenCols.has("confirmedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>}
+                    {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontWeight:700,fontSize:FS.sm,fontVariantNumeric:"tabular-nums"}}>{fmtAmt((inv.amount||0)+(inv.vatAmt||0)+(inv.additionalFee||0),inv.currency)}</span>
+                    </td>}
+                    {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>
+                    </td>}
+                    {!hiddenCols.has("whtAmt")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.whtAmt?fmtAmt(inv.whtAmt,inv.currency):"—"}</span>
+                    </td>}
+                    {!hiddenCols.has("otherFee")&&<td style={{...cs,textAlign:"right"}}>
+                      <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.additionalFee?fmtAmt(inv.additionalFee,inv.currency):"—"}</span>
+                    </td>}
+                    {!hiddenCols.has("sapDocNo")&&<td style={cs}>
                       {inv.sapDocNo?(
                         <div>
                           <div style={{display:"inline-flex",alignItems:"center",gap:4}}>
@@ -2390,12 +2466,12 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       ):(
                         <span style={{fontSize:FS.xs,color:C.t2}}>—</span>
                       )}
-                    </td>
+                    </td>}
                     <td onClick={()=>setView(inv)} style={{...cs,textAlign:"center",color:view?.id===inv.id?C.primary:C.t2,fontSize:16,fontWeight:300,padding:0,width:32,cursor:"pointer"}}>›</td>
                   </tr>
                   {isExpanded&&hasItems&&(
                     <tr style={{background:C.bg}}>
-                      <td colSpan={COL_DEFS_BRM.length+3} style={{padding:0,borderBottom:`1px solid ${TK.rowBorder}`}}>
+                      <td colSpan={visCols.length+3} style={{padding:0,borderBottom:`1px solid ${TK.rowBorder}`}}>
                         <div style={{paddingLeft:60,paddingBottom:8,paddingTop:4,paddingRight:8}}>
                           <table style={{width:"100%",borderCollapse:"collapse",fontSize:FS.xs,tableLayout:"auto"}}>
                             <thead>
@@ -2480,6 +2556,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
           onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
           onClose={()=>setColMenu(null)}/>
       )}
+      {vsOpen&&<ViewSettingsDialog colDefs={COL_DEFS_BRM} hidden={hiddenCols} onClose={()=>setVsOpen(false)} onApply={h=>{setHiddenCols(new Set(h));setVsOpen(false);}}/>}
       <AdaptFiltersDialog
         open={adaptOpen}
         onClose={()=>setAdaptOpen(false)}

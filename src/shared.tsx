@@ -239,7 +239,7 @@ export const INIT_INV = (() => {
   { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  additionalFee:0,       feeCategory:"",                  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, additionalFee:1000000, feeCategory:"Interest / Penalty Fee", desc:"Cleaning services contract Q2",                     status:"Submitted",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000, currency:"IDR", vatBase:15000000, vatAmt:1650000, whtType:"PPh23", whtBase:15000000, whtAmt:300000,  additionalFee:0,       feeCategory:"",                  desc:"Courier services May 2025",                         status:"Win",             sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000, currency:"IDR", vatBase:15000000, vatAmt:1650000, whtType:"PPh23", whtBase:15000000, whtAmt:300000,  additionalFee:0,       feeCategory:"",                  desc:"Courier services May 2025",                         status:"Rejected",        sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
   { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,      currency:"USD", vatBase:8500,      vatAmt:935,      whtType:"PPh26", whtBase:8500,      whtAmt:1700,    additionalFee:0,       feeCategory:"",                  desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",               sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     additionalFee:0,       feeCategory:"",                  desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
@@ -642,91 +642,188 @@ export const FField = ({label,children,style={}}) => (
 );
 export const DateRangePicker = ({from,to,onChange}) => {
   const [open,setOpen]=useState(false);
-  const [hov,setHov]=useState<string|null>(null);
+  const [mode,setMode]=useState<string|null>(null);
   const [tf,setTf]=useState(from||"");
   const [tt,setTt]=useState(to||"");
-  const todayStr=new Date().toISOString().split("T")[0];
-  const [lm,setLm]=useState(()=>{const d=from?new Date(from+"T00:00"):new Date();return{y:d.getFullYear(),m:d.getMonth()};});
+  const [xVal,setXVal]=useState("7");
+  const [yVal,setYVal]=useState("0");
+  const [xUnit,setXUnit]=useState("Days");
+  const [monSel,setMonSel]=useState<{y:number,m:number}>(()=>{const d=new Date();return{y:d.getFullYear(),m:d.getMonth()};});
   const ref=useRef<HTMLDivElement>(null);
+  const today=new Date().toISOString().split("T")[0];
   useEffect(()=>{setTf(from||"");},[from]);
   useEffect(()=>{setTt(to||"");},[to]);
   useEffect(()=>{
     if(!open)return;
-    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node)){setOpen(false);setMode(null);}};
     document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
   },[open]);
-  const rm=lm.m===11?{y:lm.y+1,m:0}:{y:lm.y,m:lm.m+1};
-  const prev=()=>setLm(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1});
-  const next=()=>setLm(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1});
-  const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const DN=["Su","Mo","Tu","We","Th","Fr","Sa"];
-  const mk=(y:number,m:number,d:number)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-  const clickDay=(ds:string)=>{if(!tf||(tf&&tt)){setTf(ds);setTt("");}else{if(ds<tf){setTt(tf);setTf(ds);}else setTt(ds);}};
-  const effEnd=(!tt&&hov)?hov:tt;
-  const inR=(ds:string)=>{if(!tf||!effEnd)return false;const[a,b]=tf<=effEnd?[tf,effEnd]:[effEnd,tf];return ds>a&&ds<b;};
-  const isS=(ds:string)=>ds===tf;
-  const isE=(ds:string)=>!!effEnd&&ds===effEnd;
-  const renderMon=(y:number,m:number)=>{
-    const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),picking=!!(tf&&!tt);
-    return(
-      <div style={{flex:1}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",textAlign:"center"}}>
-          {DN.map(d=><div key={d} style={{fontSize:11,color:C.t2,fontWeight:700,padding:"4px 0"}}>{d}</div>)}
-          {Array.from({length:fd},(_,i)=><div key={`e${i}`}/>)}
-          {Array.from({length:dim},(_,i)=>{
-            const d=i+1,ds=mk(y,m,d),s=isS(ds),e=isE(ds),ir=inR(ds),isT=ds===todayStr;
-            const bg=s||e?C.primary:ir?C.infoBg:"transparent";
-            const col=s||e?"#fff":C.t1;
-            const br=s||e?"50%":ir?"0%":"50%";
-            return(
-              <div key={d} onMouseEnter={()=>{if(picking)setHov(ds);}} onMouseLeave={()=>setHov(null)} onClick={()=>clickDay(ds)}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",height:30,cursor:"pointer",fontSize:12,
-                  fontWeight:s||e?700:400,userSelect:"none" as const,background:bg,borderRadius:br,color:col,
-                  ...(isT&&!s&&!e?{outline:`1.5px solid ${C.primary}`,outlineOffset:"-1px",borderRadius:"50%"}:{})
-                }}
-              >{d}</div>
-            );
-          })}
-        </div>
+  const apply=(f:string,t:string)=>{onChange(f,t);setOpen(false);setMode(null);};
+  const clr=()=>{onChange("","");setTf("");setTt("");setMode(null);};
+  const iso=(d:Date)=>d.toISOString().split("T")[0];
+  const addDays=(d:Date,n:number)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
+  const addMonths=(d:Date,n:number)=>{const r=new Date(d);r.setMonth(r.getMonth()+n);return r;};
+  const weekRange=(off:number)=>{const d=new Date();const dow=d.getDay();const mon=addDays(d,-(dow===0?6:dow-1)+off*7);return[iso(mon),iso(addDays(mon,6))];};
+  const monthRange=(off:number)=>{const d=new Date();const f=new Date(d.getFullYear(),d.getMonth()+off,1);const l=new Date(d.getFullYear(),d.getMonth()+off+1,0);return[iso(f),iso(l)];};
+  const qRange=(qOff:number,fixQ?:number)=>{const d=new Date();let y=d.getFullYear();let q=fixQ!==undefined?fixQ:Math.floor(d.getMonth()/3)+qOff;y+=Math.floor(q/4);q=((q%4)+4)%4;const f=new Date(y,q*3,1);const l=new Date(y,q*3+3,0);return[iso(f),iso(l)];};
+  const yearRange=(off:number)=>{const y=new Date().getFullYear()+off;return[`${y}-01-01`,`${y}-12-31`];};
+  const offsetDate=(d:Date,n:number,unit:string)=>{const r=new Date(d);if(unit==="Days")r.setDate(r.getDate()+n);else if(unit==="Weeks")r.setDate(r.getDate()+n*7);else if(unit==="Months")r.setMonth(r.getMonth()+n);else if(unit==="Quarters")r.setMonth(r.getMonth()+n*3);else if(unit==="Years")r.setFullYear(r.getFullYear()+n);else if(unit==="Hours")r.setHours(r.getHours()+n);else if(unit==="Minutes")r.setMinutes(r.getMinutes()+n);return r;};
+  const UNITS=["Minutes","Hours","Days","Weeks","Months","Quarters","Years"];
+  const MNAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const handleOpt=(k:string)=>{
+    const d=new Date();
+    if(k==="today"){apply(today,today);return;}
+    if(k==="yesterday"){const y=iso(addDays(d,-1));apply(y,y);return;}
+    if(k==="tomorrow"){const t=iso(addDays(d,1));apply(t,t);return;}
+    if(k==="year-to-date"){apply(`${d.getFullYear()}-01-01`,today);return;}
+    if(k==="date-to-year"){apply(today,`${d.getFullYear()}-12-31`);return;}
+    if(k==="this-week"){const[f,t]=weekRange(0);apply(f,t);return;}
+    if(k==="last-week"){const[f,t]=weekRange(-1);apply(f,t);return;}
+    if(k==="next-week"){const[f,t]=weekRange(1);apply(f,t);return;}
+    if(k==="this-month"){const[f,t]=monthRange(0);apply(f,t);return;}
+    if(k==="last-month"){const[f,t]=monthRange(-1);apply(f,t);return;}
+    if(k==="next-month"){const[f,t]=monthRange(1);apply(f,t);return;}
+    if(k==="this-quarter"){const[f,t]=qRange(0);apply(f,t);return;}
+    if(k==="last-quarter"){const[f,t]=qRange(-1);apply(f,t);return;}
+    if(k==="next-quarter"){const[f,t]=qRange(1);apply(f,t);return;}
+    if(k==="q1"){const[f,t]=qRange(0,0);apply(f,t);return;}
+    if(k==="q2"){const[f,t]=qRange(0,1);apply(f,t);return;}
+    if(k==="q3"){const[f,t]=qRange(0,2);apply(f,t);return;}
+    if(k==="q4"){const[f,t]=qRange(0,3);apply(f,t);return;}
+    if(k==="this-year"){const[f,t]=yearRange(0);apply(f,t);return;}
+    if(k==="last-year"){const[f,t]=yearRange(-1);apply(f,t);return;}
+    if(k==="next-year"){const[f,t]=yearRange(1);apply(f,t);return;}
+    setMode(m=>m===k?null:k);
+    if(k!==mode){setTf(from||"");setTt(to||"");}
+  };
+  const applyLastX=()=>{const n=parseInt(xVal)||1;const s=iso(offsetDate(new Date(),-n,xUnit));apply(s,today);};
+  const applyNextX=()=>{const n=parseInt(xVal)||1;const e=iso(offsetDate(new Date(),n,xUnit));apply(today,e);};
+  const applyTodayXY=()=>{const x=parseInt(xVal)||0;const y=parseInt(yVal)||0;const f=iso(addDays(new Date(),-x));const t=iso(addDays(new Date(),y));apply(f,t);};
+  const disp=from&&to?`${fmtDate(from)} – ${fmtDate(to)}`:from?`From: ${fmtDate(from)}`:to?`To: ${fmtDate(to)}`:"";
+  const rowSt=(active:boolean):any=>({padding:"7px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontSize:13,color:C.t1,background:active?C.infoBg:"transparent"});
+  const secHdr=(title:string)=>(
+    <div style={{padding:"6px 14px 3px",fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.6,marginTop:2}}>{title}</div>
+  );
+  const row=(k:string,label:string,ico?:boolean)=>(
+    <div key={k}>
+      <div onClick={()=>handleOpt(k)} style={rowSt(mode===k)}
+        onMouseEnter={e=>(e.currentTarget.style.background=C.infoBg)}
+        onMouseLeave={e=>(e.currentTarget.style.background=mode===k?C.infoBg:"transparent")}>
+        <span>{label}</span>
+        {ico&&<SapIcon name="appointment-2" size={13} color={C.t2}/>}
+      </div>
+      {mode===k&&subInp(k)}
+    </div>
+  );
+  const subInpSt:any={padding:"4px 14px 10px",display:"flex",flexDirection:"column",gap:6};
+  const numInpSt:any={width:64,padding:"4px 8px",fontSize:13,fontFamily:"inherit",color:C.t1,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,outline:"none"};
+  const unitSelSt:any={flex:1,padding:"4px 8px",fontSize:13,fontFamily:"inherit",color:C.t1,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,outline:"none",cursor:"pointer"};
+  const subInp=(k:string)=>{
+    if(k==="date"||k==="date-time")return(
+      <div style={subInpSt}><DateInp value={tf} onChange={v=>{setTf(v);if(v)apply(v,v);}}/></div>
+    );
+    if(k==="from-to"||k==="from-to-dt")return(
+      <div style={subInpSt}>
+        <DateInp value={tf} onChange={v=>setTf(v)}/>
+        <DateInp value={tt} onChange={v=>setTt(v)}/>
+        <div style={{display:"flex",gap:6}}><Btn v="neutral" sm onClick={()=>setMode(null)}>Cancel</Btn><Btn v="primary" sm onClick={()=>apply(tf,tt)}>Apply</Btn></div>
       </div>
     );
+    if(k==="from")return(<div style={subInpSt}><DateInp value={tf} onChange={v=>{setTf(v);if(v)apply(v,to||"");}}/></div>);
+    if(k==="to")return(<div style={subInpSt}><DateInp value={tt} onChange={v=>{setTt(v);if(v)apply(from||"",v);}}/></div>);
+    if(k==="last-x")return(
+      <div style={subInpSt}>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <input style={numInpSt} type="number" min={1} value={xVal} onChange={e=>setXVal(e.target.value)}/>
+          <select style={unitSelSt} value={xUnit} onChange={e=>setXUnit(e.target.value)}>{UNITS.map(u=><option key={u} value={u}>{u}</option>)}</select>
+        </div>
+        <div style={{display:"flex",gap:6}}><Btn v="neutral" sm onClick={()=>setMode(null)}>Cancel</Btn><Btn v="primary" sm onClick={applyLastX}>Apply</Btn></div>
+      </div>
+    );
+    if(k==="next-x")return(
+      <div style={subInpSt}>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <input style={numInpSt} type="number" min={1} value={xVal} onChange={e=>setXVal(e.target.value)}/>
+          <select style={unitSelSt} value={xUnit} onChange={e=>setXUnit(e.target.value)}>{UNITS.map(u=><option key={u} value={u}>{u}</option>)}</select>
+        </div>
+        <div style={{display:"flex",gap:6}}><Btn v="neutral" sm onClick={()=>setMode(null)}>Cancel</Btn><Btn v="primary" sm onClick={applyNextX}>Apply</Btn></div>
+      </div>
+    );
+    if(k==="today-xy")return(
+      <div style={subInpSt}>
+        <div style={{display:"flex",gap:6,alignItems:"center",fontSize:12,color:C.t2}}>
+          <span style={{whiteSpace:"nowrap" as const}}>-X days:</span>
+          <input style={numInpSt} type="number" min={0} value={xVal} onChange={e=>setXVal(e.target.value)}/>
+          <span style={{whiteSpace:"nowrap" as const}}>+Y days:</span>
+          <input style={numInpSt} type="number" min={0} value={yVal} onChange={e=>setYVal(e.target.value)}/>
+        </div>
+        <div style={{display:"flex",gap:6}}><Btn v="neutral" sm onClick={()=>setMode(null)}>Cancel</Btn><Btn v="primary" sm onClick={applyTodayXY}>Apply</Btn></div>
+      </div>
+    );
+    if(k==="month")return(
+      <div style={subInpSt}>
+        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+          <button onClick={()=>setMonSel(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>‹</button>
+          <span style={{flex:1,textAlign:"center" as const,fontSize:12,fontWeight:700,color:C.t1}}>{MNAMES[monSel.m]} {monSel.y}</span>
+          <button onClick={()=>setMonSel(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>›</button>
+        </div>
+        <Btn v="primary" sm onClick={()=>{const f=`${monSel.y}-${String(monSel.m+1).padStart(2,"0")}-01`;const l=new Date(monSel.y,monSel.m+1,0);apply(f,iso(l));}}>Select Month</Btn>
+      </div>
+    );
+    return null;
   };
-  const apply=()=>{onChange(tf,tt);setOpen(false);};
-  const cancel=()=>{setTf(from||"");setTt(to||"");setHov(null);setOpen(false);};
-  const clrPick=()=>{setTf("");setTt("");setHov(null);};
-  const disp=from&&to?`${fmtDate(from)} – ${fmtDate(to)}`:from?`${fmtDate(from)} – …`:"";
-  const isMob=mob();
   return(
     <div ref={ref} style={{position:"relative"}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box" as const}}>
         <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
-        {disp&&<button onClick={e=>{e.stopPropagation();clrPick();onChange("","");}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
+        {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
         <SapIcon name="calendar" size={14} color={C.t2} style={{flexShrink:0}}/>
       </div>
       {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",padding:16,minWidth:isMob?240:490}}>
-          <div style={{display:"flex",alignItems:"center",marginBottom:10,gap:8}}>
-            <button onClick={prev} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>‹</button>
-            <div style={{display:"flex",flex:1,justifyContent:"space-around"}}>
-              <span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[lm.m]} {lm.y}</span>
-              {!isMob&&<span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[rm.m]} {rm.y}</span>}
-            </div>
-            <button onClick={next} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>›</button>
-          </div>
-          <div style={{display:"flex",gap:16}}>
-            {renderMon(lm.y,lm.m)}
-            {!isMob&&<><div style={{width:1,background:C.border,margin:"0 4px",alignSelf:"stretch"}}/>{renderMon(rm.y,rm.m)}</>}
-          </div>
-          <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-            <div style={{fontSize:12,color:C.t2}}>
-              {tf?<><span style={{fontWeight:700,color:C.t1}}>{fmtDate(tf)}</span><span style={{margin:"0 5px"}}>–</span>{tt?<span style={{fontWeight:700,color:C.t1}}>{fmtDate(tt)}</span>:<span style={{fontStyle:"italic"}}>pick end date</span>}</>:<span>Click a start date</span>}
-            </div>
-            <div style={{display:"flex",gap:6}}>
-              <Btn v="neutral" sm onClick={clrPick}>Clear</Btn>
-              <Btn v="neutral" sm onClick={cancel}>Cancel</Btn>
-              <Btn v="primary" sm onClick={apply}>Apply</Btn>
-            </div>
-          </div>
+        <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",minWidth:260,maxHeight:480,overflowY:"auto" as const}}>
+          {secHdr("Single Dates")}
+          {row("date","Date",true)}
+          {row("today","Today")}
+          {row("yesterday","Yesterday")}
+          {row("tomorrow","Tomorrow")}
+          {row("date-time","Date and Time",true)}
+          <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+          {secHdr("Date Ranges")}
+          {row("from-to","From / To",true)}
+          {row("from-to-dt","From / To (Date and Time)",true)}
+          {row("from","From",true)}
+          {row("to","To",true)}
+          {row("year-to-date","Year to Date")}
+          {row("date-to-year","Date to Year")}
+          {row("last-x","Last X Minutes / Hours / Days…")}
+          {row("next-x","Next X Minutes / Hours / Days…")}
+          {row("today-xy","Today -X / +Y Days")}
+          <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+          {secHdr("Weeks")}
+          {row("this-week","This Week")}
+          {row("last-week","Last Week")}
+          {row("next-week","Next Week")}
+          <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+          {secHdr("Months")}
+          {row("month","Month",true)}
+          {row("this-month","This Month")}
+          {row("last-month","Last Month")}
+          {row("next-month","Next Month")}
+          <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+          {secHdr("Quarters")}
+          {row("this-quarter","This Quarter")}
+          {row("last-quarter","Last Quarter")}
+          {row("next-quarter","Next Quarter")}
+          {row("q1","First Quarter")}
+          {row("q2","Second Quarter")}
+          {row("q3","Third Quarter")}
+          {row("q4","Fourth Quarter")}
+          <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+          {secHdr("Years")}
+          {row("this-year","This Year")}
+          {row("last-year","Last Year")}
+          {row("next-year","Next Year")}
+          <div style={{height:8}}/>
         </div>
       )}
     </div>

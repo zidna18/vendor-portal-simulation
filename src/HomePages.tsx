@@ -13,7 +13,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
   const stats=[
     {l:"Total Invoices",n:mi.length,sub:`${mi.filter(i=>i.status==="Confirmed").length} Confirmed`,c:C.primary,ico:"document"},
     {l:"Pending Review",n:mi.filter(i=>["Submitted","Under Review"].includes(i.status)).length,sub:"Awaiting BRM action",c:C.warn,ico:"time-entry-request"},
-    {l:"Open RFQs",n:mr.filter(r=>r.status==="Open").length,sub:"Pending your quotation",c:C.ok,ico:"request-for-quotation"},
+    {l:"Open RFQs",n:mr.filter(r=>r.status==="Open").length,sub:"Pending your quotation",c:C.ok,ico:"sales-quote"},
     {l:"My Quotations",n:mq.length,sub:`${mq.filter(q=>q.status==="Accepted").length} Accepted`,c:C.gold,ico:"accept"},
   ];
   const tiles=[
@@ -76,7 +76,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
   const stats=[
     {l:"Invoices Pending",n:pending.length,c:C.warn,ico:"time-entry-request",s:"brm-invoice"},
     {l:"Invoices Confirmed",n:confirmed.length,c:C.ok,ico:"accept",s:"brm-invoice"},
-    {l:"Quotations to Evaluate",n:pendingQt.length,c:C.primary,ico:"request-for-quotation",s:"brm-quotation"},
+    {l:"Quotations to Evaluate",n:pendingQt.length,c:C.primary,ico:"sales-quote",s:"brm-quotation"},
     {l:"Open RFQs",n:rfqs.filter(r=>r.status==="Open").length,c:C.gold,ico:"megamenu",s:"brm-rfq"},
   ];
   return (
@@ -109,7 +109,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           {pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{marginTop:12,background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:13,fontWeight:600,padding:0}}>View all {pending.length} pending →</button>}
         </Card>
         <Card>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1,display:"flex",alignItems:"center",gap:7}}><SapIcon name="request-for-quotation" size={16} color={C.primary}/> Quotations to Evaluate</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1,display:"flex",alignItems:"center",gap:7}}><SapIcon name="sales-quote" size={16} color={C.primary}/> Quotations to Evaluate</div>
           {pendingQt.length===0?<div style={{color:C.t2,fontSize:14}}>No quotations awaiting evaluation.</div>:pendingQt.slice(0,5).map(qt=>(
             <div key={qt.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
               <div><div style={{fontWeight:600,fontSize:14,maxWidth:180,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{qt.rfqTitle}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{qt.vendorName}</div></div>
