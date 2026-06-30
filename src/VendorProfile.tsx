@@ -63,7 +63,7 @@ export const VendorProfile = ({user}) => {
       {/* Vendor identity strip */}
       <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:20,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
         <div style={{width:56,height:56,borderRadius:"50%",background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-          <SapIcon name="business-partner" size={26} color="#fff"/>
+          <SapIcon name="employee" size={26} color="#fff"/>
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:18,fontWeight:700,color:C.t1}}>{v.name}</div>
@@ -101,7 +101,7 @@ export const VendorProfile = ({user}) => {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           {/* Company Information */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-            <Section title="Company Information" icon="business-partner">
+            <Section title="Company Information" icon="employee">
               <Row label="Business Partner ID" value={v.id} mono/>
               <Row label="Legal Name"           value={v.name}/>
               <Row label="Tax ID (NPWP)"        value={v.tax} mono/>
