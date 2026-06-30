@@ -1074,12 +1074,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
-          {selIds.size>0&&(
-            <button onClick={()=>setShowApproval(true)}
-              style={{background:C.primary,border:"none",color:"#fff",borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600}}>
-              <SapIcon name="workflow-tasks" size={13} color="#fff"/> Send for Approval ({selIds.size})
-            </button>
-          )}
+          <button onClick={()=>selIds.size>0&&setShowApproval(true)} disabled={selIds.size===0}
+            style={{background:selIds.size>0?C.primary:C.subtle,border:`1px solid ${selIds.size>0?"transparent":C.border}`,color:selIds.size>0?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:selIds.size>0?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:selIds.size>0?1:0.6,transition:"all .15s"}}>
+            <SapIcon name="workflow-tasks" size={13} color={selIds.size>0?"#fff":C.t2}/> Send for Approval{selIds.size>0?` (${selIds.size})`:""}
+          </button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
