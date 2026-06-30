@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vendor-portal",
+      "runtimeExecutable": "C:\\Users\\yoga.a.augusta\\OneDrive - Accenture\\Documents\\Project\\Vendor Portal\\.claude\\start-dev.bat",
+      "runtimeArgs": [],
+      "autoPort": true,
+      "port": 5173
+    }
+  ]
+}

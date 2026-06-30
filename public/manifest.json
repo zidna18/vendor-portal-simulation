@@ -1,0 +1,13 @@
+{
+  "name": "BRM Vendor Portal",
+  "short_name": "BRM Portal",
+  "description": "SAP BTP Vendor Collaboration Portal – Accenture",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F6F7",
+  "theme_color": "#1D2D3E",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" }
+  ]
+}

@@ -1,0 +1,618 @@
+import { useState, useEffect, useRef } from "react";
+
+// ── Mock Data ──────────────────────────────────────────────────
+export const USERS = [
+  { id:"V001", role:"vendor", username:"vendor1", password:"demo123", name:"PT Maju Bersama", vendorId:"10000001" },
+  { id:"V002", role:"vendor", username:"vendor2", password:"demo123", name:"CV Sukses Mandiri", vendorId:"10000002" },
+  { id:"B001", role:"brm",    username:"brm.user", password:"demo123", name:"Ahmad Rizki",  title:"Procurement Manager" },
+  { id:"B002", role:"brm",    username:"buyer1",   password:"demo123", name:"Siti Rahma",   title:"Senior Buyer" },
+];
+export const VENDORS = {
+  "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",   bank:{name:"Bank Mandiri", acc:"1234-5678-9012", aname:"PT MAJU BERSAMA"},    cat:"Goods & Services", since:"2019-03-15", rep:"Budi Santoso",   status:"Active" },
+  "10000002":{ id:"10000002", name:"CV Sukses Mandiri",  tax:"02.345.678.9-012.000", addr:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", phone:"+62 21 5555-5678", email:"finance@suksesmandiri.co.id", bank:{name:"BCA",         acc:"9876-5432-1098", aname:"CV SUKSES MANDIRI"}, cat:"Services",         since:"2021-07-22", rep:"Dewi Kusuma",   status:"Active" },
+};
+// SAP I_CompanyCode — five legal entities
+export const COMPANY_CODES = [
+  { v:"BRMS", l:"PT Bumi Resource Minerals",  ctrl:"A000", city:"Jakarta",   country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
+  { v:"CPMS", l:"PT Citra Palu Minerals",      ctrl:"A000", city:"Poboya",    country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
+  { v:"GMIN", l:"PT Gorontalo Minerals",       ctrl:"A000", city:"Gorontalo", country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
+  { v:"SHSI", l:"PT Suma Heksa Sinergi",       ctrl:"A000", city:"Banten",    country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
+  { v:"LMRS", l:"PT Linge Minerals",           ctrl:"A000", city:"Aceh",      country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
+];
+export const ccName = code => COMPANY_CODES.find(c=>c.v===code)?.l || "";
+// SAP I_Currency — ISO 4217 transaction currencies
+export const CURRENCIES = [
+  {v:"IDR",l:"IDR – Indonesian Rupiah"}, {v:"USD",l:"USD – US Dollar"},
+  {v:"EUR",l:"EUR – Euro"},              {v:"SGD",l:"SGD – Singapore Dollar"},
+  {v:"AUD",l:"AUD – Australian Dollar"}, {v:"JPY",l:"JPY – Japanese Yen"},
+  {v:"CNY",l:"CNY – Chinese Yuan"},      {v:"GBP",l:"GBP – British Pound"},
+  {v:"MYR",l:"MYR – Malaysian Ringgit"}, {v:"HKD",l:"HKD – Hong Kong Dollar"},
+  {v:"SAR",l:"SAR – Saudi Riyal"},
+];
+// SAP WithholdingTaxType / WithholdingTaxCode — Indonesian Pasal WHT
+export const WHT_TYPES = [
+  {v:"",      l:"— None / Not Applicable —"},
+  {v:"PPh21", l:"PPh Pasal 21 – Employment & Professional Income"},
+  {v:"PPh22", l:"PPh Pasal 22 – Import & Certain Goods (1.5%)"},
+  {v:"PPh23", l:"PPh Pasal 23 – Services, Rent & Royalties (2%)"},
+  {v:"PPh26", l:"PPh Pasal 26 – Foreign Entity / Non-Resident (20%)"},
+  {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
+];
+export const INIT_INV = [
+  { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       desc:"Office supplies Q2 2025",                          status:"Posted",       sapDocNo:"5100000001/2025", postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", rejReason:"" },
+  { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       desc:"IT peripherals and accessories",                    status:"Under Review", sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000,  currency:"IDR", vatBase:45000000,  vatAmt:4950000,  whtType:"PPh23", whtBase:45000000,  whtAmt:900000,  desc:"Maintenance services June 2025",                    status:"Draft",        sapDocNo:null,             postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, desc:"Cleaning services contract Q2",                     status:"Submitted",    sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          rejReason:"" },
+  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000,  currency:"IDR", vatBase:15000000,  vatAmt:1650000,  whtType:"PPh23", whtBase:15000000,  whtAmt:300000,  desc:"Courier services May 2025",                         status:"Rejected",     sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,       currency:"USD", vatBase:8500,       vatAmt:935,      whtType:"PPh26", whtBase:8500,       whtAmt:1700,    desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",       sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", rejReason:"" },
+  { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,      currency:"AUD", vatBase:12000,      vatAmt:1320,     whtType:"PPh23", whtBase:12000,      whtAmt:240,     desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",    sapDocNo:null,             postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", rejReason:"" },
+  { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,      currency:"CNY", vatBase:45000,      vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       desc:"Manufacturing components supply – June batch",       status:"Draft",        sapDocNo:null,             postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          rejReason:"" },
+];
+export const INIT_RFQS = [
+  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
+    items:[
+      {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
+      {no:2, desc:"Workstation Dell XPS",  type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-WKS-002", materialGroup:"IT Hardware",  plant:"PL01", qty:20,  uom:"Unit",         estPrice:12500000, requirementDate:"2025-07-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0002", title:"Office Supplies Annual Contract",         postedDate:"2025-06-10", closingDate:"2025-06-30", postedBy:"Siti Rahma",   targets:["10000001"],           cat:"Office Supplies", estVal:150000000, companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Annual supply of office stationery and printing consumables.", status:"On Process",
+    items:[
+      {no:1, desc:"A4 Paper 80gsm",              type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-PPR-001", materialGroup:"Office Supplies", plant:"PL02", qty:1000, uom:"Ream", estPrice:50000,  requirementDate:"2025-07-01", startDate:"", endDate:""},
+      {no:2, desc:"Ink Cartridge (Various)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-INK-002", materialGroup:"Office Supplies", plant:"PL02", qty:200,  uom:"Pcs",  estPrice:300000, requirementDate:"2025-07-01", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"PO10", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Complete",
+    items:[
+      {no:1, desc:"Security Guard Day Shift",   type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-001", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:8000000,  requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
+      {no:2, desc:"Security Guard Night Shift", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-002", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:10000000, requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
+    ]},
+  { id:"RFQ-2025-0004", title:"HVAC Maintenance Contract",                postedDate:"2025-06-15", closingDate:"2025-07-15", postedBy:"Siti Rahma",   targets:["10000001","10000002"],           cat:"Services",        estVal:240000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Annual preventive maintenance for HVAC systems across all floors.", status:"Closed",
+    items:[
+      {no:1, desc:"Preventive Maintenance Visit",      type:"Service",  acctAssign:"K – Cost Center", materialNo:"SVC-HVC-001", materialGroup:"Facility Services",   plant:"PL04", qty:12,   uom:"Visit",         estPrice:20000000,  requirementDate:"",           startDate:"2025-08-01", endDate:"2026-07-31"},
+    ]},
+  { id:"RFQ-2025-0005", title:"Explosive Materials – Blasting Supplies",  postedDate:"2025-06-20", closingDate:"2025-07-20", postedBy:"Ahmad Rizki",  targets:["10000003","10000004"],           cat:"Goods",           estVal:875000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Supply of ANFO, detonators, and blasting accessories for open-pit operations.", status:"Open",
+    items:[
+      {no:1, desc:"ANFO Bulk Explosive",               type:"Material", acctAssign:"P – Project",    materialNo:"MIN-EXP-001", materialGroup:"Mining Materials",    plant:"PL02", qty:50000,uom:"KG",            estPrice:8500,      requirementDate:"2025-08-15", startDate:"", endDate:""},
+      {no:2, desc:"Electric Detonator",                type:"Material", acctAssign:"P – Project",    materialNo:"MIN-DET-002", materialGroup:"Mining Materials",    plant:"PL02", qty:2000, uom:"Pcs",            estPrice:35000,     requirementDate:"2025-08-15", startDate:"", endDate:""},
+      {no:3, desc:"Safety Fuse (100m/roll)",           type:"Material", acctAssign:"P – Project",    materialNo:"MIN-FUS-003", materialGroup:"Mining Materials",    plant:"PL02", qty:500,  uom:"Roll",           estPrice:125000,    requirementDate:"2025-08-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0006", title:"Genset Rental – Remote Site Power",        postedDate:"2025-06-22", closingDate:"2025-07-22", postedBy:"Siti Rahma",   targets:["10000004"],                      cat:"Services",        estVal:480000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"PO10", desc:"Rental of diesel generators (500 kVA) for Linge Minerals remote field site for 12 months.", status:"On Process",
+    items:[
+      {no:1, desc:"Genset 500 kVA Rental",             type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-GEN-001", materialGroup:"Equipment Rental",    plant:"PL05", qty:12,   uom:"Month",          estPrice:40000000,  requirementDate:"",           startDate:"2025-08-01", endDate:"2026-07-31"},
+    ]},
+  { id:"RFQ-2025-0007", title:"Personal Protective Equipment (PPE)",      postedDate:"2025-06-25", closingDate:"2025-07-25", postedBy:"Eko Prasetyo", targets:["10000001","10000003","10000004"],cat:"Goods",           estVal:120000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Annual PPE procurement for all subsidiaries: helmets, boots, vests, gloves, and goggles.", status:"Open",
+    items:[
+      {no:1, desc:"Safety Helmet (SNI certified)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-HLM-001", materialGroup:"Safety Equipment",   plant:"PL01", qty:500,  uom:"Pcs",            estPrice:75000,     requirementDate:"2025-08-20", startDate:"", endDate:""},
+      {no:2, desc:"Safety Boot (Steel Toe)",           type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-BOT-002", materialGroup:"Safety Equipment",   plant:"PL01", qty:300,  uom:"Pair",           estPrice:350000,    requirementDate:"2025-08-20", startDate:"", endDate:""},
+      {no:3, desc:"High-Visibility Safety Vest",       type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-VST-003", materialGroup:"Safety Equipment",   plant:"PL01", qty:600,  uom:"Pcs",            estPrice:85000,     requirementDate:"2025-08-20", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0008", title:"ERP Consulting Services – SAP Add-On",        postedDate:"2025-06-10", closingDate:"2025-07-10", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Services",     estVal:650000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Consulting & implementation services for SAP Public Cloud add-on modules (BTP, Analytics).", status:"Complete",
+    items:[
+      {no:1, desc:"SAP BTP Integration Consultant",      type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SAP-001", materialGroup:"IT Consulting",       plant:"PL01", qty:6,  uom:"Month",  estPrice:85000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-01-31"},
+      {no:2, desc:"SAP Analytics Cloud Specialist",      type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SAP-002", materialGroup:"IT Consulting",       plant:"PL01", qty:4,  uom:"Month",  estPrice:75000000, requirementDate:"", startDate:"2025-09-01", endDate:"2025-12-31"},
+    ]},
+  { id:"RFQ-2025-0009", title:"Water Treatment Chemicals – Mining Site",      postedDate:"2025-06-28", closingDate:"2025-07-28", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Goods",           estVal:195000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Supply of coagulants, flocculants, and pH adjustment chemicals for wastewater treatment at Palu site.", status:"Open",
+    items:[
+      {no:1, desc:"Coagulant PAC (25 kg/bag)",          type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-PAC-001", materialGroup:"Chemicals",           plant:"PL02", qty:500,uom:"Bag",    estPrice:180000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
+      {no:2, desc:"Anionic Flocculant (20 kg/bag)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-FLC-002", materialGroup:"Chemicals",           plant:"PL02", qty:300,uom:"Bag",    estPrice:250000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
+      {no:3, desc:"Caustic Soda (NaOH) 50 kg/drum",    type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-NHO-003", materialGroup:"Chemicals",           plant:"PL02", qty:150,uom:"Drum",   estPrice:420000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0010", title:"Medical & First Aid Supplies – All Sites",     postedDate:"2025-06-29", closingDate:"2025-07-29", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Medical Supplies", estVal:88000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Annual procurement of first aid kits, medicines, and medical consumables for all 5 site clinics.", status:"Open",
+    items:[
+      {no:1, desc:"First Aid Kit (50-person)",          type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-FAK-001", materialGroup:"Medical Supplies",    plant:"PL01", qty:25, uom:"Set",    estPrice:1200000,  requirementDate:"2025-08-10", startDate:"", endDate:""},
+      {no:2, desc:"AED Defibrillator",                  type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-AED-002", materialGroup:"Medical Equipment",   plant:"PL01", qty:5,  uom:"Unit",   estPrice:12000000, requirementDate:"2025-08-10", startDate:"", endDate:""},
+      {no:3, desc:"Stretcher & Immobilization Board",   type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-STR-003", materialGroup:"Medical Equipment",   plant:"PL01", qty:10, uom:"Pcs",   estPrice:850000,   requirementDate:"2025-08-10", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0011", title:"Drone Survey & Aerial Mapping Services",       postedDate:"2025-06-30", closingDate:"2025-07-30", postedBy:"Ahmad Rizki",  targets:["10000002"],            cat:"Survey Services", estVal:320000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Topographic drone survey and 3D terrain modelling for Gorontalo open-pit expansion area (±2,500 ha).", status:"Open",
+    items:[
+      {no:1, desc:"Drone Aerial Survey (per hectare)",  type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-DRN-001", materialGroup:"Survey Services",     plant:"PL04", qty:2500,uom:"Ha",     estPrice:120000,   requirementDate:"2025-08-25", startDate:"", endDate:""},
+      {no:2, desc:"3D Point Cloud Processing & Report", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-DRN-002", materialGroup:"Survey Services",     plant:"PL04", qty:1,   uom:"Lump Sum",estPrice:45000000, requirementDate:"2025-09-15", startDate:"", endDate:""},
+    ]},
+];
+export const INIT_QT = [
+  { id:"QT-2025-0001", rfqId:"RFQ-2025-0001", rfqTitle:"Procurement of Laptops & Workstations", vendorId:"10000001", vendorName:"PT Maju Bersama",   submittedDate:"2025-06-12", validUntil:"2025-07-12", totalAmt:490000000, notes:"Price includes 2-year warranty and free delivery.", status:"Submitted", files:["quotation.pdf"],                    items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",unitPrice:7800000,total:390000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",unitPrice:5000000,total:100000000}] },
+  { id:"QT-2025-0002", rfqId:"RFQ-2025-0002", rfqTitle:"Office Supplies Annual Contract",         vendorId:"10000001", vendorName:"PT Maju Bersama",   submittedDate:"",           validUntil:"",           totalAmt:145000000, notes:"Free delivery for orders above IDR 5,000,000.",     status:"Draft",     files:[],                                  items:[{no:1,desc:"A4 Paper 80gsm",qty:1000,uom:"Ream",unitPrice:45000,total:45000000},{no:2,desc:"Ink Cartridge (Various)",qty:200,uom:"Pcs",unitPrice:250000,total:50000000}] },
+  { id:"QT-2025-0003", rfqId:"RFQ-2025-0003", rfqTitle:"Security Services – HO Building",       vendorId:"10000002", vendorName:"CV Sukses Mandiri",     submittedDate:"2025-06-08", validUntil:"2025-07-08", totalAmt:350000000, notes:"Includes supervisor and CCTV monitoring.",                                   status:"Accepted",   files:["quotation.pdf","company_profile.pdf"], items:[{no:1,desc:"Security Guard Day Shift",qty:12,uom:"Person/Month",unitPrice:7500000,total:90000000},{no:2,desc:"Security Guard Night Shift",qty:12,uom:"Person/Month",unitPrice:9000000,total:108000000}] },
+  { id:"QT-2025-0004", rfqId:"RFQ-2025-0004", rfqTitle:"HVAC Maintenance Contract",             vendorId:"10000001", vendorName:"PT Maju Bersama",       submittedDate:"2025-07-01", validUntil:"2025-08-01", totalAmt:228000000, notes:"Price includes spare parts and refrigerant top-up.",                         status:"Submitted",  files:["quotation.pdf"],                       items:[{no:1,desc:"Preventive Maintenance Visit",qty:12,uom:"Visit",unitPrice:19000000,total:228000000}] },
+  { id:"QT-2025-0005", rfqId:"RFQ-2025-0004", rfqTitle:"HVAC Maintenance Contract",             vendorId:"10000002", vendorName:"CV Sukses Mandiri",     submittedDate:"2025-07-02", validUntil:"2025-08-02", totalAmt:240000000, notes:"2-hour SLA for emergency call-outs. Covers all 4 floors.",                   status:"Submitted",  files:["quotation.pdf","technical_spec.pdf"],  items:[{no:1,desc:"Preventive Maintenance Visit",qty:12,uom:"Visit",unitPrice:20000000,total:240000000}] },
+  { id:"QT-2025-0006", rfqId:"RFQ-2025-0005", rfqTitle:"Explosive Materials – Blasting Supplies",vendorId:"10000003", vendorName:"PT Karya Utama Sejati",submittedDate:"2025-07-05", validUntil:"2025-08-05", totalAmt:862500000, notes:"Price includes licensed transport & handling. MSDS provided.",               status:"Draft",      files:[],                                      items:[{no:1,desc:"ANFO Bulk Explosive",qty:50000,uom:"KG",unitPrice:8000,total:400000000},{no:2,desc:"Electric Detonator",qty:2000,uom:"Pcs",unitPrice:33000,total:66000000},{no:3,desc:"Safety Fuse (100m/roll)",qty:500,uom:"Roll",unitPrice:115000,total:57500000}] },
+  { id:"QT-2025-0007", rfqId:"RFQ-2025-0005", rfqTitle:"Explosive Materials – Blasting Supplies",vendorId:"10000004", vendorName:"UD Nusantara Jaya",    submittedDate:"2025-07-06", validUntil:"2025-08-06", totalAmt:891000000, notes:"Stock available immediately. Delivery within 5 business days.",              status:"Submitted",  files:["quotation.pdf"],                       items:[{no:1,desc:"ANFO Bulk Explosive",qty:50000,uom:"KG",unitPrice:8800,total:440000000},{no:2,desc:"Electric Detonator",qty:2000,uom:"Pcs",unitPrice:34000,total:68000000},{no:3,desc:"Safety Fuse (100m/roll)",qty:500,uom:"Roll",unitPrice:118000,total:59000000}] },
+  { id:"QT-2025-0008", rfqId:"RFQ-2025-0006", rfqTitle:"Genset Rental – Remote Site Power",     vendorId:"10000004", vendorName:"UD Nusantara Jaya",     submittedDate:"2025-07-08", validUntil:"2025-08-08", totalAmt:468000000, notes:"Includes fuel management and 24/7 on-site technician during operation.",    status:"Submitted",  files:["quotation.pdf","genset_spec.pdf"],      items:[{no:1,desc:"Genset 500 kVA Rental",qty:12,uom:"Month",unitPrice:39000000,total:468000000}] },
+  { id:"QT-2025-0009", rfqId:"RFQ-2025-0007", rfqTitle:"Personal Protective Equipment (PPE)",  vendorId:"10000001", vendorName:"PT Maju Bersama",       submittedDate:"2025-07-10", validUntil:"2025-08-10", totalAmt:118500000, notes:"All items SNI-certified. Free delivery to all sites.",                       status:"Submitted",  files:["quotation.pdf","catalogue.pdf"],        items:[{no:1,desc:"Safety Helmet (SNI certified)",qty:500,uom:"Pcs",unitPrice:72000,total:36000000},{no:2,desc:"Safety Boot (Steel Toe)",qty:300,uom:"Pair",unitPrice:330000,total:99000000},{no:3,desc:"High-Visibility Safety Vest",qty:600,uom:"Pcs",unitPrice:82000,total:49200000}] },
+  { id:"QT-2025-0010", rfqId:"RFQ-2025-0007", rfqTitle:"Personal Protective Equipment (PPE)",  vendorId:"10000003", vendorName:"PT Karya Utama Sejati", submittedDate:"2025-07-11", validUntil:"2025-08-11", totalAmt:126750000, notes:"Bulk discount applied. 1-year warranty on boots.",                           status:"Withdrawn",  files:["quotation.pdf"],                       items:[{no:1,desc:"Safety Helmet (SNI certified)",qty:500,uom:"Pcs",unitPrice:78000,total:39000000},{no:2,desc:"Safety Boot (Steel Toe)",qty:300,uom:"Pair",unitPrice:360000,total:108000000},{no:3,desc:"High-Visibility Safety Vest",qty:600,uom:"Pcs",unitPrice:88000,total:52800000}] },
+  { id:"QT-2025-0011", rfqId:"RFQ-2025-0008", rfqTitle:"ERP Consulting Services – SAP Add-On", vendorId:"10000001", vendorName:"PT Maju Bersama",       submittedDate:"2025-06-25", validUntil:"2025-07-25", totalAmt:630000000, notes:"Team of 2 certified SAP consultants. Includes UAT support and go-live.",    status:"Accepted",   files:["quotation.pdf","cv_consultant.pdf"],    items:[{no:1,desc:"SAP BTP Integration Consultant",qty:6,uom:"Month",unitPrice:82000000,total:492000000},{no:2,desc:"SAP Analytics Cloud Specialist",qty:4,uom:"Month",unitPrice:70000000,total:280000000}] },
+  { id:"QT-2025-0012", rfqId:"RFQ-2025-0008", rfqTitle:"ERP Consulting Services – SAP Add-On",        vendorId:"10000002", vendorName:"CV Sukses Mandiri", submittedDate:"2025-06-26", validUntil:"2025-07-26", totalAmt:680000000, notes:"Senior consultants with 8+ years SAP Public Cloud experience.",                         status:"Submitted", files:["quotation.pdf"],                          items:[{no:1,desc:"SAP BTP Integration Consultant",qty:6,uom:"Month",unitPrice:88000000,total:528000000},{no:2,desc:"SAP Analytics Cloud Specialist",qty:4,uom:"Month",unitPrice:76000000,total:304000000}] },
+  { id:"QT-2025-0013", rfqId:"RFQ-2025-0009", rfqTitle:"Water Treatment Chemicals – Mining Site",      vendorId:"10000001", vendorName:"PT Maju Bersama",   submittedDate:"2025-07-10", validUntil:"2025-08-10", totalAmt:188500000, notes:"All chemicals have MSDS and BPOM certification. Delivery ex-Surabaya.",                status:"Submitted", files:["quotation.pdf","msds.pdf"],               items:[{no:1,desc:"Coagulant PAC (25 kg/bag)",qty:500,uom:"Bag",unitPrice:175000,total:87500000},{no:2,desc:"Anionic Flocculant (20 kg/bag)",qty:300,uom:"Bag",unitPrice:240000,total:72000000},{no:3,desc:"Caustic Soda (NaOH) 50 kg/drum",qty:150,uom:"Drum",unitPrice:393333,total:59000000}] },
+  { id:"QT-2025-0014", rfqId:"RFQ-2025-0009", rfqTitle:"Water Treatment Chemicals – Mining Site",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", submittedDate:"2025-07-11", validUntil:"2025-08-11", totalAmt:197250000, notes:"Stock guaranteed for 6 months. Complimentary dosing pump included.",                  status:"Draft",     files:[],                                         items:[{no:1,desc:"Coagulant PAC (25 kg/bag)",qty:500,uom:"Bag",unitPrice:185000,total:92500000},{no:2,desc:"Anionic Flocculant (20 kg/bag)",qty:300,uom:"Bag",unitPrice:260000,total:78000000},{no:3,desc:"Caustic Soda (NaOH) 50 kg/drum",qty:150,uom:"Drum",unitPrice:445000,total:66750000}] },
+  { id:"QT-2025-0015", rfqId:"RFQ-2025-0010", rfqTitle:"Medical & First Aid Supplies – All Sites",     vendorId:"10000001", vendorName:"PT Maju Bersama",   submittedDate:"2025-07-12", validUntil:"2025-08-12", totalAmt:86750000,  notes:"Items sourced from certified medical distributors. Expiry min. 2 years.",              status:"Submitted", files:["quotation.pdf","product_catalogue.pdf"],  items:[{no:1,desc:"First Aid Kit (50-person)",qty:25,uom:"Set",unitPrice:1150000,total:28750000},{no:2,desc:"AED Defibrillator",qty:5,uom:"Unit",unitPrice:11500000,total:57500000},{no:3,desc:"Stretcher & Immobilization Board",qty:10,uom:"Pcs",unitPrice:850000,total:8500000}] },
+  { id:"QT-2025-0016", rfqId:"RFQ-2025-0011", rfqTitle:"Drone Survey & Aerial Mapping Services",       vendorId:"10000002", vendorName:"CV Sukses Mandiri", submittedDate:"2025-07-13", validUntil:"2025-08-13", totalAmt:315000000, notes:"Using DJI Matrice 350 RTK with RTK GPS. Deliverables: orthophoto, DEM, shapefile.",   status:"Submitted", files:["quotation.pdf","drone_spec.pdf","portfolio.pdf"], items:[{no:1,desc:"Drone Aerial Survey (per hectare)",qty:2500,uom:"Ha",unitPrice:114000,total:285000000},{no:2,desc:"3D Point Cloud Processing & Report",qty:1,uom:"Lump Sum",unitPrice:30000000,total:30000000}] },
+];
+
+// ── Theme ──────────────────────────────────────────────────────
+// SAP Fiori Quartz Light — exact design tokens from quartzlight.css
+const LIGHT = {
+  shell:"#354a5f", shellHov:"rgba(255,255,255,0.15)",
+  primary:"#0a6ed1", primaryDk:"#0854a0",
+  bg:"#f7f7f7", card:"#ffffff", field:"#ffffff", subtle:"#f2f2f2", border:"#d9d9d9", fieldBorder:"#89919a",
+  t1:"#1d2d3e", t2:"#6a6d70",
+  ok:"#107e3e", okBg:"#f1fdf6",
+  warn:"#df6e0c", warnBg:"#fef7f1",
+  err:"#bb0000", errBg:"#ffebeb",
+  info:"#0a6ed1", infoBg:"#dff0fd",
+  draft:"#6a6d70", draftBg:"#f4f4f4",
+  gold:"#c87941",
+  hover:"#ededed", selection:"#e8f2fb",
+};
+// SAP Fiori Horizon Dark
+const DARK = {
+  shell:"#1b2534", shellHov:"rgba(255,255,255,0.14)",
+  primary:"#64b5f6", primaryDk:"#4da3ff",
+  bg:"#16191d", card:"#1c2128", field:"#23292f", subtle:"#252c36", border:"#3d444d", fieldBorder:"#56616d",
+  t1:"#d1e4f4", t2:"#8696a9",
+  ok:"#4cc15a", okBg:"#16301c",
+  warn:"#f0913d", warnBg:"#36281a",
+  err:"#ff6b6b", errBg:"#3a1e1e",
+  info:"#64b5f6", infoBg:"#162338",
+  draft:"#8696a9", draftBg:"#252c36",
+  gold:"#d8945c",
+  hover:"#2d3540", selection:"#1a2d42",
+};
+// C and STC are mutable bindings reassigned by applyTheme; every component
+// reads them from module scope at render time, so a re-render picks up the swap.
+export let C = LIGHT;
+const buildSTC = () => ({
+  Draft:       {c:C.draft, bg:C.draftBg},
+  Submitted:   {c:C.info,  bg:C.infoBg},
+  "Under Review":{c:C.warn, bg:C.warnBg},
+  Confirmed:   {c:C.ok,   bg:C.okBg},
+  Rejected:    {c:C.err,  bg:C.errBg},
+  Open:        {c:C.ok,   bg:C.okBg},
+  Closed:      {c:C.draft,bg:C.draftBg},
+  Accepted:    {c:C.ok,   bg:C.okBg},
+  Withdrawn:   {c:C.draft,bg:C.draftBg},
+  Active:      {c:C.ok,   bg:C.okBg},
+  "Posted":              {c:"#107e3e", bg:"#ecf8f0"},
+  "Converted to Invoice":{c:"#0a6ed1", bg:"#dff0fd"},
+  "Cleared":             {c:"#6a6d70", bg:"#f4f4f4"},
+  "Supplier DPR":        {c:"#c87941", bg:"#fef6ee"},
+});
+export let STC = buildSTC();
+export const applyTheme = mode => { C = mode==="dark"?DARK:LIGHT; STC = buildSTC(); };
+
+// ── Helpers ────────────────────────────────────────────────────
+export let SETTINGS = { numFmt:"comma", dateFmt:"YYYY-MM-DD" };
+export const applySettings = s => { SETTINGS = {...SETTINGS,...s}; };
+
+export const idr = n => {
+  const t = SETTINGS.numFmt==="dot" ? "." : ",";
+  return "IDR " + Math.round(Number(n||0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, t);
+};
+export const fmtAmt = (n, currency = "IDR") => {
+  const dec = currency==="IDR" ? 0 : 2;
+  const t = SETTINGS.numFmt==="dot" ? "." : ",";
+  const d = SETTINGS.numFmt==="dot" ? "," : ".";
+  const [ip, dp] = Number(n||0).toFixed(dec).split(".");
+  return `${currency} ${ip.replace(/\B(?=(\d{3})+(?!\d))/g, t)}${dp ? d+dp : ""}`;
+};
+export const fmtDate = d => {
+  if (!d) return "—";
+  const p = String(d).split("-");
+  if (p.length !== 3 || p[0].length !== 4) return d;
+  const [y,m,day] = p;
+  switch(SETTINGS.dateFmt) {
+    case "DD/MM/YYYY": return `${day}/${m}/${y}`;
+    case "MM/DD/YYYY": return `${m}/${day}/${y}`;
+    case "DD.MM.YYYY": return `${day}.${m}.${y}`;
+    case "MM.DD.YYYY": return `${m}.${day}.${y}`;
+    case "DD-MM-YYYY": return `${day}-${m}-${y}`;
+    case "YYYY/MM/DD": return `${y}/${m}/${day}`;
+    default: return d;
+  }
+};
+export const parseToISO = raw => {
+  if (!raw) return "";
+  const fmt = SETTINGS.dateFmt;
+  const sep = fmt.includes("/") ? "/" : fmt.includes(".") ? "." : "-";
+  const parts = raw.split(sep);
+  if (parts.length !== 3) return "";
+  let y, m, day;
+  if (fmt.startsWith("DD"))      { [day, m, y] = parts; }
+  else if (fmt.startsWith("MM")) { [m, day, y] = parts; }
+  else                           { [y, m, day] = parts; }
+  if (!y || y.length !== 4) return "";
+  const iso = `${y}-${m.padStart(2,"0")}-${day.padStart(2,"0")}`;
+  return isNaN(new Date(iso).getTime()) ? "" : iso;
+};
+export const uid = () => Date.now().toString(36);
+export const fmtPOs = inv => { const a=inv.poNumbers?.length?inv.poNumbers:inv.poNumber?[inv.poNumber]:[]; return a.join(", ")||"—"; };
+
+// ── Responsive helpers (read VP.w at render time, updated by resize listener) ──
+export let VP = {w: typeof window!=="undefined" ? window.innerWidth : 1280};
+export const mob = () => VP.w < 768;
+export const tab = () => VP.w < 1024;
+export const g2  = () => mob() ? "1fr" : "1fr 1fr";
+export const g3  = () => mob() ? "1fr" : tab() ? "1fr 1fr" : "repeat(3,1fr)";
+export const g4  = () => mob() ? "1fr" : tab() ? "repeat(2,1fr)" : "repeat(4,1fr)";
+export const pg  = () => mob() ? "12px 10px" : 24;
+
+// SAP Fiori Avatar – 10 accent color variants (Quartz Light design tokens)
+const AVT_ACCENTS = [
+  {bg:"#E5E0EC",fg:"#6C32A9"},{bg:"#FFDDE2",fg:"#CC1677"},
+  {bg:"#D3F0EA",fg:"#046C7A"},{bg:"#DAEEFF",fg:"#0854A0"},
+  {bg:"#FEF0D0",fg:"#C87741"},{bg:"#E3F1E2",fg:"#256F3A"},
+  {bg:"#FFF0DB",fg:"#BE5B00"},{bg:"#E0CFEC",fg:"#7030A0"},
+  {bg:"#E8ECF0",fg:"#364DA0"},{bg:"#F0F4EF",fg:"#1B6B35"},
+];
+export const avtColor = id => AVT_ACCENTS[(id||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0) % AVT_ACCENTS.length];
+export const avtIni = name => { const p=name.trim().split(/\s+/); return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[1][0]).toUpperCase(); };
+
+export const Badge = ({s}) => {
+  const x = STC[s]||{c:C.draft,bg:C.draftBg};
+  return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
+};
+
+export const Card = ({children,style={}}) => (
+  <div style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:20,marginBottom:14,...style}}>{children}</div>
+);
+
+export const Btn = ({children,onClick,v="primary",sm,disabled,style={}}) => {
+  const VS = {
+    primary:{background:C.primary,color:"#fff",border:`1px solid ${C.primary}`},
+    ghost:  {background:"transparent",color:C.primaryDk,border:`1px solid ${C.primaryDk}`},
+    danger: {background:C.err,color:"#fff",border:`1px solid ${C.err}`},
+    success:{background:C.ok,color:"#fff",border:`1px solid ${C.ok}`},
+    neutral:{background:C.card,color:C.t1,border:`1px solid ${C.border}`},
+  };
+  return <button onClick={onClick} disabled={disabled} style={{...VS[v],borderRadius:4,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,fontSize:sm?12:14,padding:sm?"4px 12px":"7px 16px",opacity:disabled?.5:1,transition:"background .12s,opacity .15s",lineHeight:"20px",...style}}>{children}</button>;
+};
+
+export const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
+  <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
+);
+// Positive-only amount input — no spinner buttons, rejects negative/non-numeric input
+export const AmtInp = ({value,onChange,placeholder="0",style={}}) => (
+  <input type="text" inputMode="decimal" value={value} onChange={e=>{const v=e.target.value;if(v===""||/^\d*\.?\d*$/.test(v))onChange(v);}} placeholder={placeholder}
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
+);
+export const DateInp = ({value, onChange, style={}}) => {
+  const [raw, setRaw] = useState(value ? fmtDate(value) : "");
+  const handle = v => {
+    setRaw(v);
+    if (!v) { onChange(""); return; }
+    const iso = parseToISO(v);
+    if (iso) onChange(iso);
+  };
+  return <Inp value={raw} onChange={handle} placeholder={SETTINGS.dateFmt} style={style}/>;
+};
+export const Sel = ({value,onChange,opts,style={}}) => (
+  <select value={value} onChange={e=>onChange(e.target.value)}
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,outline:"none",boxSizing:"border-box",background:C.field,...style}}>
+    {opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+  </select>
+);
+export const TA = ({value,onChange,placeholder="",rows=3}) => (
+  <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
+    style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",resize:"vertical"}}/>
+);
+export const Lbl = ({children}) => <div style={{fontSize:12,color:C.t2,marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;
+export const Val = ({children}) => <div style={{fontSize:14,color:C.t1,lineHeight:1.5}}>{children||"—"}</div>;
+export const Sep = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
+
+export const Modal = ({title,onClose,children,width=640}) => (
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}>
+    <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
+      <div style={{padding:"14px 20px",borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
+        <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{title}</span>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
+      </div>
+      <div style={{padding:mob()?14:20}}>{children}</div>
+    </div>
+  </div>
+);
+
+export const FilterBar = ({opts,val,onChange}) => (
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+    {opts.map(f=>(
+      <button key={f} onClick={()=>onChange(f)} style={{padding:"5px 14px",borderRadius:16,cursor:"pointer",fontSize:12,border:`1px solid ${val===f?C.primary:C.border}`,background:val===f?C.selection:C.card,color:val===f?C.primary:C.t2,fontWeight:val===f?700:400,fontFamily:"inherit",transition:"background .12s"}}>
+        {f}
+      </button>
+    ))}
+  </div>
+);
+// SAP Fiori-style compact filter bar
+export const FioriBar = ({activeTokens=[],onGo,onReset,children}) => (
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
+        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
+        <Btn v="primary" sm onClick={onGo}>Go</Btn>
+      </div>
+    </div>
+    <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
+      {children}
+    </div>
+    {activeTokens.length>0&&(
+      <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+        <span style={{fontSize:12,color:C.t2,fontWeight:600,marginRight:4}}>Active filters:</span>
+        {activeTokens.map((t,i)=>(
+          <span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:14,padding:"3px 10px 3px 10px",fontSize:12,color:C.info}}>
+            <span style={{fontWeight:600}}>{t.label}:</span><span>{t.val}</span>
+            <button onClick={t.onClear} style={{background:"none",border:"none",cursor:"pointer",color:C.info,fontSize:14,padding:"0 0 0 4px",lineHeight:1}}>×</button>
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+);
+// Compact filter field label wrapper (Fiori style)
+export const FField = ({label,children,style={}}) => (
+  <div style={style}>
+    <div style={{fontSize:11,color:C.t2,fontWeight:700,marginBottom:5,textTransform:"uppercase",letterSpacing:0.6}}>{label}</div>
+    {children}
+  </div>
+);
+export const DateRangePicker = ({from,to,onChange}) => {
+  const [open,setOpen]=useState(false);
+  const [hov,setHov]=useState<string|null>(null);
+  const [tf,setTf]=useState(from||"");
+  const [tt,setTt]=useState(to||"");
+  const todayStr=new Date().toISOString().split("T")[0];
+  const [lm,setLm]=useState(()=>{const d=from?new Date(from+"T00:00"):new Date();return{y:d.getFullYear(),m:d.getMonth()};});
+  const ref=useRef<HTMLDivElement>(null);
+  useEffect(()=>{setTf(from||"");},[from]);
+  useEffect(()=>{setTt(to||"");},[to]);
+  useEffect(()=>{
+    if(!open)return;
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[open]);
+  const rm=lm.m===11?{y:lm.y+1,m:0}:{y:lm.y,m:lm.m+1};
+  const prev=()=>setLm(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1});
+  const next=()=>setLm(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1});
+  const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DN=["Su","Mo","Tu","We","Th","Fr","Sa"];
+  const mk=(y:number,m:number,d:number)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const clickDay=(ds:string)=>{if(!tf||(tf&&tt)){setTf(ds);setTt("");}else{if(ds<tf){setTt(tf);setTf(ds);}else setTt(ds);}};
+  const effEnd=(!tt&&hov)?hov:tt;
+  const inR=(ds:string)=>{if(!tf||!effEnd)return false;const[a,b]=tf<=effEnd?[tf,effEnd]:[effEnd,tf];return ds>a&&ds<b;};
+  const isS=(ds:string)=>ds===tf;
+  const isE=(ds:string)=>!!effEnd&&ds===effEnd;
+  const renderMon=(y:number,m:number)=>{
+    const fd=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),picking=!!(tf&&!tt);
+    return(
+      <div style={{flex:1}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",textAlign:"center"}}>
+          {DN.map(d=><div key={d} style={{fontSize:11,color:C.t2,fontWeight:700,padding:"4px 0"}}>{d}</div>)}
+          {Array.from({length:fd},(_,i)=><div key={`e${i}`}/>)}
+          {Array.from({length:dim},(_,i)=>{
+            const d=i+1,ds=mk(y,m,d),s=isS(ds),e=isE(ds),ir=inR(ds),isT=ds===todayStr;
+            const bg=s||e?C.primary:ir?C.infoBg:"transparent";
+            const col=s||e?"#fff":C.t1;
+            const br=s||e?"50%":ir?"0%":"50%";
+            return(
+              <div key={d} onMouseEnter={()=>{if(picking)setHov(ds);}} onMouseLeave={()=>setHov(null)} onClick={()=>clickDay(ds)}
+                style={{display:"flex",alignItems:"center",justifyContent:"center",height:30,cursor:"pointer",fontSize:12,
+                  fontWeight:s||e?700:400,userSelect:"none" as const,background:bg,borderRadius:br,color:col,
+                  ...(isT&&!s&&!e?{outline:`1.5px solid ${C.primary}`,outlineOffset:"-1px",borderRadius:"50%"}:{})
+                }}
+              >{d}</div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  const apply=()=>{onChange(tf,tt);setOpen(false);};
+  const cancel=()=>{setTf(from||"");setTt(to||"");setHov(null);setOpen(false);};
+  const clrPick=()=>{setTf("");setTt("");setHov(null);};
+  const disp=from&&to?`${fmtDate(from)} – ${fmtDate(to)}`:from?`${fmtDate(from)} – …`:"";
+  const isMob=mob();
+  return(
+    <div ref={ref} style={{position:"relative"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box"}}>
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
+        {disp&&<button onClick={e=>{e.stopPropagation();clrPick();onChange("","");}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
+        <SapIcon name="calendar" size={14} color={C.t2} style={{flexShrink:0}}/>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",padding:16,minWidth:isMob?240:490}}>
+          <div style={{display:"flex",alignItems:"center",marginBottom:10,gap:8}}>
+            <button onClick={prev} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>‹</button>
+            <div style={{display:"flex",flex:1,justifyContent:"space-around"}}>
+              <span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[lm.m]} {lm.y}</span>
+              {!isMob&&<span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MN[rm.m]} {rm.y}</span>}
+            </div>
+            <button onClick={next} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:4,cursor:"pointer",color:C.t1,width:28,height:28,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",padding:"0",fontFamily:"inherit"}}>›</button>
+          </div>
+          <div style={{display:"flex",gap:16}}>
+            {renderMon(lm.y,lm.m)}
+            {!isMob&&<><div style={{width:1,background:C.border,margin:"0 4px",alignSelf:"stretch"}}/>{renderMon(rm.y,rm.m)}</>}
+          </div>
+          <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+            <div style={{fontSize:12,color:C.t2}}>
+              {tf?<><span style={{fontWeight:700,color:C.t1}}>{fmtDate(tf)}</span><span style={{margin:"0 5px"}}>–</span>{tt?<span style={{fontWeight:700,color:C.t1}}>{fmtDate(tt)}</span>:<span style={{fontStyle:"italic"}}>pick end date</span>}</>:<span>Click a start date</span>}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <Btn v="neutral" sm onClick={clrPick}>Clear</Btn>
+              <Btn v="neutral" sm onClick={cancel}>Cancel</Btn>
+              <Btn v="primary" sm onClick={apply}>Apply</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// eslint-disable-next-line
+declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any } } }
+export const SapIcon = ({name,size=16,color="",style={}}:{name:string,size?:number,color?:string,style?:any}) => (
+  <ui5-icon name={name} style={{width:size,height:size,display:"inline-block",verticalAlign:"middle",...(color?{color}:{}),...style}}/>
+);
+
+export const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
+export const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
+
+// ── Value Help Dialog (sap.ui.comp.valuehelpdialog.ValueHelpDialog) ──────────
+const VH_OPS = ["equal to","not equal to","starts with","contains","does not contain","empty","not empty"];
+const VH_NOVAL = new Set(["empty","not empty"]);
+export type VHCol = {key:string, label:string, width?:string|number};
+export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",selected=[],multiSelect=true,onConfirm,onClose}:{title:string,cols:VHCol[],rows:any[],keyField?:string,labelField?:string,selected:string[],multiSelect?:boolean,onConfirm:(s:string[])=>void,onClose:()=>void}) => {
+  const [tab,setTab]=useState<"sel"|"cond">("sel");
+  const [search,setSearch]=useState("");
+  const [localSel,setLocalSel]=useState<string[]>([...selected]);
+  const [conds,setConds]=useState<{op:string,val:string}[]>([]);
+  const [condOp,setCondOp]=useState(VH_OPS[0]);
+  const [condVal,setCondVal]=useState("");
+  const filtered=rows.filter(r=>!search||cols.some(c=>String(r[c.key]||"").toLowerCase().includes(search.toLowerCase())));
+  const allSel=filtered.length>0&&filtered.every(r=>localSel.includes(r[keyField]));
+  const toggleAll=()=>{
+    if(allSel)setLocalSel(p=>p.filter(k=>!filtered.find(r=>r[keyField]===k)));
+    else setLocalSel(p=>[...new Set([...p,...filtered.map(r=>r[keyField])])]);
+  };
+  const toggleRow=(key:string)=>{
+    if(!multiSelect){setLocalSel([key]);return;}
+    setLocalSel(p=>p.includes(key)?p.filter(k=>k!==key):[...p,key]);
+  };
+  const getLabel=(key:string)=>{const r=rows.find(r=>r[keyField]===key);return r?`${key} – ${r[labelField]||key}`:key;};
+  const addCond=()=>{if(!VH_NOVAL.has(condOp)&&!condVal.trim())return;setConds(p=>[...p,{op:condOp,val:condVal.trim()}]);setCondVal("");};
+  const confirm=()=>{
+    let sel=[...localSel];
+    if(conds.length>0){
+      const matched=rows.filter(r=>conds.some(c=>{const v=String(r[keyField]||"").toLowerCase(),cv=c.val.toLowerCase();
+        if(c.op==="equal to")return v===cv;if(c.op==="not equal to")return v!==cv;
+        if(c.op==="starts with")return v.startsWith(cv);if(c.op==="contains")return v.includes(cv);
+        if(c.op==="does not contain")return!v.includes(cv);if(c.op==="empty")return!v;if(c.op==="not empty")return!!v;return false;
+      })).map(r=>r[keyField]);
+      sel=[...new Set([...sel,...matched])];
+    }
+    onConfirm(sel);
+  };
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.45)"}}>
+      <div style={{background:"#fff",borderRadius:4,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",width:"min(880px,95vw)",maxHeight:"85vh",display:"flex",flexDirection:"column",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+        {/* Title + tabs */}
+        <div style={{padding:"14px 16px 0",borderBottom:"1px solid #e5e5e5"}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#32363a",marginBottom:10}}>{title}</div>
+          <div style={{display:"flex"}}>
+            {(["sel","cond"] as const).map((t,i)=>(
+              <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",cursor:"pointer",padding:"8px 16px 10px",fontSize:14,color:tab===t?"#0a6ed1":"#6a6d70",fontFamily:"inherit",fontWeight:tab===t?600:400,borderBottom:`2px solid ${tab===t?"#0a6ed1":"transparent"}`,marginBottom:-1}}>
+                {i===0?"Search and Select":"Define Conditions"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Body */}
+        <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          {tab==="sel"?(
+            <>
+              <div style={{padding:"12px 16px 6px",display:"flex",gap:8,alignItems:"center"}}>
+                <div style={{flex:1,position:"relative"}}>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search"
+                    style={{width:"100%",height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 30px 0 8px",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"}}/>
+                  <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><SapIcon name="search" size={14} color="#6a6d70"/></span>
+                </div>
+                <button style={{background:"#0a6ed1",color:"#fff",border:"1px solid #0854a0",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer"}}>Go</button>
+                <button style={{background:"none",border:"none",color:"#0a6ed1",fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>Show Filters</button>
+              </div>
+              <div style={{padding:"2px 16px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:14,fontWeight:700,color:"#32363a"}}>Items ({filtered.length})</span>
+                <SapIcon name="copy" size={15} color="#6a6d70"/>
+              </div>
+              <div style={{flex:1,overflow:"auto",borderTop:"1px solid #e5e5e5"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                  <thead>
+                    <tr style={{background:"#f7f7f7",position:"sticky",top:0,zIndex:1}}>
+                      <th style={{width:36,padding:"7px 8px 7px 14px",borderBottom:"1px solid #e5e5e5",textAlign:"center"}}>
+                        <input type="checkbox" checked={allSel} onChange={toggleAll} style={{cursor:"pointer",accentColor:"#0854a0"}}/>
+                      </th>
+                      {cols.map(c=>(
+                        <th key={c.key} style={{padding:"7px 10px",textAlign:"left",borderBottom:"1px solid #e5e5e5",color:"#6a6d70",fontSize:12,fontWeight:700,whiteSpace:"nowrap",width:c.width,maxWidth:c.width}}>
+                          {c.label} <span style={{color:"#aaa",fontSize:9}}>▲</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r,i)=>{const key=r[keyField];const sel=localSel.includes(key);return(
+                      <tr key={key} onClick={()=>toggleRow(key)} style={{background:sel?"#e8f3fd":i%2===0?"#fff":"#fafafa",cursor:"pointer"}}
+                        onMouseEnter={e=>{if(!sel)(e.currentTarget as HTMLElement).style.background="#f0f7ff";}}
+                        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background=sel?"#e8f3fd":i%2===0?"#fff":"#fafafa";}}>
+                        <td style={{padding:"7px 8px 7px 14px",borderBottom:"1px solid #f0f0f0",textAlign:"center"}}>
+                          <input type="checkbox" checked={sel} onChange={()=>toggleRow(key)} onClick={e=>e.stopPropagation()} style={{cursor:"pointer",accentColor:"#0854a0"}}/>
+                        </td>
+                        {cols.map((c,ci)=>(
+                          <td key={c.key} style={{padding:"7px 10px",borderBottom:"1px solid #f0f0f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:c.width||140,color:ci===0?"#0a6ed1":"#32363a",fontWeight:ci===0?600:400}}>
+                            {r[c.key]??""}</td>
+                        ))}
+                      </tr>
+                    );})}
+                    {filtered.length===0&&<tr><td colSpan={cols.length+1} style={{textAlign:"center",padding:"28px",color:"#8c8c8c",fontSize:13}}>No items found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ):(
+            <div style={{padding:16,flex:1,overflow:"auto"}}>
+              <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+                <select value={condOp} onChange={e=>setCondOp(e.target.value)} style={{height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>
+                  {VH_OPS.map(o=><option key={o}>{o}</option>)}
+                </select>
+                {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Value…"
+                  style={{flex:1,height:32,border:"1px solid #bfbfbf",borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",outline:"none"}}/>}
+                <button onClick={addCond} style={{background:"#0a6ed1",color:"#fff",border:"none",borderRadius:4,height:32,padding:"0 14px",fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:600}}>Add Condition</button>
+              </div>
+              {conds.length>0?(
+                <div style={{border:"1px solid #e5e5e5",borderRadius:4,overflow:"hidden"}}>
+                  {conds.map((c,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<conds.length-1?"1px solid #f0f0f0":"none",background:i%2===0?"#fff":"#fafafa",gap:8}}>
+                      <span style={{fontSize:12,color:"#6a6d70",minWidth:120}}>{c.op}</span>
+                      <span style={{fontSize:13,color:"#32363a",flex:1}}>{c.val||<em style={{color:"#aaa"}}>any</em>}</span>
+                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#cc1919",cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>×</button>
+                    </div>
+                  ))}
+                </div>
+              ):<div style={{color:"#8c8c8c",fontSize:13,textAlign:"center",padding:32}}>No conditions defined.</div>}
+            </div>
+          )}
+        </div>
+        {/* Selected tokens bar */}
+        <div style={{padding:"8px 16px",borderTop:"1px solid #e5e5e5",background:"#fafafa"}}>
+          <div style={{fontSize:12,color:"#6a6d70",marginBottom:5}}>
+            {localSel.length===0&&conds.length===0?"No Items or Conditions Selected":`${localSel.length>0?`${localSel.length} Item${localSel.length!==1?"s":""}`:""} ${conds.length>0?`${conds.length} Condition${conds.length!==1?"s":""}`:""} Selected`}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,minHeight:30,border:"1px solid #bfbfbf",borderRadius:4,padding:"3px 8px",background:"#fff",flexWrap:"wrap"}}>
+            {localSel.length===0&&conds.length===0&&<span style={{color:"#bfbfbf",fontSize:12}}>No selection</span>}
+            {localSel.map(key=>(
+              <span key={key} style={{display:"inline-flex",alignItems:"center",gap:3,background:"#e8f3fd",border:"1px solid #bdd6f0",borderRadius:10,padding:"1px 8px 1px 8px",fontSize:12,color:"#0854a0",whiteSpace:"nowrap"}}>
+                {getLabel(key)}
+                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:"#0854a0",padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>×</button>
+              </span>
+            ))}
+            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:"#8c8c8c",fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">×</button>}
+          </div>
+        </div>
+        {/* Footer */}
+        <div style={{padding:"10px 16px",display:"flex",justifyContent:"flex-end",gap:8,borderTop:"1px solid #e5e5e5"}}>
+          <button onClick={onClose} style={{background:"#fff",border:"1px solid #bfbfbf",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",cursor:"pointer",color:"#32363a"}}>Cancel</button>
+          <button onClick={confirm} style={{background:"#0a6ed1",border:"1px solid #0854a0",borderRadius:4,height:32,padding:"0 16px",fontSize:14,fontFamily:"inherit",fontWeight:600,cursor:"pointer",color:"#fff"}}>OK</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
+  <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:28,border:`1px solid ${C.border}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 4px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
+    {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
+    {selected.map(k=>(
+      <span key={k} style={{display:"inline-flex",alignItems:"center",background:"#e8f3fd",border:"1px solid #bdd6f0",borderRadius:10,padding:"1px 7px",fontSize:11,color:"#0854a0",whiteSpace:"nowrap"}}>{getLabel(k)}</span>
+    ))}
+    <button onClick={e=>{e.stopPropagation();onOpen();}} style={{position:"absolute",right:2,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:2,display:"flex",alignItems:"center"}}>
+      <SapIcon name="value-help" size={14} color="#6a6d70"/>
+    </button>
+  </div>
+);
