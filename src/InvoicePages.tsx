@@ -685,14 +685,16 @@ const InvoiceStatusIcon = ({s}) => {
 };
 
 // ── Column Settings Popup ──────────────────────────────────────
+const fmtInvType=(t:string)=>t==="Supplier DPR"?"Down Payment Req":(t||"Invoice");
 const COL_DEFS = [
-  {key:"status",     label:"Status",        defW:120},
-  {key:"invoiceNo",  label:"Invoice No.",   defW:200},
-  {key:"poNumber",   label:"PO Number",     defW:140},
-  {key:"compCode",   label:"Company Code",  defW:150},
-  {key:"invDate",    label:"Invoice Date",  defW:100},
-  {key:"dueDate",    label:"Due Date",      defW:100},
-  {key:"totalAmt",   label:"Total Amount",    defW:130},
+  {key:"status",       label:"Status",        defW:120},
+  {key:"invoiceNo",    label:"Invoice No.",   defW:200},
+  {key:"invoiceType",  label:"Invoice Type",  defW:130},
+  {key:"poNumber",     label:"PO Number",     defW:140},
+  {key:"compCode",     label:"Company Code",  defW:150},
+  {key:"invDate",      label:"Invoice Date",  defW:100},
+  {key:"dueDate",      label:"Due Date",      defW:100},
+  {key:"totalAmt",     label:"Total Amount",    defW:130},
   {key:"vatAmt",     label:"VAT Amount",      defW:110},
   {key:"whtAmt",     label:"WHT Amount",      defW:110},
   {key:"otherFee",   label:"Other Fee Amount",defW:120},
@@ -1247,7 +1249,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Invoice Date",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
-    active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
     (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
     active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
@@ -1295,7 +1297,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
@@ -1464,7 +1466,13 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                     {!hiddenCols.has("invoiceNo")&&<td style={cs}>
                       <button onClick={()=>setView(inv)} style={{background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",color:TK.link,fontSize:FS.sm,fontWeight:600,textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",fontFamily:"inherit"}}>{inv.invoiceNo}</button>
                       <div style={{fontSize:FS.xs,color:C.t2,lineHeight:1.4}}>{inv.id}</div>
-                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
+                    </td>}
+
+                    {!hiddenCols.has("invoiceType")&&<td style={cs}>
+                      {inv.invoiceType==="Supplier DPR"
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#fef6ee",color:"#c87941",border:"1px solid #f5c98a",borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:700,whiteSpace:"nowrap" as const}}>Down Payment Req</span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:C.infoBg,color:C.info,border:`1px solid ${C.info}40`,borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:600,whiteSpace:"nowrap" as const}}>Invoice</span>
+                      }
                     </td>}
 
                     {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span></td>}
@@ -1758,14 +1766,15 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
 
 // ── BRM Invoice Mgmt ───────────────────────────────────────────
 const COL_DEFS_BRM = [
-  {key:"status",     label:"Status",          defW:130},
-  {key:"invoiceNo",  label:"Invoice No.",     defW:175},
-  {key:"vendor",     label:"Vendor",          defW:145},
-  {key:"poNumber",   label:"PO Number",       defW:115},
-  {key:"compCode",   label:"Company Code",    defW:120},
-  {key:"invDate",    label:"Invoice Date",    defW:88},
-  {key:"submittedAt",label:"Submitted Date",  defW:88},
-  {key:"confirmedAt",label:"Approved Date",   defW:88},
+  {key:"status",       label:"Status",          defW:130},
+  {key:"invoiceNo",    label:"Invoice No.",     defW:175},
+  {key:"invoiceType",  label:"Invoice Type",    defW:130},
+  {key:"vendor",       label:"Vendor",          defW:145},
+  {key:"poNumber",     label:"PO Number",       defW:115},
+  {key:"compCode",     label:"Company Code",    defW:120},
+  {key:"invDate",      label:"Invoice Date",    defW:88},
+  {key:"submittedAt",  label:"Submitted Date",  defW:88},
+  {key:"confirmedAt",  label:"Approved Date",   defW:88},
   {key:"totalAmt",   label:"Total Amount",     defW:115},
   {key:"vatAmt",     label:"VAT Amount",       defW:100},
   {key:"whtAmt",     label:"WHT Amount",       defW:100},
@@ -2128,7 +2137,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers?.length>0&&{label:"PO Number",val:active.poNumbers.length===1?active.poNumbers[0]:`${active.poNumbers.length} selected`,onClear:()=>clr("poNumbers")},
-    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:active.invoiceTypes[0],onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
     (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
     (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
@@ -2208,7 +2217,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Supplier DPR</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
         {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
@@ -2413,10 +2422,15 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       <button onClick={()=>setView(inv)} style={{background:"none",border:"none",color:TK.link,cursor:"pointer",fontWeight:600,fontSize:FS.sm,padding:0,fontFamily:"inherit",textAlign:"left"}}>{inv.invoiceNo}</button>
                       <div style={{fontSize:FS.xs,color:C.t2,marginTop:1}}>{inv.id}</div>
                     </td>}
+                    {!hiddenCols.has("invoiceType")&&<td style={cs}>
+                      {inv.invoiceType==="Supplier DPR"
+                        ?<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#fef6ee",color:"#c87941",border:"1px solid #f5c98a",borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:700,whiteSpace:"nowrap" as const}}>Down Payment Req</span>
+                        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:C.infoBg,color:C.info,border:`1px solid ${C.info}40`,borderRadius:3,padding:"2px 7px",fontSize:FS.xs,fontWeight:600,whiteSpace:"nowrap" as const}}>Invoice</span>
+                      }
+                    </td>}
                     {!hiddenCols.has("vendor")&&<td style={cs}>
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
-                      {inv.invoiceType==="Supplier DPR"&&<span style={{fontSize:9,fontWeight:700,color:"#c87941",background:"#fef6ee",border:"1px solid #f5c98a",borderRadius:3,padding:"0 4px",display:"inline-block",marginTop:2}}>DPR</span>}
                     </td>}
                     {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>}
                     {!hiddenCols.has("compCode")&&<td style={cs}>
