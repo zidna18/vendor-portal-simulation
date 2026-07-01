@@ -290,7 +290,7 @@ export const INIT_INV = (() => {
   return base.map((inv:any,idx:number)=>inv.items?inv:{...inv,items:_genItems(inv.poNumbers,idx+100)});
 })();
 export const INIT_RFQS = [
-  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
+  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Complete",
     items:[
       {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
       {no:2, desc:"Workstation Dell XPS",  type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-WKS-002", materialGroup:"IT Hardware",  plant:"PL01", qty:20,  uom:"Unit",         estPrice:12500000, requirementDate:"2025-07-15", startDate:"", endDate:""},
@@ -300,7 +300,7 @@ export const INIT_RFQS = [
       {no:1, desc:"A4 Paper 80gsm",              type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-PPR-001", materialGroup:"Office Supplies", plant:"PL02", qty:1000, uom:"Ream", estPrice:50000,  requirementDate:"2025-07-01", startDate:"", endDate:""},
       {no:2, desc:"Ink Cartridge (Various)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-INK-002", materialGroup:"Office Supplies", plant:"PL02", qty:200,  uom:"Pcs",  estPrice:300000, requirementDate:"2025-07-01", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Complete",
+  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Pending Approval", submittedForApprovalAt:"2025-06-12", submittedForApprovalBy:"Ahmad Rizki",
     items:[
       {no:1, desc:"Security Guard Day Shift",   type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-001", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:8000000,  requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
       {no:2, desc:"Security Guard Night Shift", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-002", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:10000000, requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
@@ -325,7 +325,7 @@ export const INIT_RFQS = [
       {no:2, desc:"Safety Boot (Steel Toe)",           type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-BOT-002", materialGroup:"Safety Equipment",    plant:"PL01", qty:300,  uom:"Pair",    estPrice:350000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
       {no:3, desc:"High-Visibility Safety Vest",       type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-VST-003", materialGroup:"Safety Equipment",    plant:"PL01", qty:600,  uom:"Pcs",     estPrice:85000,    requirementDate:"2025-08-20", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0008", title:"ERP Consulting Services – SAP Add-On",         postedDate:"2025-06-10", closingDate:"2025-07-10", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"IT Services",      estVal:650000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Consulting & implementation services for SAP Public Cloud add-on modules (BTP, Analytics).", status:"Complete",
+  { id:"RFQ-2025-0008", title:"ERP Consulting Services – SAP Add-On",         postedDate:"2025-06-10", closingDate:"2025-07-10", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"IT Services",      estVal:650000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Consulting & implementation services for SAP Public Cloud add-on modules (BTP, Analytics).", status:"Pending Approval", submittedForApprovalAt:"2025-06-25", submittedForApprovalBy:"Siti Rahma",
     items:[
       {no:1, desc:"SAP BTP Integration Consultant",   type:"Service",  acctAssign:"P – Project",     materialNo:"SVC-SAP-001", materialGroup:"IT Consulting",       plant:"PL01", qty:6,    uom:"Month",   estPrice:85000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-01-31"},
       {no:2, desc:"SAP Analytics Cloud Specialist",   type:"Service",  acctAssign:"P – Project",     materialNo:"SVC-SAP-002", materialGroup:"IT Consulting",       plant:"PL01", qty:4,    uom:"Month",   estPrice:75000000, requirementDate:"", startDate:"2025-09-01", endDate:"2025-12-31"},
@@ -468,8 +468,9 @@ const buildSTC = () => ({
   Rejected:    {c:C.err,  bg:C.errBg},
   Open:        {c:C.err,  bg:C.errBg},
   "On Process":{c:C.warn, bg:C.warnBg},
-  Complete:    {c:C.ok,   bg:C.okBg},
-  Closed:      {c:"#0070F2", bg:"#dff0fd"},
+  Complete:           {c:"#0a6ed1", bg:"#dbeeff"},
+  "Pending Approval": {c:"#6f2da8", bg:"#f3eeff"},
+  Closed:             {c:"#6a6d70", bg:"#f4f4f4"},
   Accepted:    {c:C.ok,   bg:C.okBg},
   Withdrawn:   {c:C.draft,bg:C.draftBg},
   Win:         {c:"#188918", bg:"#eaf7ea"},

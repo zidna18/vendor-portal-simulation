@@ -964,8 +964,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     if(!apvForm.committeeGroup){alert("Please select a Tender Committee Group.");return;}
     if(!apvForm.justification){alert("Please provide approval justification.");return;}
     if(!apvForm.targetDate){alert("Please set a target approval date.");return;}
-    const sel=list.filter(r=>selIds.has(r.id));
-    alert(`Approval request submitted for ${sel.length} RFQ(s) to ${apvForm.committeeGroup} Committee.\n\nRFQs: ${sel.map(r=>r.id).join(", ")}\nPriority: ${apvForm.priority}\nTarget Date: ${fmtDate(apvForm.targetDate)}`);
+    const sel=[...selIds];
+    const today=new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Pending Approval",submittedForApprovalAt:today,submittedForApprovalBy:"Ahmad Rizki",committeeGroup:apvForm.committeeGroup,approvalPriority:apvForm.priority,approvalTargetDate:apvForm.targetDate}:r));
     setShowApproval(false);setApvForm(EMPTY_APV);setSelIds(new Set());
   };
   const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
@@ -1067,17 +1068,19 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Open","On Process","Complete","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
-          <button onClick={()=>selIds.size>0&&setShowApproval(true)} disabled={selIds.size===0}
-            style={{background:selIds.size>0?C.primary:C.subtle,border:`1px solid ${selIds.size>0?"transparent":C.border}`,color:selIds.size>0?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:selIds.size>0?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:selIds.size>0?1:0.6,transition:"all .15s"}}>
-            <SapIcon name="workflow-tasks" size={13} color={selIds.size>0?"#fff":C.t2}/> Send for Approval{selIds.size>0?` (${selIds.size})`:""}
-          </button>
+          {(()=>{const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);const allComplete=selList.length>0&&selList.every(r=>r.status==="Complete");return(
+          <button onClick={()=>allComplete&&setShowApproval(true)} disabled={!allComplete}
+            style={{background:allComplete?C.primary:C.subtle,border:`1px solid ${allComplete?"transparent":C.border}`,color:allComplete?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allComplete?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allComplete?1:0.6,transition:"all .15s"}}
+            title={selIds.size===0?"Select RFQ(s) first":!allComplete?"Only 'Complete' RFQs can be sent for approval":""}>
+            <SapIcon name="workflow-tasks" size={13} color={allComplete?"#fff":C.t2}/> Send for Approval{selList.length>0?` (${selList.length})`:""}
+          </button>);})()}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -1564,9 +1567,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   );
 };
 
-// ── Approver RFQ (Read-Only) ───────────────────────────────────
-export const ApproverRfq = ({rfqs, quotations}) => {
-  const [flt,setFlt]=useState("All");
+// ── Approver RFQ ──────────────────────────────────────────────
+export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) => {
+  const [flt,setFlt]=useState("Pending Approval");
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
   const [adaptOpen2,setAdaptOpen2]=useState(false);
@@ -1579,8 +1582,13 @@ export const ApproverRfq = ({rfqs, quotations}) => {
   const resetFilters=()=>{setDraft2(EMPTY_FLT2);setApplied(EMPTY_FLT2);};
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
-  const ALL_RFQ_STATUSES=["Open","On Process","Complete","Closed"];
+  const ALL_RFQ_STATUSES=["Open","On Process","Complete","Pending Approval","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
+
+  // Approve/Reject modal state
+  const [actionModal,setActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
+  const [winnerVendorId,setWinnerVendorId]=useState("");
+  const [actionNotes,setActionNotes]=useState("");
 
   const activeTokens=[
     applied.companyCodes.length>0&&{label:"Company Code",val:applied.companyCodes.length===1?`${applied.companyCodes[0]} – ${ccName(applied.companyCodes[0])}`:`${applied.companyCodes.length} selected`,onClear:()=>clrA2("companyCodes")},
@@ -1623,20 +1631,78 @@ export const ApproverRfq = ({rfqs, quotations}) => {
   const colW2=[50,220,130,60,90,170];
   const gridCols2=colW2.map(w=>`${w}px`).join(" ");
 
+  const submitAction=()=>{
+    if(!actionModal) return;
+    const {rfq,action}=actionModal;
+    const today=new Date().toISOString().split("T")[0];
+    if(action==="approve"){
+      if(!winnerVendorId){alert("Please select the winning vendor.");return;}
+      setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",approvalNotes:actionNotes,winnerVendorId}:r));
+      setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerVendorId?"Win":"Accepted"}:q));
+    } else {
+      if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
+      setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Complete",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
+    }
+    setActionModal(null);setWinnerVendorId("");setActionNotes("");
+  };
+
   return (
     <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
-          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management – View Only</div>
-          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📋 Read-only view · Contact BRM Procurement to make changes</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Approval</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>Tender Committee review · Approve winner or reject back to buyer</div>
         </div>
       </div>
 
       {/* Info banner */}
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:6,marginBottom:16,fontSize:13,color:C.info}}>
-        <SapIcon name="information" size={16} color={C.info}/>
-        <span>You have view-only access to RFQ data. To request changes, contact the BRM Procurement team.</span>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f3eeff",border:`1px solid #6f2da840`,borderRadius:6,marginBottom:16,fontSize:13,color:"#6f2da8"}}>
+        <SapIcon name="approvals" size={16} color="#6f2da8"/>
+        <span>Showing RFQs pending your approval. Expand an RFQ to compare vendor quotations side-by-side before deciding.</span>
       </div>
+
+      {/* Action Modal */}
+      {actionModal&&(
+        <Modal title={actionModal.action==="approve"?"Approve RFQ – Select Winner":"Reject RFQ – Send Back to Buyer"} onClose={()=>{setActionModal(null);setWinnerVendorId("");setActionNotes("");}}>
+          <div style={{padding:20,minWidth:420,maxWidth:560}}>
+            <div style={{marginBottom:14,padding:"10px 14px",background:C.subtle,borderRadius:6,fontSize:13}}>
+              <span style={{fontWeight:700,color:C.t1}}>{actionModal.rfq.id}</span>
+              <span style={{color:C.t2,marginLeft:8}}>{actionModal.rfq.title}</span>
+            </div>
+            {actionModal.action==="approve"&&(()=>{
+              const qts=quotations.filter(q=>q.rfqId===actionModal.rfq.id&&q.status==="Submitted");
+              return(
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>Select Winning Vendor</div>
+                  {qts.length===0&&<div style={{color:C.t2,fontSize:13,marginBottom:12}}>No submitted quotations found for this RFQ.</div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+                    {qts.map(qt=>(
+                      <label key={qt.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",border:`2px solid ${winnerVendorId===qt.vendorId?C.primary:C.border}`,borderRadius:6,cursor:"pointer",background:winnerVendorId===qt.vendorId?C.infoBg:C.card}}>
+                        <input type="radio" name="winner" value={qt.vendorId} checked={winnerVendorId===qt.vendorId} onChange={()=>setWinnerVendorId(qt.vendorId)} style={{accentColor:C.primary}}/>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{qt.vendorName}</div>
+                          <div style={{fontSize:12,color:C.t2}}>Quotation: {qt.id} · Total: <strong>{idr(qt.totalAmt)}</strong></div>
+                        </div>
+                        {winnerVendorId===qt.vendorId&&<Badge s="Win"/>}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Notes {actionModal.action==="reject"&&<span style={{color:C.err}}>*</span>}</label>
+              <TA value={actionNotes} onChange={setActionNotes} rows={3} placeholder={actionModal.action==="approve"?"Approval notes (optional)...":"Reason for rejection (required)..."}/>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="ghost" onClick={()=>{setActionModal(null);setWinnerVendorId("");setActionNotes("");}}>Cancel</Btn>
+              {actionModal.action==="approve"
+                ?<Btn v="success" onClick={submitAction}>Approve & Close RFQ</Btn>
+                :<Btn v="danger" onClick={submitAction}>Reject – Return to Buyer</Btn>}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen2(true)} adaptFiltersCount={visibleFields2.size}>
         {visibleFields2.has("companyCodes")&&<FField label="Company Code"><ValueHelpInp selected={draft2.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen2("companyCode")} placeholder="All Company Codes"/></FField>}
@@ -1678,7 +1744,7 @@ export const ApproverRfq = ({rfqs, quotations}) => {
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Open","On Process","Complete","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -1737,46 +1803,72 @@ export const ApproverRfq = ({rfqs, quotations}) => {
 
               {open&&(
                 <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
-                  <div style={{display:"grid",gridTemplateColumns:gridCols2,background:"rgba(0,112,242,0.07)",borderBottom:`1px solid ${C.border}`}}>
-                    {CHILD_HDRS.map((h,i)=>(
-                      <div key={i} style={{padding:"6px 10px",fontSize:12,fontWeight:700,color:C.primary,textTransform:"uppercase",letterSpacing:.4,whiteSpace:"nowrap",userSelect:"none"}}>{h}</div>
-                    ))}
-                  </div>
-                  {rfq.items.map((it,ii)=>(
-                    <div key={ii} style={{display:"grid",gridTemplateColumns:gridCols2,borderBottom:ii<rfq.items.length-1?`1px solid ${C.border}`:"none",background:ii%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
-                      <div style={{padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2}}>{String(it.no).padStart(3,"0")}</div>
-                      <div style={{padding:"8px 10px"}}>
-                        <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{it.desc}</div>
-                        <div style={{fontSize:11,color:C.t2,marginTop:2}}>
-                          <span style={{background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 6px",fontWeight:700,marginRight:6}}>{it.type}</span>
-                          {it.acctAssign}
-                        </div>
-                      </div>
-                      <div style={{padding:"8px 10px",fontSize:12,fontFamily:"monospace",color:C.t1,display:"flex",alignItems:"center"}}>{it.materialNo||"—"}</div>
-                      <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:C.t1,display:"flex",alignItems:"center"}}>{it.qty}</div>
-                      <div style={{padding:"8px 10px",fontSize:12,color:C.t2,display:"flex",alignItems:"center"}}>{it.uom}</div>
-                      <div style={{padding:"8px 10px",fontSize:12,color:C.t2,display:"flex",alignItems:"center"}}>{fmtDate(it.requirementDate)||fmtDate(it.startDate)||"—"}</div>
-                    </div>
-                  ))}
-                  {qts.length>0&&(
-                    <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Received Quotations</div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                        {qts.map(qt=>(
-                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
-                            <span style={{fontWeight:600}}>{qt.vendorName}</span>
-                            <span style={{color:C.t2}}>·</span>
-                            <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
-                            <Badge s={qt.status}/>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`}}>
+                  {/* Scope */}
+                  <div style={{padding:"8px 16px",borderBottom:`1px solid ${C.border}`}}>
                     <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
                     <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
                   </div>
+
+                  {/* Side-by-side Quotation Comparison */}
+                  {qts.length>0&&(
+                    <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Quotation Comparison</div>
+                      <div style={{overflowX:"auto"}}>
+                        <table style={{borderCollapse:"collapse",minWidth:500,width:"100%",fontSize:12}}>
+                          <thead>
+                            <tr style={{background:"rgba(0,112,242,0.07)"}}>
+                              <th style={{padding:"7px 10px",textAlign:"left",fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>Criteria</th>
+                              {qts.map(qt=>(
+                                <th key={qt.id} style={{padding:"7px 10px",textAlign:"center",fontWeight:700,color:C.primary,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",borderLeft:`1px solid ${C.border}`}}>
+                                  <div>{qt.vendorName}</div>
+                                  <div style={{fontWeight:400,fontSize:11,color:C.t2}}>{qt.id}</div>
+                                  <Badge s={qt.status}/>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              {label:"Total Amount",render:(qt)=><strong style={{color:C.t1}}>{idr(qt.totalAmt)}</strong>},
+                              {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validityDate)||"—"}</span>},
+                              {label:"Delivery Terms",render:(qt)=><span style={{color:C.t2}}>{qt.deliveryTerms||"—"}</span>},
+                              {label:"Payment Terms",render:(qt)=><span style={{color:C.t2}}>{qt.paymentTerms||"—"}</span>},
+                              {label:"Notes",render:(qt)=><span style={{color:C.t2}}>{qt.notes||"—"}</span>},
+                            ].map((row,ri)=>(
+                              <tr key={ri} style={{background:ri%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
+                                <td style={{padding:"7px 10px",fontWeight:600,color:C.t1,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{row.label}</td>
+                                {qts.map(qt=>(
+                                  <td key={qt.id} style={{padding:"7px 10px",textAlign:"center",borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`}}>{row.render(qt)}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  {qts.length===0&&(
+                    <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
+                  )}
+
+                  {/* Action buttons for Pending Approval */}
+                  {rfq.status==="Pending Approval"&&(
+                    <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
+                      <span style={{fontSize:12,color:C.t2,marginRight:4}}>Submitted by <strong style={{color:C.t1}}>{rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.submittedForApprovalAt)}</span>
+                      <div style={{flex:1}}/>
+                      <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");setWinnerVendorId("");}}>
+                        <SapIcon name="cancel" size={13} color="#fff"/> Reject
+                      </Btn>
+                      <Btn v="success" sm onClick={()=>{setActionModal({rfq,action:"approve"});setActionNotes("");setWinnerVendorId("");}}>
+                        <SapIcon name="accept" size={13} color="#fff"/> Approve & Select Winner
+                      </Btn>
+                    </div>
+                  )}
+                  {rfq.status!=="Pending Approval"&&(
+                    <div style={{padding:"8px 16px 10px"}}>
+                      <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
