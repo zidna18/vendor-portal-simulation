@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
+  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
   mob, g2, g4, pg,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
@@ -54,7 +54,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
   const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv,paymentTerms:inv.paymentTerms||"Z030"}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",paymentTerms:"Z030",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
@@ -112,8 +112,18 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           </div>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
         </div>
-        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
-        <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
+        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>{s("invoiceDate",v);if(v&&f.paymentTerms)setF(p=>({...p,invoiceDate:v,dueDate:calcDueDate(v,p.paymentTerms)}))}}/></div>
+        <div>
+          <Lbl>Terms of Payment *</Lbl>
+          <Sel value={f.paymentTerms||""} onChange={v=>setF(p=>({...p,paymentTerms:v,dueDate:calcDueDate(p.invoiceDate,v)}))} opts={[{v:"",l:"— Select Payment Terms —"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_PaymentTerms</div>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>Due Date (auto-calculated)</Lbl>
+          <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:f.dueDate?C.t1:C.t2,display:"flex",alignItems:"center"}}>
+            {f.dueDate?fmtDate(f.dueDate):<span style={{fontStyle:"italic"}}>Select Invoice Date and Terms of Payment</span>}
+          </div>
+        </div>
         <div>
           <Lbl>Transaction Currency *</Lbl>
           <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
