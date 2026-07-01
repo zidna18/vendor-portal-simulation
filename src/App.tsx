@@ -398,9 +398,7 @@ const SettingsModal = ({settings,onUpdate,onClose,theme,onThemeChange,user}) => 
       <div style={{padding:"28px 32px"}}>
         <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:6}}>Appearance</div>
         <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.border}`,marginBottom:24}}>
-          {["Theme","Display Settings"].map((t,i)=>(
-            <div key={t} style={{padding:"8px 16px",fontSize:13,fontWeight:600,color:i===0?C.primary:C.t2,borderBottom:i===0?`2px solid ${C.primary}`:"2px solid transparent",cursor:"pointer",marginBottom:-1}}>{t}</div>
-          ))}
+          <div style={{padding:"8px 16px",fontSize:13,fontWeight:600,color:C.primary,borderBottom:`2px solid ${C.primary}`,marginBottom:-1}}>Theme</div>
         </div>
         <div style={{marginBottom:12,fontSize:12,fontWeight:700,color:C.t2,letterSpacing:.5,textTransform:"uppercase"}}>SAP Quartz (Set)</div>
         <div style={{display:"flex",flexDirection:"column",gap:2,marginBottom:20}}>

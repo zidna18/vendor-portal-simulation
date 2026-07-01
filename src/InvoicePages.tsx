@@ -868,6 +868,8 @@ const GRP_KEY:Record<string,(i:any)=>string>={
   attach:    i=>(i.files?.length>=2)?"Attachments Complete":"Attachments Incomplete",
   status:    i=>i.status||"Unknown",
   actions:   i=>i.status||"Unknown",
+  pmtTerms:  i=>i.paymentTerms||"—",
+  pmtTermsStatus: i=>{const ct=(VENDORS[i.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===i.companyCode)?.zterm;return ct&&i.paymentTerms?i.paymentTerms===ct?"Compliant":"Differs":"Unknown";},
 };
 const GRP_ICON:Record<string,string>={
   status:"flag",compCode:"building",vendor:"employee",invDate:"calendar",dueDate:"calendar",
@@ -1276,6 +1278,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     invoiceNo:i=>i.invoiceNo, poNumber:i=>fmtPOs(i), compCode:i=>i.companyCode,
     invDate:i=>i.invoiceDate, dueDate:i=>i.dueDate, amount:i=>Number(i.amount||0),
     attach:i=>i.files?.length||0, status:i=>i.status, actions:i=>i.status,
+    pmtTerms:i=>i.paymentTerms||"",
+    pmtTermsStatus:i=>{const ct=(VENDORS[i.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===i.companyCode)?.zterm;return ct&&i.paymentTerms?i.paymentTerms===ct?"Compliant":"Differs":"Unknown";},
   };
   const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
   const mine=[...mineFiltered].sort((a,b)=>{
@@ -1641,7 +1645,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
           sort={colSort[colMenu.key]||"none"}
           onSort={v=>{setColSort(p=>({...p,[colMenu.key]:v}));}}
           groupBy={!!colGroup[colMenu.key]}
-          onGroupBy={v=>setColGroup(p=>({...p,[colMenu.key]:v}))}
+          onGroupBy={v=>setColGroup(v?{[colMenu.key]:true}:{[colMenu.key]:false})}
           width={colWidth[colMenu.key]}
           onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
           onClose={()=>setColMenu(null)}/>
@@ -2179,6 +2183,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, submittedAt:i=>i.submittedAt||"",
     confirmedAt:i=>i.confirmedAt||"", amount:i=>Number(i.amount||0),
     sapDocNo:i=>i.sapDocNo||"", status:i=>i.status,
+    pmtTerms:i=>i.paymentTerms||"",
+    pmtTermsStatus:i=>{const ct=(VENDORS[i.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===i.companyCode)?.zterm;return ct&&i.paymentTerms?i.paymentTerms===ct?"Compliant":"Differs":"Unknown";},
   };
   const activeSort=Object.entries(colSort).find(([,v])=>v!=="none");
   const list=[...listFiltered].sort((a,b)=>{
@@ -2618,7 +2624,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
           sort={colSort[colMenu.key]||"none"}
           onSort={v=>{setColSort(p=>({...p,[colMenu.key]:v}));}}
           groupBy={!!colGroup[colMenu.key]}
-          onGroupBy={v=>setColGroup(p=>({...p,[colMenu.key]:v}))}
+          onGroupBy={v=>setColGroup(v?{[colMenu.key]:true}:{[colMenu.key]:false})}
           width={colWidth[colMenu.key]}
           onWidth={v=>setColWidth(p=>({...p,[colMenu.key]:v}))}
           onClose={()=>setColMenu(null)}/>
