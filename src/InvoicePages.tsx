@@ -53,8 +53,9 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[],addNotif}:any) => {
   const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
   const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
+  const defaultPmtTerm = ((VENDORS[vendorId]?.lfb1||[]) as any[])[0]?.zterm || "Z030";
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv,paymentTerms:inv.paymentTerms||"Z030"}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",paymentTerms:"Z030",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv,paymentTerms:inv.paymentTerms||"Z030"}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",paymentTerms:defaultPmtTerm,poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
@@ -92,7 +93,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         </div>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
-          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+          <Sel value={f.companyCode} onChange={v=>{const term=(VENDORS[vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===v)?.zterm||f.paymentTerms;setF(p=>({...p,companyCode:v,paymentTerms:term,dueDate:calcDueDate(p.invoiceDate,term)}));}} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
         <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
@@ -706,6 +707,8 @@ const COL_DEFS = [
   {key:"compCode",     label:"Company Code",  defW:150},
   {key:"invDate",      label:"Invoice Date",  defW:100},
   {key:"dueDate",      label:"Due Date",      defW:100},
+  {key:"pmtTerms",       label:"Payment Terms",        defW:110},
+  {key:"pmtTermsStatus", label:"Payment Terms Status",  defW:140},
   {key:"totalAmt",     label:"Total Amount",    defW:130},
   {key:"vatAmt",     label:"VAT Amount",      defW:110},
   {key:"whtAmt",     label:"WHT Amount",      defW:110},
@@ -1499,6 +1502,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
 
                     {!hiddenCols.has("invDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)}</span></td>}
                     {!hiddenCols.has("dueDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.dueDate)}</span></td>}
+                    {!hiddenCols.has("pmtTerms")&&<td style={cs}><span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm}}>{inv.paymentTerms||"—"}</span></td>}
+                    {!hiddenCols.has("pmtTermsStatus")&&(()=>{const ct=(VENDORS[inv.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===inv.companyCode)?.zterm;const ok=ct&&inv.paymentTerms?inv.paymentTerms===ct:null;return(<td style={cs}>{ok===null?<span style={{color:C.t2,fontSize:FS.sm}}>—</span>:ok?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={13} color="#107e3e"/>Compliant</span>:<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Differs ({ct})</span>}</td>);})()}
 
                     {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
                       <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt((inv.amount||0)+(inv.vatAmt||0)+(inv.additionalFee||0),inv.currency)}</span>
@@ -1786,6 +1791,8 @@ const COL_DEFS_BRM = [
   {key:"invoiceType",  label:"Invoice Type",    defW:130},
   {key:"vendor",       label:"Vendor",          defW:145},
   {key:"compCode",     label:"Company Code",    defW:120},
+  {key:"pmtTerms",       label:"Payment Terms",        defW:110},
+  {key:"pmtTermsStatus", label:"Payment Terms Status",  defW:140},
   {key:"invDate",      label:"Invoice Date",    defW:88},
   {key:"submittedAt",  label:"Submitted Date",  defW:88},
   {key:"confirmedAt",  label:"Approved Date",   defW:88},
@@ -2455,6 +2462,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{ccName(inv.companyCode)}</div>
                     </td>}
+                    {!hiddenCols.has("pmtTerms")&&<td style={cs}><span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm}}>{inv.paymentTerms||"—"}</span></td>}
+                    {!hiddenCols.has("pmtTermsStatus")&&(()=>{const ct=(VENDORS[inv.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===inv.companyCode)?.zterm;const ok=ct&&inv.paymentTerms?inv.paymentTerms===ct:null;return(<td style={cs}>{ok===null?<span style={{color:C.t2,fontSize:FS.sm}}>—</span>:ok?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={13} color="#107e3e"/>Compliant</span>:<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Differs ({ct})</span>}</td>);})()}
                     {!hiddenCols.has("invDate")&&<td style={cs}><span style={{fontSize:FS.sm}}>{fmtDate(inv.invoiceDate)||"—"}</span></td>}
                     {!hiddenCols.has("submittedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>}
                     {!hiddenCols.has("confirmedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>}
