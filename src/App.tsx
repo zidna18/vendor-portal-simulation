@@ -1,4 +1,4 @@
-import { useState, useEffect, Component } from "react";
+import { useState, useEffect, useRef, Component } from "react";
 import {
   C, USERS, INIT_INV, INIT_QT, INIT_RFQS,
   VP, applyTheme, applySettings,
@@ -7,18 +7,55 @@ import {
   g2, pg,
 } from "./shared";
 import { VendorInvoice, BrmInvoice } from "./InvoicePages";
-import { VendorQuotation, BrmQuotation, BrmRfq } from "./QuotationRfqPages";
+import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation } from "./QuotationRfqPages";
 import { VendorHome, BrmHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
+
+// ── Notification mock data ──────────────────────────────────────
+const BRM_NOTIFS = [
+  {id:"n1", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Approved", msg:"PT Maju Bersama's quotation for RFQ-2025-0003 (Laptops & Workstations) has been approved.", time:"2 min ago", read:false},
+  {id:"n2", type:"quotation-rejected", icon:"decline", color:"#bb0000", title:"Quotation Rejected", msg:"CV Sukses Mandiri's quotation QT-2025-0002 for RFQ-2025-0001 was rejected due to price non-compliance.", time:"15 min ago", read:false},
+  {id:"n3", type:"quotation-submitted", icon:"add-document", color:"#0070f2", title:"New Quotation Submitted", msg:"PT Maju Bersama submitted a new quotation for RFQ-2025-0005 (HVAC Maintenance Contract).", time:"1 hr ago", read:false},
+  {id:"n3b", type:"quotation-sent-to-me", icon:"paper-plane", color:"#0070f2", title:"Quotation Sent to You", msg:"CV Sukses Mandiri sent quotation QT-2025-0009 (IDR 385,000,000) directly to you for RFQ-2025-0007 (Medical & Safety Supplies). Please review.", time:"45 min ago", read:false},
+  {id:"n3c", type:"quotation-sent-to-me", icon:"paper-plane", color:"#0070f2", title:"Quotation Sent to You", msg:"PT Maju Bersama sent quotation QT-2025-0010 (IDR 210,750,000) to you for RFQ-2025-0009 (Fuel & Lubricants). Awaiting your evaluation.", time:"1 hr ago", read:false},
+  {id:"n4", type:"change-request", icon:"pending", color:"#e76500", title:"Revision Request", msg:"CV Sukses Mandiri requested a revision on QT-2025-0007 — reason: updated material specs.", time:"2 hr ago", read:false},
+  {id:"n5", type:"rfq-closing", icon:"alert", color:"#e76500", title:"RFQ Closing Soon", msg:"RFQ-2025-0004 'Industrial Safety Equipment' is closing in 2 days. 1 vendor has not submitted.", time:"3 hr ago", read:true},
+  {id:"n6", type:"invoice-submitted", icon:"document", color:"#0070f2", title:"Invoice Submitted", msg:"New invoice INV/MJB/2025/009 (IDR 142,500,000) submitted by PT Maju Bersama — awaiting review.", time:"5 hr ago", read:true},
+  {id:"n7", type:"po-issued", icon:"sales-order", color:"#107e3e", title:"Purchase Order Issued", msg:"PO-2025-0018 issued to PT Maju Bersama for accepted quotation QT-2025-0003.", time:"Yesterday", read:true},
+  {id:"n8", type:"budget-approval", icon:"money-bills", color:"#6a2282", title:"Budget Approval Needed", msg:"RFQ-2025-0006 (Waste Management Services) is awaiting budget approval from Finance.", time:"Yesterday", read:true},
+  {id:"n9", type:"deadline-miss", icon:"warning2", color:"#bb0000", title:"Quotation Deadline Missed", msg:"2 target vendors did not submit quotations for RFQ-2025-0002 before the closing date.", time:"2 days ago", read:true},
+  {id:"n10", type:"report-ready", icon:"bar-chart", color:"#0070f2", title:"Monthly Report Ready", msg:"June 2025 procurement summary is ready. 34 RFQs closed, IDR 8.2B in quotations evaluated.", time:"3 days ago", read:true},
+];
+const VENDOR_NOTIFS = [
+  {id:"v1", type:"rfq-invite", icon:"add-document", color:"#0070f2", title:"New RFQ Invitation", msg:"You have been invited to submit a quotation for RFQ-2025-0008 (IT Infrastructure Services). Deadline: 14 Jul 2025.", time:"10 min ago", read:false},
+  {id:"v2", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Accepted", msg:"Your quotation QT-2025-0003 for RFQ-2025-0001 (Laptops & Workstations) has been accepted. PO will follow.", time:"1 hr ago", read:false},
+  {id:"v3", type:"quotation-rejected", icon:"decline", color:"#bb0000", title:"Quotation Rejected", msg:"Your quotation QT-2025-0005 for RFQ-2025-0003 was rejected. Reason: price above budget ceiling.", time:"3 hr ago", read:false},
+  {id:"v4", type:"change-request", icon:"pending", color:"#e76500", title:"Revision Requested", msg:"BRM has requested a revision on your quotation QT-2025-0007. Please update and resubmit.", time:"5 hr ago", read:true},
+  {id:"v5", type:"invoice-confirmed", icon:"accept", color:"#107e3e", title:"Invoice Confirmed", msg:"Invoice INV/MJB/2025/006 (IDR 215,000,000) has been confirmed by BRM and is being processed.", time:"Yesterday", read:true},
+  {id:"v6", type:"rfq-closing", icon:"alert", color:"#e76500", title:"RFQ Deadline Reminder", msg:"RFQ-2025-0005 (HVAC Maintenance) closes in 1 day. Submit your quotation before the deadline.", time:"Yesterday", read:true},
+];
 
 // ── Shell Bar ──────────────────────────────────────────────────
 const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const [menuOpen,setMenuOpen]=useState(false);
   const [avatarOpen,setAvatarOpen]=useState(false);
+  const [notifOpen,setNotifOpen]=useState(false);
+  const [readIds,setReadIds]=useState<Set<string>>(new Set());
+  const notifRef=useRef<HTMLDivElement>(null);
+  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:BRM_NOTIFS;
+  const notifs=allNotifs.map(n=>({...n,read:n.read||readIds.has(n.id)}));
+  const unread=notifs.filter(n=>!n.read).length;
+  useEffect(()=>{
+    if(!notifOpen)return;
+    const h=(e:MouseEvent)=>{if(notifRef.current&&!notifRef.current.contains(e.target as Node))setNotifOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[notifOpen]);
   const ac=avtColor(user.id); const ini=avtIni(user.name);
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
-    :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"}];
+    :user.role==="approver"
+    ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Mgmt"},{id:"apr-quotation",l:"Quotation Approval"}]
+    :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
   const isMob=mob();
   const iconBtn=(onClick,title,children)=>(
     <button onClick={onClick} title={title} aria-label={title} style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.75)",transition:"background .1s",flexShrink:0}}
@@ -70,7 +107,46 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
         {/* Right-side action icons */}
         <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:4}}>
           {iconBtn(undefined,"Search",<SapIcon name="search" size={16} color="rgba(255,255,255,0.75)"/>)}
-          {iconBtn(undefined,"Notifications",<SapIcon name="bell" size={16} color="rgba(255,255,255,0.75)"/>)}
+          <div ref={notifRef} style={{position:"relative"}}>
+            <button onClick={()=>setNotifOpen(o=>!o)} title="Notifications" aria-label="Notifications"
+              style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.75)",transition:"background .1s",flexShrink:0,position:"relative"}}
+              onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.1)")}
+              onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+              <SapIcon name="bell" size={16} color="rgba(255,255,255,0.75)"/>
+              {unread>0&&<span style={{position:"absolute",top:4,right:4,minWidth:16,height:16,borderRadius:8,background:"#bb0000",color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",lineHeight:1,border:"2px solid "+C.shell}}>{unread>9?"9+":unread}</span>}
+            </button>
+            {notifOpen&&(
+              <div style={{position:"absolute",top:44,right:-8,width:360,maxHeight:520,background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",zIndex:400,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+                <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                  <span style={{fontWeight:700,fontSize:14,color:C.t1}}>Notifications {unread>0&&<span style={{background:"#bb0000",color:"#fff",borderRadius:10,fontSize:10,padding:"1px 7px",marginLeft:6}}>{unread}</span>}</span>
+                  {unread>0&&<button onClick={()=>setReadIds(new Set(allNotifs.map(n=>n.id)))} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.primary,fontFamily:"inherit",padding:0}}>Mark all as read</button>}
+                </div>
+                <div style={{overflowY:"auto",flex:1}}>
+                  {notifs.map(n=>(
+                    <div key={n.id} onClick={()=>setReadIds(r=>new Set([...r,n.id]))}
+                      style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,cursor:"pointer",background:n.read?"transparent":C.infoBg,display:"flex",gap:12,alignItems:"flex-start"}}
+                      onMouseEnter={e=>(e.currentTarget.style.background=C.subtle)}
+                      onMouseLeave={e=>(e.currentTarget.style.background=n.read?"transparent":C.infoBg)}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:n.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                        <SapIcon name={n.icon} size={14} color={n.color}/>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:2}}>
+                          <span style={{fontSize:12,fontWeight:700,color:C.t1,whiteSpace:"nowrap"}}>{n.title}</span>
+                          <span style={{fontSize:11,color:C.t2,whiteSpace:"nowrap",flexShrink:0}}>{n.time}</span>
+                        </div>
+                        <div style={{fontSize:12,color:C.t2,lineHeight:1.45}}>{n.msg}</div>
+                      </div>
+                      {!n.read&&<div style={{width:7,height:7,borderRadius:"50%",background:"#0070f2",flexShrink:0,marginTop:6}}/>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,textAlign:"center",flexShrink:0}}>
+                  <button style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.primary,fontFamily:"inherit"}}>View all notifications</button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User avatar */}
           <div style={{position:"relative",marginLeft:4}}>
@@ -85,7 +161,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
                   <div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,border:`2px solid ${ac.fg}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg}}>{ini}</div>
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:2}}>{user.name}</div>
-                    <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":"BRM Employee"}</div>
+                    <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":user.role==="approver"?"Finance Approver":"BRM Employee"}</div>
                     {user.title&&<div style={{fontSize:12,color:C.t2,marginTop:1}}>{user.title}</div>}
                     {user.vendorId&&<div style={{fontSize:11,color:C.info,marginTop:5,padding:"2px 10px",background:C.infoBg,borderRadius:10,display:"inline-block",border:`1px solid ${C.info}30`}}>Vendor ID: {user.vendorId}</div>}
                   </div>
@@ -114,7 +190,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
             <button key={n.id} onClick={()=>{setSection(n.id);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",background:section===n.id?"rgba(255,255,255,0.1)":"transparent",color:"#fff",border:"none",borderLeft:`3px solid ${section===n.id?"rgba(255,255,255,0.9)":"transparent"}`,cursor:"pointer",padding:"12px 20px",fontFamily:"inherit",fontSize:14,fontWeight:section===n.id?600:400}}>{n.l}</button>
           ))}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",borderTop:"1px solid rgba(255,255,255,0.12)",marginTop:4}}>
-            <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":"BRM"}</span>
+            <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":user.role==="approver"?"Approver":"BRM"}</span>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{onOpenSettings();setMenuOpen(false);}} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>
               <button onClick={onLogout} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>
@@ -210,9 +286,9 @@ const Login = ({onLogin}) => {
           <div style={{marginBottom:20,padding:"12px 0",borderTop:"1px solid #e5e5e5"}}>
             <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:8,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"]].map(([u,name,roleLabel])=>(
+              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"]].map(([u,name,roleLabel])=>(
                 <button key={u} onClick={()=>quickLogin(u)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"7px 10px",borderRadius:3,border:"1px solid #e5e5e5",background:"#fafafa",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:"#1d2d3e"}}>
-                  <SapIcon name={roleLabel==="Vendor"?"factory":"employee"} size={12} color="#6a6d70"/>
+                  <SapIcon name={roleLabel==="Vendor"?"factory":roleLabel==="Approver"?"approvals":"employee"} size={12} color="#6a6d70"/>
                   <span style={{fontWeight:600}}>{name}</span>
                   <span style={{color:"#8c8c8c",marginLeft:"auto",fontSize:11}}>{roleLabel}</span>
                 </button>
@@ -297,7 +373,7 @@ const SettingsModal = ({settings,onUpdate,onClose,theme,onThemeChange,user}) => 
           {(()=>{const {avtColor,avtIni}=({avtColor:(id)=>({bg:"#354a5f",fg:"#fff"}),avtIni:(n)=>n?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"??"});const ac={bg:"#354a5f",fg:"#fff"};const ini=user?.name?.split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase()||"??";return(<div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg,flexShrink:0}}>{ini}</div>);})()}
           <div>
             <div style={{fontSize:16,fontWeight:700,color:C.t1}}>{user?.name}</div>
-            <div style={{fontSize:13,color:C.t2,marginTop:3}}>{user?.role==="vendor"?"Supplier":"BRM Employee"}</div>
+            <div style={{fontSize:13,color:C.t2,marginTop:3}}>{user?.role==="vendor"?"Supplier":user?.role==="approver"?"Finance Approver":"BRM Employee"}</div>
             {user?.title&&<div style={{fontSize:12,color:C.t2,marginTop:2}}>{user.title}</div>}
             {user?.email&&<div style={{fontSize:12,color:C.info,marginTop:4}}>{user.email}</div>}
           </div>
@@ -463,6 +539,11 @@ export default function App() {
       case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices}/>;
       case "quotation": return <VendorQuotation user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
       default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
+    }
+    if(user.role==="approver") switch(section){
+      case "apr-rfq":       return <ApproverRfq rfqs={rfqs} quotations={quotations}/>;
+      case "apr-quotation": return <ApproverQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} user={user}/>;
+      default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
     }
     switch(section){
       case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices}/>;

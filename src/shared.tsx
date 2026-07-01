@@ -6,6 +6,7 @@ export const USERS = [
   { id:"V002", role:"vendor", username:"vendor2", password:"demo123", name:"CV Sukses Mandiri", vendorId:"10000002" },
   { id:"B001", role:"brm",    username:"brm.user", password:"demo123", name:"Ahmad Rizki",  title:"Procurement Manager" },
   { id:"B002", role:"brm",    username:"buyer1",   password:"demo123", name:"Siti Rahma",   title:"Senior Buyer" },
+  { id:"A001", role:"approver", username:"approver1", password:"demo123", name:"Budi Santoso", title:"Finance Approver" },
 ];
 export const VENDORS = {
   "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",
@@ -565,6 +566,77 @@ export const DateInp = ({value, onChange, style={}}) => {
     if (iso) onChange(iso);
   };
   return <Inp value={raw} onChange={handle} placeholder={SETTINGS.dateFmt} style={style}/>;
+};
+
+export const DatePickerInp = ({value, onChange}) => {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<string|null>(null);
+  const [manVal, setManVal] = useState(value||"");
+  const ref = useRef<HTMLDivElement>(null);
+  const today = new Date().toISOString().split("T")[0];
+  const iso = (d:Date) => d.toISOString().split("T")[0];
+  const addDays = (d:Date, n:number) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+  useEffect(()=>{ setManVal(value||""); },[value]);
+  useEffect(()=>{
+    if(!open) return;
+    const h=(e:MouseEvent)=>{ if(ref.current&&!ref.current.contains(e.target as Node)){setOpen(false);setMode(null);} };
+    document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
+  },[open]);
+  const pick = (v:string) => { onChange(v); setOpen(false); setMode(null); };
+  const clr = () => { onChange(""); setManVal(""); setMode(null); };
+  const rowSt = (active:boolean):any => ({padding:"7px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontSize:13,color:C.t1,background:active?C.infoBg:"transparent"});
+  const secHdr = (title:string) => <div style={{padding:"6px 14px 3px",fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.6,marginTop:2}}>{title}</div>;
+  const row = (k:string, label:string, onPick?:()=>void) => (
+    <div key={k}>
+      <div onClick={()=>{ if(onPick){onPick();}else{setMode(m=>m===k?null:k);} }}
+        style={rowSt(mode===k)}
+        onMouseEnter={e=>(e.currentTarget.style.background=C.infoBg)}
+        onMouseLeave={e=>(e.currentTarget.style.background=mode===k?C.infoBg:"transparent")}>
+        <span>{label}</span>
+        {!onPick&&<SapIcon name="slim-arrow-right" size={12} color={C.t2}/>}
+      </div>
+      {mode===k&&(
+        <div style={{padding:"4px 14px 10px",display:"flex",flexDirection:"column",gap:6}}>
+          <DateInp value={manVal} onChange={v=>{setManVal(v);}}/>
+          <div style={{display:"flex",gap:6}}>
+            <Btn v="neutral" sm onClick={()=>setMode(null)}>Cancel</Btn>
+            <Btn v="primary" sm onClick={()=>{if(manVal)pick(manVal);}}>Apply</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+  const disp = value ? fmtDate(value) : "";
+  return (
+    <div ref={ref} style={{position:"relative"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box" as const}}>
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date…"}</span>
+        <SapIcon name="calendar" size={14} color={C.t2}/>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:500,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",minWidth:220,maxHeight:360,overflowY:"auto" as const}}>
+          {secHdr("Quick Select")}
+          {row("today","Today",()=>pick(today))}
+          {row("tomorrow","Tomorrow",()=>pick(iso(addDays(new Date(),1))))}
+          {row("in-7","In 7 days",()=>pick(iso(addDays(new Date(),7))))}
+          {row("in-14","In 14 days",()=>pick(iso(addDays(new Date(),14))))}
+          {row("in-30","In 30 days",()=>pick(iso(addDays(new Date(),30))))}
+          {secHdr("Specific Date")}
+          {row("specific","Enter date…")}
+          {value&&(
+            <>
+              <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+              <div onClick={clr} style={{...rowSt(false),color:C.err}}
+                onMouseEnter={e=>(e.currentTarget.style.background=C.infoBg)}
+                onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                Clear
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 export const Sel = ({value,onChange,opts,style={}}) => (
   <select value={value} onChange={e=>onChange(e.target.value)}
