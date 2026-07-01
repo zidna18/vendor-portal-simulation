@@ -290,6 +290,20 @@ export const INIT_INV = (() => {
   return base.map((inv:any,idx:number)=>inv.items?inv:{...inv,items:_genItems(inv.poNumbers,idx+100)});
 })();
 export const INIT_RFQS = [
+  { id:"RFQ-2025-0041", title:"Conveyor Belt Replacement – Crushing Plant",      postedDate:"2025-08-15", closingDate:"2025-09-15", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Goods",            estVal:680000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Replacement of conveyor belts ST1200 grade for primary and secondary crushing plant.", status:"Created",
+    items:[
+      {no:1, desc:"Conveyor Belt ST1200 – 1200mm W (per meter)", type:"Material", acctAssign:"P – Project", materialNo:"CBT-ST1-001", materialGroup:"Conveyor Parts", plant:"PL02", qty:800,  uom:"Meter", estPrice:750000, requirementDate:"2025-10-15", startDate:"", endDate:""},
+      {no:2, desc:"Belt Fastener & Splicing Kit",                 type:"Material", acctAssign:"P – Project", materialNo:"CBT-FST-002", materialGroup:"Conveyor Parts", plant:"PL02", qty:30,   uom:"Set",   estPrice:3500000,requirementDate:"2025-10-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0042", title:"Cloud ERP Subscription – SAP S/4HANA Public Cloud", postedDate:"2025-08-16", closingDate:"2025-09-16", postedBy:"Siti Rahma",   targets:["10000001"],            cat:"IT Services",      estVal:1500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Annual subscription and implementation support for SAP S/4HANA Public Cloud for BRM Group.", status:"Created",
+    items:[
+      {no:1, desc:"SAP S/4HANA Public Cloud – Annual Subscription", type:"Service", acctAssign:"K – Cost Center", materialNo:"SAP-SUB-001", materialGroup:"Software License", plant:"PL01", qty:1, uom:"Annual", estPrice:1200000000, requirementDate:"2026-01-01", startDate:"", endDate:""},
+      {no:2, desc:"SAP Basis & Support Services",                    type:"Service", acctAssign:"K – Cost Center", materialNo:"SAP-BSS-002", materialGroup:"IT Consulting",    plant:"PL01", qty:12,uom:"Month",  estPrice:25000000,  requirementDate:"", startDate:"2026-01-01", endDate:"2026-12-31"},
+    ]},
+  { id:"RFQ-2025-0043", title:"Bulk Bag (FIBC) Supply – Mineral Concentrate",     postedDate:"2025-08-17", closingDate:"2025-09-17", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Goods",            estVal:320000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS", desc:"Annual supply of 1-ton FIBC bulk bags for mineral concentrate export packaging.", status:"Created",
+    items:[
+      {no:1, desc:"FIBC Bulk Bag 1T – 4-loop (per unit)", type:"Material", acctAssign:"P – Project", materialNo:"PKG-FBC-001", materialGroup:"Packaging Materials", plant:"PL05", qty:20000, uom:"Pcs", estPrice:16000, requirementDate:"2025-10-01", startDate:"", endDate:""},
+    ]},
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Complete",
     items:[
       {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
@@ -581,6 +595,7 @@ const buildSTC = () => ({
   "Under Review":{c:C.warn, bg:C.warnBg},
   Confirmed:   {c:C.ok,   bg:C.okBg},
   Rejected:    {c:C.err,  bg:C.errBg},
+  Created:     {c:"#5b738b", bg:"#e8edf1"},
   Open:        {c:C.err,  bg:C.errBg},
   "On Process":{c:C.warn, bg:C.warnBg},
   Complete:           {c:"#0a6ed1", bg:"#dbeeff"},

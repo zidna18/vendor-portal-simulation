@@ -71,7 +71,7 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
 // ── Vendor Quotation ───────────────────────────────────────────
 export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const [tab,setTab]=useState("rfq"); const [quotingRfq,setQR]=useState(null); const [editingQt,setEQ]=useState(null); const [viewQt,setVQ]=useState(null); const [flt,setFlt]=useState("All");
-  const myRfqs=rfqs.filter(r=>r.targets.includes(user.vendorId));
+  const myRfqs=rfqs.filter(r=>r.targets.includes(user.vendorId)&&r.status!=="Created");
   const mine=quotations.filter(q=>q.vendorId===user.vendorId);
   const mineF=mine.filter(q=>flt==="All"||q.status===flt);
   const quoted=rfqId=>mine.find(q=>q.rfqId===rfqId);
@@ -834,6 +834,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
 // Status indicator — all 4 shapes in a row; active = filled color, inactive = grey fill + dark outline
 const RfqStatusIcon = ({s}) => {
   const STEPS = [
+    {key:"Created",    shape:"diamond",  color:"#5b738b"},
     {key:"Open",       shape:"square",   color:"#BB0000"},
     {key:"On Process", shape:"triangle", color:"#E9730C"},
     {key:"Complete",   shape:"circle",   color:"#188918"},
@@ -849,6 +850,11 @@ const RfqStatusIcon = ({s}) => {
         const active = st.key === s;
         const fill   = active ? st.color : INACTIVE_FILL;
         const stroke = active ? st.color : INACTIVE_STROKE;
+        if (st.shape === "diamond") return (
+          <svg key={st.key} width={SZ} height={SZ} viewBox="0 0 18 18" style={{flexShrink:0}}>
+            <polygon points="9,1 17,9 9,17 1,9" fill={fill} stroke={stroke} strokeWidth={SW} strokeLinejoin="round"/>
+          </svg>
+        );
         if (st.shape === "triangle") return (
           <svg key={st.key} width={SZ} height={SZ} viewBox="0 0 18 18" style={{flexShrink:0}}>
             <polygon points="9,2 16.5,15.5 1.5,15.5" fill={fill} stroke={stroke} strokeWidth={SW} strokeLinejoin="round"/>
@@ -903,7 +909,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
 
-  const ALL_RFQ_STATUSES=["Open","On Process","Complete","Closed"];
+  const ALL_RFQ_STATUSES=["Created","Open","On Process","Complete","Pending Approval","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
   const POSTED_BY_ROWS=[...new Set(rfqs.map(r=>r.postedBy).filter(Boolean))].sort().map(n=>({v:n,l:n}));
 
@@ -973,7 +979,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const publish=()=>{
     if(!f.title||!f.closingDate||f.targets.length===0){alert("Please fill title, closing date, and select at least one vendor.");return;}
-    setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Open",estVal:Number(f.estVal),
+    setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Created",estVal:Number(f.estVal),
       items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
     setForm(false);
     setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
@@ -1068,19 +1074,30 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Created","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
-          {(()=>{const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);const allComplete=selList.length>0&&selList.every(r=>r.status==="Complete");return(
-          <button onClick={()=>allComplete&&setShowApproval(true)} disabled={!allComplete}
-            style={{background:allComplete?C.primary:C.subtle,border:`1px solid ${allComplete?"transparent":C.border}`,color:allComplete?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allComplete?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allComplete?1:0.6,transition:"all .15s"}}
-            title={selIds.size===0?"Select RFQ(s) first":!allComplete?"Only 'Complete' RFQs can be sent for approval":""}>
-            <SapIcon name="workflow-tasks" size={13} color={allComplete?"#fff":C.t2}/> Send for Approval{selList.length>0?` (${selList.length})`:""}
-          </button>);})()}
+          {(()=>{
+            const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
+            const allCreated=selList.length>0&&selList.every(r=>r.status==="Created");
+            const allComplete=selList.length>0&&selList.every(r=>r.status==="Complete");
+            return(<>
+              <button onClick={()=>{if(!allCreated)return;if(!window.confirm(`Publish ${selList.length} RFQ(s) to vendors?\n\n${selList.map(r=>r.id).join(", ")}\n\nVendors will be notified and can start submitting quotations.`))return;const today=new Date().toISOString().split("T")[0];setRfqs(p=>p.map(r=>selList.find(s=>s.id===r.id)?{...r,status:"Open",publishedAt:today}:r));setSelIds(new Set());}} disabled={!allCreated}
+                style={{background:allCreated?"#107e3e":C.subtle,border:`1px solid ${allCreated?"transparent":C.border}`,color:allCreated?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allCreated?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allCreated?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select RFQ(s) first":!allCreated?"Only 'Created' RFQs can be published to vendors":""}>
+                <SapIcon name="paper-plane" size={13} color={allCreated?"#fff":C.t2}/> Publish{selList.length>0&&allCreated?` (${selList.length})`:""}
+              </button>
+              <button onClick={()=>allComplete&&setShowApproval(true)} disabled={!allComplete}
+                style={{background:allComplete?C.primary:C.subtle,border:`1px solid ${allComplete?"transparent":C.border}`,color:allComplete?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allComplete?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allComplete?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select RFQ(s) first":!allComplete?"Only 'Complete' RFQs can be sent for approval":""}>
+                <SapIcon name="workflow-tasks" size={13} color={allComplete?"#fff":C.t2}/> Send for Approval{selList.length>0&&allComplete?` (${selList.length})`:""}
+              </button>
+            </>);
+          })()}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -1385,7 +1402,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           </div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
             <Btn v="neutral" onClick={()=>setForm(false)}>Cancel</Btn>
-            <Btn v="primary" onClick={publish}>Publish RFQ to Vendors</Btn>
+            <Btn v="primary" onClick={publish}>Save RFQ</Btn>
           </div>
         </Modal>
       )}
