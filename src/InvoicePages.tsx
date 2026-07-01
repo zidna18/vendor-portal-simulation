@@ -2058,7 +2058,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   );
 };
 
-export const BrmInvoice = ({invoices,setInvoices}) => {
+export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill}:any) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
@@ -2076,6 +2076,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   );
   const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[]};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [allExpanded,setAllExpanded]=useState(false);
   const [split,setSplit]=useState(60);

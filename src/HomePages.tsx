@@ -144,7 +144,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
 };
 
 // ── BRM Dashboard ──────────────────────────────────────────────
-export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
+export const BrmHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvoice}) => {
   const [showKpi,setShowKpi]       = useState(true);
   const [showInv,setShowInv]       = useState(true);
   const [showQt,setShowQt]         = useState(true);
@@ -206,7 +206,8 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
                 {pending.length===0
                   ?<div style={{padding:"20px",color:C.t2,fontSize:14}}>No invoices pending review.</div>
                   :pending.slice(0,5).map((inv,idx)=>(
-                  <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:idx<Math.min(pending.length,5)-1?`1px solid ${C.border}`:"none"}}>
+                  <div key={inv.id} onClick={()=>onDrillInvoice(inv.invoiceNo)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:idx<Math.min(pending.length,5)-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}
+                    onMouseEnter={e=>(e.currentTarget.style.background=C.hover)} onMouseLeave={e=>(e.currentTarget.style.background="")}>
                     <div style={{display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:34,height:34,borderRadius:"50%",background:C.warnBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         <SapIcon name="time-entry-request" size={15} color={C.warn}/>
