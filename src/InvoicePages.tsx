@@ -1145,7 +1145,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   );
 };
 
-export const VendorInvoice = ({user,invoices,setInvoices}) => {
+export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearDrill}:any) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [split,setSplit]=useState(60); // left panel %
@@ -1186,6 +1186,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     submittedFrom:"",submittedTo:"",
   };
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [allExpanded,setAllExpanded]=useState(false);
   const toggleExpanded=(id:string)=>setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});

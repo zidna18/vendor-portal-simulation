@@ -5,7 +5,7 @@ import {
 } from "./shared";
 
 // ── Vendor Dashboard ───────────────────────────────────────────
-export const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
+export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvoice}) => {
   const v=VENDORS[user.vendorId];
   const mi=invoices.filter(i=>i.vendorId===user.vendorId);
   const mq=quotations.filter(q=>q.vendorId===user.vendorId);
@@ -54,8 +54,12 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection}) => {
       <Card>
         <div style={{fontWeight:700,fontSize:15,marginBottom:14,color:C.t1}}>Recent Invoice Activity</div>
         {mi.length===0?<div style={{color:C.t2,fontSize:14}}>No invoices submitted yet.</div>:mi.slice(0,4).map(inv=>(
-          <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-            <div><div style={{fontWeight:600,fontSize:14}}>{inv.invoiceNo}</div><div style={{fontSize:12,color:C.t2,marginTop:2}}>{inv.desc} · {fmtDate(inv.invoiceDate)}</div></div>
+          <div key={inv.id} onClick={()=>{onDrillInvoice(inv.invoiceNo);setSection("invoice");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`,cursor:"pointer",borderRadius:4,margin:"0 -8px",padding:"10px 8px",transition:"background .15s"}}
+            onMouseEnter={e=>(e.currentTarget.style.background=C.field)} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+            <div>
+              <div style={{fontWeight:600,fontSize:14,color:C.primary}}>{inv.invoiceNo}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{inv.desc} · {fmtDate(inv.invoiceDate)}</div>
+            </div>
             <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
               <div style={{fontSize:13,fontWeight:700}}>{fmtAmt(inv.amount, inv.currency)}</div>
               <Badge s={inv.status}/>

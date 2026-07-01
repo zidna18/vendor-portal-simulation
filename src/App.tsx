@@ -452,6 +452,7 @@ export default function App() {
   const [invoices,setInvoices]=useState(INIT_INV);
   const [quotations,setQuotations]=useState(INIT_QT);
   const [rfqs,setRfqs]=useState(INIT_RFQS);
+  const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const login=u=>{setUser(u);setSection("dashboard");};
@@ -460,9 +461,9 @@ export default function App() {
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
-      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices}/>;
+      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
       case "quotation": return <VendorQuotation user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
-      default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
+      default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={setDrillInvoiceNo}/>;
     }
     switch(section){
       case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices}/>;
