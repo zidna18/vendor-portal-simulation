@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // â"€â"€ Mock Data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export const USERS = [
@@ -698,7 +698,7 @@ export const Modal = ({title,onClose,children,width=640}) => (
     <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
       <div style={{padding:"14px 20px",borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
         <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{title}</span>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>âœ•</button>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
       </div>
       <div style={{padding:mob()?14:20}}>{children}</div>
     </div>
@@ -882,7 +882,7 @@ export const DateRangePicker = ({from,to,onChange}) => {
   return(
     <div ref={ref} style={{position:"relative"}}>
       <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box" as const}}>
-        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date rangeâ€¦"}</span>
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
         {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>Ã—</button>}
         <SapIcon name="calendar" size={14} color={C.t2} style={{flexShrink:0}}/>
       </div>
@@ -902,8 +902,8 @@ export const DateRangePicker = ({from,to,onChange}) => {
           {row("to","To",true)}
           {row("year-to-date","Year to Date")}
           {row("date-to-year","Date to Year")}
-          {row("last-x","Last X Minutes / Hours / Daysâ€¦")}
-          {row("next-x","Next X Minutes / Hours / Daysâ€¦")}
+          {row("last-x","Last X Minutes / Hours / Days…")}
+          {row("next-x","Next X Minutes / Hours / Days…")}
           {row("today-xy","Today -X / +Y Days")}
           <div style={{height:1,background:C.border,margin:"4px 0"}}/>
           {secHdr("Weeks")}
@@ -1106,7 +1106,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                 <select value={condOp} onChange={e=>setCondOp(e.target.value)} style={{height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",cursor:"pointer",background:C.field,color:C.t1}}>
                   {VH_OPS.map(o=><option key={o}>{o}</option>)}
                 </select>
-                {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Valueâ€¦"
+                {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Value…"
                   style={{flex:1,height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",outline:"none",background:C.field,color:C.t1}}/>}
                 <button onClick={addCond} style={{background:C.primary,color:"#fff",border:"none",borderRadius:4,height:32,padding:"0 14px",fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:600}}>Add Condition</button>
               </div>
@@ -1150,7 +1150,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
   );
 };
 
-export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Selectâ€¦"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
+export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
   <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:28,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 4px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
     {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
     {selected.map(k=>(
