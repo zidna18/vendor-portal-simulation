@@ -3,7 +3,7 @@ import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
   mob, g2, g4, pg,
-  Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
+  Badge, StatusTag, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
   ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox,
 } from "./shared";
@@ -1509,7 +1509,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
                       </button>}
                     </td>
 
-                    {!hiddenCols.has("status")&&<td style={cs}><Badge s={inv.status}/></td>}
+                    {!hiddenCols.has("status")&&<td style={cs}><StatusTag s={inv.status}/></td>}
 
                     {!hiddenCols.has("invoiceNo")&&<td style={cs}>
                       <button onClick={()=>setView(inv)} style={{background:"none",border:"none",padding:0,cursor:"pointer",textAlign:"left",color:TK.link,fontSize:FS.sm,fontWeight:600,textDecoration:isHov?"underline":"none",lineHeight:1.5,display:"block",fontFamily:"inherit"}}>{inv.invoiceNo}</button>
@@ -2478,7 +2478,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                       </button>}
                     </td>
                     {!hiddenCols.has("status")&&<td style={cs}>
-                      <Badge s={inv.status}/>
+                      <StatusTag s={inv.status}/>
                       {BRM_STATUS_LABEL[inv.status]&&BRM_STATUS_LABEL[inv.status]!==inv.status&&(
                         <div style={{fontSize:9,color:C.t2,marginTop:2}}>{BRM_STATUS_LABEL[inv.status]}</div>
                       )}

@@ -556,6 +556,32 @@ export const Badge = ({s}) => {
   return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
 };
 
+const STATUS_ICONS:Record<string,string> = {
+  "Draft":               "edit-document",
+  "Submitted":           "paper-plane",
+  "Under Review":        "pending",
+  "Confirmed":           "accept",
+  "Rejected":            "decline",
+  "Posted":              "complete",
+  "Converted to Invoice":"document-text",
+  "Cleared":             "complete",
+  "Withdrawn":           "undo",
+  "Open":                "add-document",
+  "Closed":              "sys-cancel",
+  "Accepted":            "accept",
+  "Active":              "complete",
+};
+export const StatusTag = ({s}:{s:string}) => {
+  const x = STC[s]||{c:C.draft,bg:C.draftBg};
+  const icon = STATUS_ICONS[s]||"status-inactive";
+  return (
+    <span style={{display:"inline-flex",alignItems:"center",gap:5,color:x.c,fontSize:12,fontWeight:600,whiteSpace:"nowrap" as const}}>
+      <SapIcon name={icon} size={13} color={x.c}/>
+      {s}
+    </span>
+  );
+};
+
 export const Card = ({children,style={}}) => (
   <div style={{background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 1px 4px rgba(0,0,0,0.05)",padding:20,marginBottom:14,...style}}>{children}</div>
 );
