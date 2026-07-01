@@ -690,7 +690,6 @@ const COL_DEFS = [
   {key:"status",       label:"Status",        defW:120},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
   {key:"invoiceType",  label:"Invoice Type",  defW:130},
-  {key:"poNumber",     label:"PO Number",     defW:140},
   {key:"compCode",     label:"Company Code",  defW:150},
   {key:"invDate",      label:"Invoice Date",  defW:100},
   {key:"dueDate",      label:"Due Date",      defW:100},
@@ -1476,7 +1475,6 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
                       }
                     </td>}
 
-                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span></td>}
 
                     {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontSize:FS.sm,fontWeight:600,color:TK.link}}>{inv.companyCode||"—"}</span>
@@ -1771,7 +1769,6 @@ const COL_DEFS_BRM = [
   {key:"invoiceNo",    label:"Invoice No.",     defW:175},
   {key:"invoiceType",  label:"Invoice Type",    defW:130},
   {key:"vendor",       label:"Vendor",          defW:145},
-  {key:"poNumber",     label:"PO Number",       defW:115},
   {key:"compCode",     label:"Company Code",    defW:120},
   {key:"invDate",      label:"Invoice Date",    defW:88},
   {key:"submittedAt",  label:"Submitted Date",  defW:88},
@@ -2433,7 +2430,6 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
                     </td>}
-                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>}
                     {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{ccName(inv.companyCode)}</div>
