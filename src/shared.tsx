@@ -865,40 +865,53 @@ const INV_TYPE_OPTS = [
   {key:"Supplier DPR", text:"Down Payment Req"},
 ];
 export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChange:(v:string[])=>void}) => {
-  const ref = useRef<any>(null);
+  const [open,setOpen]=useState(false);
+  const ref=useRef<any>(null);
   useEffect(()=>{
-    const el=ref.current; if(!el) return;
-    const fn=(e:any)=>{
-      const sel=(e.detail.items||[]).map((item:any)=>{
-        const txt=item.text||item.getAttribute?.('text')||'';
-        return INV_TYPE_OPTS.find(o=>o.text===txt)?.key||txt;
-      });
-      onChange(sel);
-    };
-    el.addEventListener('selection-change',fn);
-    return ()=>el.removeEventListener('selection-change',fn);
-  },[]);
-  useEffect(()=>{
-    const el=ref.current; if(!el) return;
-    // give UI5 a tick to upgrade the element before syncing selection
-    const sync=()=>{
-      const items=el.querySelectorAll('ui5-mcb-item');
-      items.forEach((item:any)=>{
-        const txt=item.getAttribute('text')||'';
-        const key=INV_TYPE_OPTS.find(o=>o.text===txt)?.key||txt;
-        if(value.includes(key)) item.setAttribute('selected','');
-        else item.removeAttribute('selected');
-      });
-    };
-    const t=setTimeout(sync,0);
-    return ()=>clearTimeout(t);
-  },[value.join(',')]);
+    if(!open) return;
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return ()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const toggle=(key:string)=>{
+    const next=value.includes(key)?value.filter(v=>v!==key):[...value,key];
+    onChange(next);
+  };
+  const remove=(key:string,e:React.MouseEvent)=>{
+    e.stopPropagation();
+    onChange(value.filter(v=>v!==key));
+  };
   return (
-    <ui5-multi-combobox ref={ref} placeholder="All Types"
-      style={{width:"100%","font-family":"'72','72full',Arial,Helvetica,sans-serif","font-size":"14px","--_ui5-input-height":"2.25rem"}}>
-      <ui5-mcb-item text="Invoice"/>
-      <ui5-mcb-item text="Down Payment Req"/>
-    </ui5-multi-combobox>
+    <div ref={ref} style={{position:"relative" as const,fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div onClick={()=>setOpen(p=>!p)} style={{display:"flex",flexWrap:"wrap" as const,alignItems:"center",gap:4,minHeight:"2.25rem",padding:"3px 28px 3px 6px",border:`1px solid ${open?C.primary:C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",position:"relative" as const,boxSizing:"border-box" as const,boxShadow:open?`0 0 0 2px ${C.primary}22`:"none",transition:"border-color .1s"}}>
+        {value.length===0&&<span style={{color:"#bfbfbf",fontSize:14,padding:"2px 2px"}}>All Types</span>}
+        {value.map(k=>{
+          const opt=INV_TYPE_OPTS.find(o=>o.key===k);
+          return(
+            <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:"#e8f1fb",border:"1px solid #91b9e3",borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
+              {opt?.text||k}
+              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>×</button>
+            </span>
+          );
+        })}
+        <span style={{position:"absolute" as const,right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none" as const}}>
+          <SapIcon name="slim-arrow-down" size={12} color={C.t2}/>
+        </span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute" as const,top:"calc(100% + 2px)",left:0,right:0,zIndex:1000,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",overflow:"hidden"}}>
+          {INV_TYPE_OPTS.map(opt=>(
+            <div key={opt.key} onClick={()=>toggle(opt.key)}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",background:value.includes(opt.key)?C.selection:"transparent",fontSize:14,color:C.t1}}
+              onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+              onMouseLeave={e=>(e.currentTarget.style.background=value.includes(opt.key)?C.selection:"transparent")}>
+              <input type="checkbox" readOnly checked={value.includes(opt.key)} style={{width:16,height:16,cursor:"pointer",accentColor:C.primary,flexShrink:0}}/>
+              <span>{opt.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
