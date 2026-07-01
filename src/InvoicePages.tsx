@@ -417,6 +417,8 @@ export const DocFlow = ({inv}) => {
 export type Cond = {op:string,v1:string,v2:string};
 export const INCL_OPS = ["contains","equal to","between","starts with","ends with","less than","less than or equal to","greater than","greater than or equal to","empty"];
 export const EXCL_OPS = ["does not contain","not equal to","not between","does not start with","does not end with","not less than","not less than or equal to","not greater than","not greater than or equal to","not empty"];
+export const NUM_INCL_OPS = ["equal to","between","less than","less than or equal to","greater than","greater than or equal to","empty"];
+export const NUM_EXCL_OPS = ["not equal to","not between","not less than","not less than or equal to","not greater than","not greater than or equal to","not empty"];
 export const NO_VAL_OPS  = new Set(["empty","not empty"]);
 export const BETWEEN_OPS = new Set(["between","not between"]);
 
@@ -446,6 +448,22 @@ export const evalCond = (val:string, c:Cond):boolean => {
     default: return true;
   }
 };
+export const evalNumCond = (num:number, c:Cond):boolean => {
+  const n1=parseFloat(c.v1), n2=parseFloat(c.v2);
+  switch(c.op){
+    case "equal to":                 return num===n1;
+    case "not equal to":             return num!==n1;
+    case "less than":                return num<n1;
+    case "less than or equal to":    return num<=n1;
+    case "greater than":             return num>n1;
+    case "greater than or equal to": return num>=n1;
+    case "between":                  return num>=n1&&num<=n2;
+    case "not between":              return !(num>=n1&&num<=n2);
+    case "empty":                    return false;
+    case "not empty":                return true;
+    default: return true;
+  }
+};
 
 export const condLabel = (c:Cond):string => {
   if(NO_VAL_OPS.has(c.op)) return c.op;
@@ -453,9 +471,11 @@ export const condLabel = (c:Cond):string => {
   return `${c.op==="contains"||c.op==="equal to"?"":c.op+" "}${c.v1}`;
 };
 
-export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:string,conditions:Cond[],onSave:(c:Cond[])=>void,onClose:()=>void}) => {
+export const DefineConditionsModal = ({title,conditions,onSave,onClose,numeric}:{title:string,conditions:Cond[],onSave:(c:Cond[])=>void,onClose:()=>void,numeric?:boolean}) => {
+  const inclOps=numeric?NUM_INCL_OPS:INCL_OPS;
+  const exclOps=numeric?NUM_EXCL_OPS:EXCL_OPS;
   const [conds,setConds]=useState<Cond[]>([...conditions]);
-  const [op,setOp]=useState("contains");
+  const [op,setOp]=useState(numeric?"equal to":"contains");
   const [v1,setV1]=useState("");
   const [v2,setV2]=useState("");
   const [pasteInput,setPasteInput]=useState("");
@@ -512,10 +532,10 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
           <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
             <select value={op} onChange={e=>setOp(e.target.value)} style={opSelStyle}>
               <optgroup label="Include" style={{fontWeight:700,color:C.t1}}>
-                {INCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+                {inclOps.map(o=><option key={o} value={o}>{o}</option>)}
               </optgroup>
               <optgroup label="Exclude" style={{fontWeight:700,color:C.t1}}>
-                {EXCL_OPS.map(o=><option key={o} value={o}>{o}</option>)}
+                {exclOps.map(o=><option key={o} value={o}>{o}</option>)}
               </optgroup>
             </select>
 
@@ -592,13 +612,14 @@ export const DefineConditionsModal = ({title,conditions,onSave,onClose}:{title:s
   );
 };
 
-export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:string,conditions:Cond[],onChange:(c:Cond[])=>void}) => {
+export const MultiValueInp = ({fieldTitle,conditions,onChange,numeric}:{fieldTitle:string,conditions:Cond[],onChange:(c:Cond[])=>void,numeric?:boolean}) => {
   const [showModal,setShowModal]=useState(false);
   const [quickVal,setQuickVal]=useState("");
+  const defaultOp=numeric?"equal to":"contains";
 
   const addQuick=()=>{
     if(!quickVal.trim()) return;
-    onChange([...conditions,{op:"contains",v1:quickVal.trim(),v2:""}]);
+    onChange([...conditions,{op:defaultOp,v1:quickVal.trim(),v2:""}]);
     setQuickVal("");
   };
 
@@ -607,7 +628,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
     const lines=text.split(/[\n\r]+/).map((s:string)=>s.trim()).filter(Boolean);
     if(lines.length>1){
       e.preventDefault();
-      onChange([...conditions,...lines.map((l:string)=>({op:"contains",v1:l,v2:""}))]);
+      onChange([...conditions,...lines.map((l:string)=>({op:defaultOp,v1:l,v2:""}))]);
       setQuickVal("");
     }
   };
@@ -643,7 +664,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
           onChange={e=>setQuickVal(e.target.value)}
           onKeyDown={e=>{if(e.key==="Enter")addQuick();}}
           onPaste={handlePaste}
-          placeholder={conditions.length===0?"INV/MJB/2025/001":""}
+          placeholder={conditions.length===0?(numeric?"e.g. 100000000":"INV/MJB/2025/001"):""}
           aria-haspopup="dialog"
           aria-roledescription="Multi Value Input"
           style={{
@@ -670,7 +691,8 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange}:{fieldTitle:strin
           title={fieldTitle}
           conditions={conditions}
           onSave={c=>{onChange(c);setShowModal(false);}}
-          onClose={()=>setShowModal(false)}/>
+          onClose={()=>setShowModal(false)}
+          numeric={numeric}/>
       )}
     </>
   );
@@ -881,8 +903,7 @@ const ALL_VENDOR_FILTER_FIELDS = [
   {id:"poNumber",     label:"PO Number",        defaultOn:false},
   {id:"invoiceType",  label:"Invoice Type",     defaultOn:true},
   {id:"dueDate",      label:"Due Date",         defaultOn:false},
-  {id:"amountMin",    label:"Amount (From)",    defaultOn:false},
-  {id:"amountMax",    label:"Amount (To)",      defaultOn:false},
+  {id:"amount",       label:"Amount",           defaultOn:false},
   {id:"whtType",      label:"WHT Type",         defaultOn:false},
   {id:"submittedDate",label:"Submitted Date",   defaultOn:false},
   {id:"pmtTerms",     label:"Payment Terms",     defaultOn:false},
@@ -1198,7 +1219,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     dateFrom:"",dateTo:"",
     poNumbers:[] as string[],invoiceTypes:[] as string[],
     dueDateFrom:"",dueDateTo:"",
-    amountMin:"",amountMax:"",
+    amountConds:[] as Cond[],
     whtTypes:[] as string[],
     submittedFrom:"",submittedTo:"",
     pmtTerms:[] as string[],
@@ -1243,8 +1264,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     (active.invoiceTypes.length===0||active.invoiceTypes.includes(i.invoiceType||"Invoice"))&&
     (!active.dueDateFrom||i.dueDate>=active.dueDateFrom)&&
     (!active.dueDateTo||i.dueDate<=active.dueDateTo)&&
-    (!active.amountMin||Number(i.amount)>=Number(active.amountMin))&&
-    (!active.amountMax||Number(i.amount)<=Number(active.amountMax))&&
+    (active.amountConds.length===0||active.amountConds.every(c=>evalNumCond(Number(i.amount),c)))&&
     (active.whtTypes.length===0||active.whtTypes.includes(i.whtType||""))&&
     (!active.submittedFrom||(i.submittedAt&&i.submittedAt>=active.submittedFrom))&&
     (!active.submittedTo||(i.submittedAt&&i.submittedAt<=active.submittedTo))&&
@@ -1274,8 +1294,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
     active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes.map(fmtInvType).join(", "),onClear:()=>clr("invoiceTypes")},
     (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
-    active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
-    active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
+    active.amountConds.length>0&&{label:"Amount",val:active.amountConds.length===1?condLabel(active.amountConds[0]):`${active.amountConds.length} conditions`,onClear:()=>clr("amountConds")},
     active.whtTypes.length>0&&{label:"WHT Type",val:active.whtTypes[0],onClear:()=>clr("whtTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>clr("submittedDate")},
     active.pmtTerms.length>0&&{label:"Payment Terms",val:active.pmtTerms.join(", "),onClear:()=>clr("pmtTerms")},
@@ -1324,8 +1343,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
         {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
-        {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
-        {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
+        {visibleFields.has("amount")&&<FField label="Amount"><MultiValueInp fieldTitle="Gross Invoice Amount" conditions={draft.amountConds} onChange={v=>setDraft(d=>({...d,amountConds:v}))} numeric/></FField>}
         {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))}/><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))}/></div></FField>}
         {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
@@ -1382,8 +1400,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
           if(id==="poNumber")    return draft.poNumbers.length>0;
           if(id==="invoiceType") return draft.invoiceTypes.length>0;
           if(id==="dueDate")     return !!(draft.dueDateFrom||draft.dueDateTo);
-          if(id==="amountMin")   return !!draft.amountMin;
-          if(id==="amountMax")   return !!draft.amountMax;
+          if(id==="amount")      return draft.amountConds.length>0;
           if(id==="whtType")     return draft.whtTypes.length>0;
           if(id==="submittedDate") return !!(draft.submittedFrom||draft.submittedTo);
           if(id==="pmtTerms")      return draft.pmtTerms.length>0;
@@ -1646,8 +1663,7 @@ const ALL_FILTER_FIELDS = [
   { id:"submittedDate",  label:"Submitted Date",        defaultOn:false },
   { id:"approvedDate",   label:"Approved Date",         defaultOn:false },
   { id:"postedDate",     label:"Posted Date",           defaultOn:false },
-  { id:"amountMin",      label:"Amount (From)",         defaultOn:false },
-  { id:"amountMax",      label:"Amount (To)",           defaultOn:false },
+  { id:"amount",         label:"Amount",                defaultOn:false },
   { id:"sapDocNo",       label:"SAP Document No.",      defaultOn:false },
   { id:"whtType",        label:"WHT Type",              defaultOn:false },
   { id:"rejReason",      label:"Rejection Reason",      defaultOn:false },
@@ -2107,7 +2123,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
   const [visibleFields, setVisibleFields] = useState<Set<string>>(
     new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
   );
-  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[],pmtTerms:[] as string[],pmtTermsStatus:[] as string[]};
+  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountConds:[] as Cond[],sapDocNoConds:[] as any[],whtTypes:[] as string[],pmtTerms:[] as string[],pmtTermsStatus:[] as string[]};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
@@ -2146,8 +2162,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
    .filter(inv => !active.approvedTo || (inv.confirmedAt||"") <= active.approvedTo)
    .filter(inv => !active.postedFrom || (inv.postedAt||"") >= active.postedFrom)
    .filter(inv => !active.postedTo || (inv.postedAt||"") <= active.postedTo)
-   .filter(inv => !active.amountMin || inv.amount >= parseFloat(active.amountMin))
-   .filter(inv => !active.amountMax || inv.amount <= parseFloat(active.amountMax))
+   .filter(inv => !active.amountConds?.length || active.amountConds.every(c=>evalNumCond(Number(inv.amount),c)))
    .filter(inv => !active.sapDocNoConds?.length || active.sapDocNoConds.every((c:any) => evalCond(inv.sapDocNo||"", c)))
    .filter(inv => !active.whtTypes?.length || active.whtTypes.includes(inv.whtType))
    .filter(inv => !active.pmtTerms?.length || active.pmtTerms.includes(inv.paymentTerms||""))
@@ -2185,8 +2200,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
     (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
     (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
-    active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>{setActive(p=>({...p,amountMin:""}));setDraft(p=>({...p,amountMin:""}));}},
-    active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>{setActive(p=>({...p,amountMax:""}));setDraft(p=>({...p,amountMax:""}));}},
+    active.amountConds?.length>0&&{label:"Amount",val:active.amountConds.length===1?condLabel(active.amountConds[0]):`${active.amountConds.length} conditions`,onClear:()=>clr("amountConds")},
     active.sapDocNoConds?.length>0&&{label:"SAP Doc No.",val:`${active.sapDocNoConds.length} condition${active.sapDocNoConds.length!==1?"s":""}`,onClear:()=>clr("sapDocNoConds")},
     active.whtTypes?.length>0&&{label:"WHT Type",val:active.whtTypes.length===1?active.whtTypes[0]:`${active.whtTypes.length} selected`,onClear:()=>clr("whtTypes")},
     active.pmtTerms?.length>0&&{label:"Payment Terms",val:active.pmtTerms.join(", "),onClear:()=>clr("pmtTerms")},
@@ -2267,8 +2281,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
         {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
-        {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount" /></FField>}
-        {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount" /></FField>}
+        {visibleFields.has("amount")&&<FField label="Amount"><MultiValueInp fieldTitle="Gross Invoice Amount" conditions={draft.amountConds} onChange={v=>setDraft(d=>({...d,amountConds:v}))} numeric/></FField>}
         {visibleFields.has("sapDocNo")&&<FField label="SAP Doc No."><MultiValueInp fieldTitle="SAP Doc No." conditions={draft.sapDocNoConds} onChange={v=>setDraft(d=>({...d,sapDocNoConds:v}))}/></FField>}
         {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
         {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
@@ -2629,8 +2642,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
           if(id==="submittedDate")  return !!(draft.submittedFrom||draft.submittedTo);
           if(id==="approvedDate")   return !!(draft.approvedFrom||draft.approvedTo);
           if(id==="postedDate")     return !!(draft.postedFrom||draft.postedTo);
-          if(id==="amountMin")      return !!draft.amountMin;
-          if(id==="amountMax")      return !!draft.amountMax;
+          if(id==="amount")         return draft.amountConds.length>0;
           if(id==="sapDocNo")       return draft.sapDocNoConds?.length>0;
           if(id==="whtType")        return draft.whtTypes.length>0;
           if(id==="pmtTerms")       return draft.pmtTerms.length>0;
