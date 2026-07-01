@@ -18,7 +18,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const ac=avtColor(user.id); const ini=avtIni(user.name);
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
-    :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"}];
+    :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
   const isMob=mob();
   return (
     <div style={{background:C.shell,color:"#fff",position:"sticky",top:0,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>
