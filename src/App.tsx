@@ -12,10 +12,14 @@ import { VendorHome, BrmHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
 
 // ── Shell Bar ──────────────────────────────────────────────────
-const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
+const relTime=(t:number)=>{const s=Math.floor((Date.now()-t)/1000);if(s<60)return"just now";if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;};
+const Shell = ({user,onLogout,section,setSection,onOpenSettings,notifs=[],onMarkRead,onMarkAllRead}:any) => {
   const [menuOpen,setMenuOpen]=useState(false);
   const [avatarOpen,setAvatarOpen]=useState(false);
+  const [notifOpen,setNotifOpen]=useState(false);
   const ac=avtColor(user.id); const ini=avtIni(user.name);
+  const myNotifs=(notifs as any[]).filter(n=>user.role==="vendor"?n.forRole==="vendor"&&(!n.forVendorId||n.forVendorId===user.vendorId):n.forRole==="brm");
+  const unread=myNotifs.filter(n=>!n.read).length;
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"}];
@@ -70,7 +74,61 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
         {/* Right-side action icons */}
         <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:4}}>
           {iconBtn(undefined,"Search",<SapIcon name="search" size={16} color="rgba(255,255,255,0.75)"/>)}
-          {iconBtn(undefined,"Notifications",<SapIcon name="bell" size={16} color="rgba(255,255,255,0.75)"/>)}
+
+          {/* Notification bell */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>{setNotifOpen(o=>!o);setAvatarOpen(false);}} title="Notifications" aria-label="Notifications"
+              style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0,transition:"background .1s"}}
+              onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.1)")}
+              onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+              <SapIcon name="bell" size={16} color="rgba(255,255,255,0.75)"/>
+              {unread>0&&<span style={{position:"absolute",top:5,right:5,minWidth:16,height:16,borderRadius:8,background:"#e9730c",border:"2px solid #354a5f",fontSize:9,fontWeight:700,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,padding:"0 3px"}}>{unread>9?"9+":unread}</span>}
+            </button>
+            {notifOpen&&<>
+              <div onClick={()=>setNotifOpen(false)} style={{position:"fixed",inset:0,zIndex:299}}/>
+              <div style={{position:"absolute",top:42,right:-8,width:380,background:C.card,borderRadius:6,border:`1px solid ${C.border}`,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",zIndex:300,overflow:"hidden",maxHeight:"80vh",display:"flex",flexDirection:"column",fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+                {/* Panel header */}
+                <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                  <span style={{fontSize:15,fontWeight:700,color:C.t1}}>Notifications</span>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    {unread>0&&<button onClick={()=>onMarkAllRead?.()} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.primary,fontFamily:"inherit",padding:0}}>Mark All Read</button>}
+                    <button onClick={()=>setNotifOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,lineHeight:1,padding:0,display:"flex",alignItems:"center"}}>×</button>
+                  </div>
+                </div>
+                {/* Panel body */}
+                {myNotifs.length===0?(
+                  <div style={{padding:"48px 24px 40px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+                    <div style={{width:72,height:72,borderRadius:"50%",background:C.subtle,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:4}}>
+                      <SapIcon name="bell" size={32} color={C.border}/>
+                    </div>
+                    <div style={{fontSize:14,fontWeight:600,color:C.t1}}>You don't have any new notifications</div>
+                    <div style={{fontSize:13,color:C.t2}}>Check back again later.</div>
+                  </div>
+                ):(
+                  <div style={{overflowY:"auto",flex:1}}>
+                    {myNotifs.map((n:any)=>(
+                      <div key={n.id} onClick={()=>{onMarkRead?.(n.id);}}
+                        style={{display:"flex",gap:12,padding:"12px 16px",borderBottom:`1px solid ${C.border}`,cursor:"pointer",background:n.read?"transparent":"#fef6ee",transition:"background .1s",borderLeft:n.read?"3px solid transparent":`3px solid ${C.primary}`}}
+                        onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+                        onMouseLeave={e=>(e.currentTarget.style.background=n.read?"transparent":"#fef6ee")}>
+                        <div style={{width:36,height:36,borderRadius:"50%",background:`${n.iconColor||C.primary}18`,border:`1px solid ${n.iconColor||C.primary}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+                          <SapIcon name={n.icon||"bell"} size={16} color={n.iconColor||C.primary}/>
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+                            <div style={{fontSize:13,fontWeight:n.read?400:700,color:C.t1,lineHeight:1.3,wordBreak:"break-word"}}>{n.title}</div>
+                            {!n.read&&<div style={{width:8,height:8,borderRadius:"50%",background:C.primary,flexShrink:0,marginTop:4}}/>}
+                          </div>
+                          <div style={{fontSize:12,color:C.t2,marginTop:3,lineHeight:1.45}}>{n.desc}</div>
+                          <div style={{fontSize:11,color:C.t2,marginTop:5}}>{relTime(n.time)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>}
+          </div>
 
           {/* User avatar */}
           <div style={{position:"relative",marginLeft:4}}>
@@ -454,6 +512,10 @@ export default function App() {
   const [rfqs,setRfqs]=useState(INIT_RFQS);
   const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
   const [drillBrmInvoiceNo,setDrillBrmInvoiceNo]=useState("");
+  const [notifs,setNotifs]=useState<any[]>([]);
+  const addNotif=(n:any)=>setNotifs(p=>[{...n,id:`N-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,time:Date.now(),read:false},...p]);
+  const markRead=(id:string)=>setNotifs(p=>p.map(n=>n.id===id?{...n,read:true}:n));
+  const markAllRead=()=>setNotifs(p=>p.map(n=>({...n,read:true})));
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const login=u=>{setUser(u);setSection("dashboard");};
@@ -462,12 +524,12 @@ export default function App() {
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
-      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
+      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")} addNotif={addNotif}/>;
       case "quotation": return <VendorQuotation user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
       default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={setDrillInvoiceNo}/>;
     }
     switch(section){
-      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillBrmInvoiceNo} onClearDrill={()=>setDrillBrmInvoiceNo("")}/>;
+      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillBrmInvoiceNo} onClearDrill={()=>setDrillBrmInvoiceNo("")} addNotif={addNotif}/>;
       case "brm-quotation": return <BrmQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
       case "brm-rfq":       return <BrmRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations}/>;
       default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no)=>{setDrillBrmInvoiceNo(no);setSection("brm-invoice");}}/>;
@@ -476,7 +538,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:14,color:C.t1}}>
-      <Shell user={user} onLogout={logout} section={section} setSection={setSection} onOpenSettings={()=>setShowSettings(true)}/>
+      <Shell user={user} onLogout={logout} section={section} setSection={setSection} onOpenSettings={()=>setShowSettings(true)} notifs={notifs} onMarkRead={markRead} onMarkAllRead={markAllRead}/>
       {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)} theme={theme} onThemeChange={changeTheme} user={user}/>}
       <div style={{minHeight:"calc(100vh - 46px)"}}>{render()}</div>
       <div style={{textAlign:"center",padding:"14px 0",fontSize:12,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>

@@ -50,7 +50,7 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 };
 
 // ── Invoice Form Modal ─────────────────────────────────────────
-export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[]}) => {
+export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[],addNotif}:any) => {
   const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
   const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
   const isNew=!inv;
@@ -72,6 +72,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     if(usedPOs.length>0){alert(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`);return;}
     const obj={...f,status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
+    if(!draft) addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
   };
   return (
     <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
@@ -1146,7 +1147,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   );
 };
 
-export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearDrill}:any) => {
+export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif}:any) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [split,setSplit]=useState(60); // left panel %
@@ -1586,7 +1587,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
           panelFlex={fullScreen?"1":`0 0 ${100-split}%`}
         />
       </>}
-      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
+      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices} addNotif={addNotif}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
       {colMenu&&(
         <ColumnSettingsPopup
@@ -2058,7 +2059,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   );
 };
 
-export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill}:any) => {
+export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif}:any) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
@@ -2150,9 +2151,9 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill}:an
     active.whtTypes?.length>0&&{label:"WHT Type",val:active.whtTypes.length===1?active.whtTypes[0]:`${active.whtTypes.length} selected`,onClear:()=>clr("whtTypes")},
   ].filter(Boolean);
 
-  const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
-  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
-  const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
+  const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
+  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
+  const setUR=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});};
   const postToSAP=(inv)=>{
     const isInv=inv.invoiceType==="Invoice";
     const num=(100000000+Math.floor(Math.random()*899999999)).toString();
