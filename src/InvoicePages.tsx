@@ -885,6 +885,8 @@ const ALL_VENDOR_FILTER_FIELDS = [
   {id:"amountMax",    label:"Amount (To)",      defaultOn:false},
   {id:"whtType",      label:"WHT Type",         defaultOn:false},
   {id:"submittedDate",label:"Submitted Date",   defaultOn:false},
+  {id:"pmtTerms",     label:"Payment Terms",     defaultOn:false},
+  {id:"pmtTermsStatus",label:"Payment Terms Status",defaultOn:false},
 ];
 
 // ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
@@ -1199,6 +1201,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     amountMin:"",amountMax:"",
     whtTypes:[] as string[],
     submittedFrom:"",submittedTo:"",
+    pmtTerms:[] as string[],
+    pmtTermsStatus:[] as string[],
   };
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
@@ -1243,7 +1247,9 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     (!active.amountMax||Number(i.amount)<=Number(active.amountMax))&&
     (active.whtTypes.length===0||active.whtTypes.includes(i.whtType||""))&&
     (!active.submittedFrom||(i.submittedAt&&i.submittedAt>=active.submittedFrom))&&
-    (!active.submittedTo||(i.submittedAt&&i.submittedAt<=active.submittedTo))
+    (!active.submittedTo||(i.submittedAt&&i.submittedAt<=active.submittedTo))&&
+    (active.pmtTerms.length===0||active.pmtTerms.includes(i.paymentTerms||""))&&
+    (active.pmtTermsStatus.length===0||(()=>{const ct=(VENDORS[i.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===i.companyCode)?.zterm;const ok=ct&&i.paymentTerms?i.paymentTerms===ct:null;const st=ok===null?"unknown":ok?"compliant":"differs";return active.pmtTermsStatus.includes(st);})())
   );
   const SORT_FIELDS:Record<string,(i:any)=>any>={
     invoiceNo:i=>i.invoiceNo, poNumber:i=>fmtPOs(i), compCode:i=>i.companyCode,
@@ -1272,6 +1278,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
     active.whtTypes.length>0&&{label:"WHT Type",val:active.whtTypes[0],onClear:()=>clr("whtTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>clr("submittedDate")},
+    active.pmtTerms.length>0&&{label:"Payment Terms",val:active.pmtTerms.join(", "),onClear:()=>clr("pmtTerms")},
+    active.pmtTermsStatus.length>0&&{label:"Pmt Terms Status",val:active.pmtTermsStatus.map(s=>s==="compliant"?"Compliant":s==="differs"?"Differs":"Unknown").join(", "),onClear:()=>clr("pmtTermsStatus")},
   ].filter(Boolean);
   const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
   const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
@@ -1320,6 +1328,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
         {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))}/><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))}/></div></FField>}
+        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
+        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><Sel value={draft.pmtTermsStatus[0]||""} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v?[v]:[]}))} opts={[{v:"",l:"All Statuses"},{v:"compliant",l:"Compliant"},{v:"differs",l:"Differs"},{v:"unknown",l:"Unknown"}]}/></FField>}
       </FioriBar>
 
       {vhOpen==="companyCode"&&(
@@ -1376,6 +1386,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
           if(id==="amountMax")   return !!draft.amountMax;
           if(id==="whtType")     return draft.whtTypes.length>0;
           if(id==="submittedDate") return !!(draft.submittedFrom||draft.submittedTo);
+          if(id==="pmtTerms")      return draft.pmtTerms.length>0;
+          if(id==="pmtTermsStatus")return draft.pmtTermsStatus.length>0;
           return false;
         }}
       />
@@ -1639,6 +1651,8 @@ const ALL_FILTER_FIELDS = [
   { id:"sapDocNo",       label:"SAP Document No.",      defaultOn:false },
   { id:"whtType",        label:"WHT Type",              defaultOn:false },
   { id:"rejReason",      label:"Rejection Reason",      defaultOn:false },
+  { id:"pmtTerms",       label:"Payment Terms",         defaultOn:false },
+  { id:"pmtTermsStatus", label:"Payment Terms Status",  defaultOn:false },
 ];
 
 function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFields, hasValue }: {
@@ -2093,7 +2107,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
   const [visibleFields, setVisibleFields] = useState<Set<string>>(
     new Set(ALL_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id))
   );
-  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[]};
+  const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[],pmtTerms:[] as string[],pmtTermsStatus:[] as string[]};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
   useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
@@ -2135,7 +2149,15 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
    .filter(inv => !active.amountMin || inv.amount >= parseFloat(active.amountMin))
    .filter(inv => !active.amountMax || inv.amount <= parseFloat(active.amountMax))
    .filter(inv => !active.sapDocNoConds?.length || active.sapDocNoConds.every((c:any) => evalCond(inv.sapDocNo||"", c)))
-   .filter(inv => !active.whtTypes?.length || active.whtTypes.includes(inv.whtType));
+   .filter(inv => !active.whtTypes?.length || active.whtTypes.includes(inv.whtType))
+   .filter(inv => !active.pmtTerms?.length || active.pmtTerms.includes(inv.paymentTerms||""))
+   .filter(inv => {
+     if(!active.pmtTermsStatus?.length) return true;
+     const ct=(VENDORS[inv.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===inv.companyCode)?.zterm;
+     const ok=ct&&inv.paymentTerms?inv.paymentTerms===ct:null;
+     const st=ok===null?"unknown":ok?"compliant":"differs";
+     return active.pmtTermsStatus.includes(st);
+   });
   const SORT_FIELDS_BRM:Record<string,(i:any)=>any>={
     invoiceNo:i=>i.invoiceNo, vendor:i=>i.vendorName, poNumber:i=>fmtPOs(i),
     compCode:i=>i.companyCode, invDate:i=>i.invoiceDate, submittedAt:i=>i.submittedAt||"",
@@ -2167,6 +2189,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>{setActive(p=>({...p,amountMax:""}));setDraft(p=>({...p,amountMax:""}));}},
     active.sapDocNoConds?.length>0&&{label:"SAP Doc No.",val:`${active.sapDocNoConds.length} condition${active.sapDocNoConds.length!==1?"s":""}`,onClear:()=>clr("sapDocNoConds")},
     active.whtTypes?.length>0&&{label:"WHT Type",val:active.whtTypes.length===1?active.whtTypes[0]:`${active.whtTypes.length} selected`,onClear:()=>clr("whtTypes")},
+    active.pmtTerms?.length>0&&{label:"Payment Terms",val:active.pmtTerms.join(", "),onClear:()=>clr("pmtTerms")},
+    active.pmtTermsStatus?.length>0&&{label:"Pmt Terms Status",val:active.pmtTermsStatus.map(s=>s==="compliant"?"Compliant":s==="differs"?"Differs":"Unknown").join(", "),onClear:()=>clr("pmtTermsStatus")},
   ].filter(Boolean);
 
   const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
@@ -2247,6 +2271,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount" /></FField>}
         {visibleFields.has("sapDocNo")&&<FField label="SAP Doc No."><MultiValueInp fieldTitle="SAP Doc No." conditions={draft.sapDocNoConds} onChange={v=>setDraft(d=>({...d,sapDocNoConds:v}))}/></FField>}
         {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
+        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
+        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><Sel value={draft.pmtTermsStatus[0]||""} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v?[v]:[]}))} opts={[{v:"",l:"All Statuses"},{v:"compliant",l:"Compliant"},{v:"differs",l:"Differs"},{v:"unknown",l:"Unknown"}]}/></FField>}
       </FioriBar>
 
       {vhOpen==="vendor"&&(
@@ -2590,6 +2616,27 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
         visibleFields={visibleFields}
         onSave={fields=>setVisibleFields(fields)}
         draft={draft}
+        allFields={ALL_FILTER_FIELDS}
+        hasValue={(id)=>{
+          if(id==="invoiceNo")      return draft.invoiceNoConds.length>0;
+          if(id==="vendor")         return draft.vendorIds.length>0;
+          if(id==="companyCode")    return draft.companyCodes.length>0;
+          if(id==="status")         return draft.statuses.length>0;
+          if(id==="currency")       return draft.currencies.length>0;
+          if(id==="invoiceDate")    return !!(draft.dateFrom||draft.dateTo);
+          if(id==="poNumber")       return draft.poNumbers.length>0;
+          if(id==="invoiceType")    return draft.invoiceTypes.length>0;
+          if(id==="submittedDate")  return !!(draft.submittedFrom||draft.submittedTo);
+          if(id==="approvedDate")   return !!(draft.approvedFrom||draft.approvedTo);
+          if(id==="postedDate")     return !!(draft.postedFrom||draft.postedTo);
+          if(id==="amountMin")      return !!draft.amountMin;
+          if(id==="amountMax")      return !!draft.amountMax;
+          if(id==="sapDocNo")       return draft.sapDocNoConds?.length>0;
+          if(id==="whtType")        return draft.whtTypes.length>0;
+          if(id==="pmtTerms")       return draft.pmtTerms.length>0;
+          if(id==="pmtTermsStatus") return draft.pmtTermsStatus.length>0;
+          return false;
+        }}
       />
     </div>
   );
