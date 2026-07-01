@@ -766,6 +766,80 @@ export const DateInp = ({value, onChange, style={}}) => {
   return <Inp value={raw} onChange={handle} placeholder={SETTINGS.dateFmt} style={style}/>;
 };
 
+export const Ui5DatePicker = ({value, onChange}:{value:string, onChange:(v:string)=>void}) => {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const initDate = value ? new Date(value+"T00:00:00") : new Date();
+  const [viewY, setViewY] = useState(initDate.getFullYear());
+  const [viewM, setViewM] = useState(initDate.getMonth()); // 0-indexed
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(!open) return;
+    const h=(e:MouseEvent)=>{ if(ref.current&&!ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
+  },[open]);
+  useEffect(()=>{
+    if(value){ const d=new Date(value+"T00:00:00"); setViewY(d.getFullYear()); setViewM(d.getMonth()); }
+  },[value]);
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS=["Mo","Tu","We","Th","Fr","Sa","Su"];
+  const prevM=()=>{ if(viewM===0){setViewM(11);setViewY(y=>y-1);}else setViewM(m=>m-1); };
+  const nextM=()=>{ if(viewM===11){setViewM(0);setViewY(y=>y+1);}else setViewM(m=>m+1); };
+  const firstDow = new Date(viewY, viewM, 1).getDay(); // 0=Sun
+  const offset = firstDow===0?6:firstDow-1; // shift so Mon=0
+  const daysInMonth = new Date(viewY, viewM+1, 0).getDate();
+  const cells:Array<number|null> = [...Array(offset).fill(null), ...Array.from({length:daysInMonth},(_,i)=>i+1)];
+  while(cells.length%7!==0) cells.push(null);
+  const toISO=(d:number)=>`${viewY}-${String(viewM+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const pick=(d:number)=>{ onChange(toISO(d)); setOpen(false); };
+  const disp = value ? fmtDate(value) : "";
+  return (
+    <div ref={ref} style={{position:"relative",width:"100%"}}>
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${open?C.primary:C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px 0 10px",gap:8,boxSizing:"border-box" as const,outline:open?`2px solid ${C.primary}40`:"none"}}>
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2}}>{disp||SETTINGS.dateFmt}</span>
+        <SapIcon name="calendar" size={14} color={open?C.primary:C.t2}/>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:600,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 8px 24px rgba(0,0,0,0.18)",width:280,padding:"8px 0 10px"}}>
+          {/* header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px 6px",borderBottom:`1px solid ${C.border}`}}>
+            <button onClick={prevM} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 6px",borderRadius:2,fontSize:16,color:C.t1,lineHeight:1}}>‹</button>
+            <span style={{fontWeight:700,fontSize:13,color:C.t1}}>{MONTHS[viewM]} {viewY}</span>
+            <button onClick={nextM} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 6px",borderRadius:2,fontSize:16,color:C.t1,lineHeight:1}}>›</button>
+          </div>
+          {/* day-of-week header */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"6px 8px 2px",gap:0}}>
+            {DAYS.map(d=><div key={d} style={{textAlign:"center" as const,fontSize:11,fontWeight:700,color:C.t2,padding:"2px 0"}}>{d}</div>)}
+          </div>
+          {/* day cells */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 8px",gap:0}}>
+            {cells.map((d,i)=>{
+              if(!d) return <div key={i}/>;
+              const iso=toISO(d);
+              const isToday=iso===todayStr;
+              const isSel=iso===value;
+              return (
+                <div key={i} onClick={()=>pick(d)}
+                  style={{textAlign:"center" as const,fontSize:13,padding:"5px 2px",borderRadius:2,cursor:"pointer",
+                    background:isSel?C.primary:"transparent",color:isSel?"#fff":isToday?C.primary:C.t1,
+                    fontWeight:isSel||isToday?700:400,
+                    outline:isToday&&!isSel?`1px solid ${C.primary}`:"none"}}
+                  onMouseEnter={e=>{ if(!isSel)(e.currentTarget as HTMLElement).style.background=C.infoBg; }}
+                  onMouseLeave={e=>{ if(!isSel)(e.currentTarget as HTMLElement).style.background="transparent"; }}>
+                  {d}
+                </div>
+              );
+            })}
+          </div>
+          {/* footer — today button */}
+          <div style={{padding:"6px 10px 0",borderTop:`1px solid ${C.border}`,marginTop:6,display:"flex",justifyContent:"center"}}>
+            <span onClick={()=>{ onChange(todayStr); setOpen(false); }} style={{fontSize:12,color:C.primary,cursor:"pointer",fontWeight:600}}>Today</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 export const DatePickerInp = ({value, onChange}) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<string|null>(null);
@@ -1095,7 +1169,7 @@ export const DateRangePicker = ({from,to,onChange}) => {
 };
 
 // eslint-disable-next-line
-declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any; 'ui5-multi-combobox': any; 'ui5-mcb-item': any } } }
+declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any; 'ui5-multi-combobox': any; 'ui5-mcb-item': any; 'ui5-date-picker': any } } }
 export const SapIcon = ({name,size=16,color="",style={}}:{name:string,size?:number,color?:string,style?:any}) => (
   <ui5-icon name={name} style={{width:size,height:size,display:"inline-block",verticalAlign:"middle",...(color?{color}:{}),...style}}/>
 );
