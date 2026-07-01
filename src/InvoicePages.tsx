@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES,
+  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
   mob, g2, g4, pg,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
-  ValueHelpDialog, ValueHelpInp,
+  ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox,
 } from "./shared";
 
 // ── PO Value Help ──────────────────────────────────────────────
@@ -50,9 +50,11 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 };
 
 // ── Invoice Form Modal ─────────────────────────────────────────
-export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[]}) => {
+export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[],addNotif}:any) => {
+  const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
+  const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
   const isNew=!inv;
-  const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const [f,setF]=useState(inv?{...inv,paymentTerms:inv.paymentTerms||"Z030"}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",paymentTerms:"Z030",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
   const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
@@ -70,6 +72,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     if(usedPOs.length>0){alert(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`);return;}
     const obj={...f,status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
+    if(!draft) addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
   };
   return (
     <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
@@ -89,7 +92,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         </div>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
-          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
         <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
@@ -109,8 +112,18 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           </div>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
         </div>
-        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>s("invoiceDate",v)}/></div>
-        <div><Lbl>Due Date *</Lbl><DateInp value={f.dueDate} onChange={v=>s("dueDate",v)}/></div>
+        <div><Lbl>Invoice Date *</Lbl><DateInp value={f.invoiceDate} onChange={v=>{s("invoiceDate",v);if(v&&f.paymentTerms)setF(p=>({...p,invoiceDate:v,dueDate:calcDueDate(v,p.paymentTerms)}))}}/></div>
+        <div>
+          <Lbl>Terms of Payment *</Lbl>
+          <Sel value={f.paymentTerms||""} onChange={v=>setF(p=>({...p,paymentTerms:v,dueDate:calcDueDate(p.invoiceDate,v)}))} opts={[{v:"",l:"— Select Payment Terms —"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_PaymentTerms</div>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>Due Date (auto-calculated)</Lbl>
+          <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:f.dueDate?C.t1:C.t2,display:"flex",alignItems:"center"}}>
+            {f.dueDate?fmtDate(f.dueDate):<span style={{fontStyle:"italic"}}>Select Invoice Date and Terms of Payment</span>}
+          </div>
+        </div>
         <div>
           <Lbl>Transaction Currency *</Lbl>
           <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
@@ -690,7 +703,6 @@ const COL_DEFS = [
   {key:"status",       label:"Status",        defW:120},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
   {key:"invoiceType",  label:"Invoice Type",  defW:130},
-  {key:"poNumber",     label:"PO Number",     defW:140},
   {key:"compCode",     label:"Company Code",  defW:150},
   {key:"invDate",      label:"Invoice Date",  defW:100},
   {key:"dueDate",      label:"Due Date",      defW:100},
@@ -864,7 +876,7 @@ const ALL_VENDOR_FILTER_FIELDS = [
   {id:"currency",     label:"Currency",         defaultOn:true },
   {id:"invoiceDate",  label:"Invoice Date",     defaultOn:true },
   {id:"poNumber",     label:"PO Number",        defaultOn:false},
-  {id:"invoiceType",  label:"Invoice Type",     defaultOn:false},
+  {id:"invoiceType",  label:"Invoice Type",     defaultOn:true},
   {id:"dueDate",      label:"Due Date",         defaultOn:false},
   {id:"amountMin",    label:"Amount (From)",    defaultOn:false},
   {id:"amountMax",    label:"Amount (To)",      defaultOn:false},
@@ -1145,7 +1157,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   );
 };
 
-export const VendorInvoice = ({user,invoices,setInvoices}) => {
+export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif}:any) => {
   const [showForm,setForm]=useState(false); const [editing,setEd]=useState(null); const [view,setView]=useState(null); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [split,setSplit]=useState(60); // left panel %
@@ -1186,6 +1198,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     submittedFrom:"",submittedTo:"",
   };
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [allExpanded,setAllExpanded]=useState(false);
   const toggleExpanded=(id:string)=>setExpanded(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
@@ -1211,7 +1224,8 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     a.download=`invoices_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();URL.revokeObjectURL(a.href);
   };
-  const mineFiltered=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
+  const assignedCCs=(VENDORS[user.vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
+  const mineFiltered=invoices.filter(i=>i.vendorId===user.vendorId&&(assignedCCs.length===0||assignedCCs.includes(i.companyCode))).filter(i=>
     (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
     (active.statuses.length===0||active.statuses.includes(i.status))&&
     (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
@@ -1249,7 +1263,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Invoice Date",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
-    active.invoiceTypes.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes.map(fmtInvType).join(", "),onClear:()=>clr("invoiceTypes")},
     (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
     active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
@@ -1297,7 +1311,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
@@ -1308,7 +1322,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
       {vhOpen==="companyCode"&&(
         <ValueHelpDialog title="Company Code"
           cols={[{key:"v",label:"Company...",width:80},{key:"l",label:"Company Name",width:200},{key:"ctrl",label:"Controlling...",width:100},{key:"city",label:"City",width:100},{key:"country",label:"Country/Reg...",width:90},{key:"currency",label:"Currency",width:80},{key:"lang",label:"Language...",width:80},{key:"chart",label:"Chart of",width:70}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={COMPANY_CODES.filter(c=>assignedCCs.length===0||assignedCCs.includes(c.v))} keyField="v" labelField="l"
           selected={draft.companyCodes}
           onConfirm={s=>{sd("companyCodes",s);setVhOpen(null);}}
           onClose={()=>setVhOpen(null)}/>
@@ -1370,22 +1384,24 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
             <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
             <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400}}>({mine.length})</span>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <div style={{display:"flex",gap:0,alignItems:"center"}}>
             <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(mine.map((i:any)=>i.id)));setAllExpanded(true);}}}
-              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
             </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
-            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
-            </button>
-            <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="action-settings" size={14} color={C.t1}/>
-            </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
-              style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="add" size={13} color="#fff"/> Add Invoice
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="add" size={14} color={C.t1}/> Create
+            </button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+              <SapIcon name="excel-attachment" size={16} color="#217346"/>
+            </button>
+            <button onClick={()=>setVsOpen(true)} title="View Settings"
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+              <SapIcon name="action-settings" size={16} color={C.t2}/>
             </button>
           </div>
         </div>
@@ -1475,7 +1491,6 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
                       }
                     </td>}
 
-                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontSize:FS.sm,color:TK.rowText}}>{fmtPOs(inv)}</span></td>}
 
                     {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontSize:FS.sm,fontWeight:600,color:TK.link}}>{inv.companyCode||"—"}</span>
@@ -1583,7 +1598,7 @@ export const VendorInvoice = ({user,invoices,setInvoices}) => {
           panelFlex={fullScreen?"1":`0 0 ${100-split}%`}
         />
       </>}
-      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices}/>}
+      {showForm&&<InvoiceFormModal inv={editing} onSave={save} onClose={()=>{setForm(false);setEd(null);}} vendorId={user.vendorId} vendorName={v.name} allInvoices={invoices} addNotif={addNotif}/>}
       {pdfView&&view&&<PdfViewer filename={pdfView} inv={view} onClose={()=>setPdfView(null)}/>}
       {colMenu&&(
         <ColumnSettingsPopup
@@ -1607,7 +1622,7 @@ const ALL_FILTER_FIELDS = [
   { id:"vendor",         label:"Vendor",                defaultOn:true  },
   { id:"poNumber",       label:"PO Number",             defaultOn:false },
   { id:"companyCode",    label:"Company Code",          defaultOn:true  },
-  { id:"invoiceType",    label:"Invoice Type",          defaultOn:false },
+  { id:"invoiceType",    label:"Invoice Type",          defaultOn:true },
   { id:"status",         label:"Status",                defaultOn:true  },
   { id:"currency",       label:"Currency",              defaultOn:true  },
   { id:"invoiceDate",    label:"Invoice Date",          defaultOn:true  },
@@ -1699,7 +1714,7 @@ function AdaptFiltersDialog({ open, onClose, visibleFields, onSave, draft, allFi
         {/* Search */}
         <div style={{padding:"8px 16px",flexShrink:0}}>
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}>🔍</span>
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><SapIcon name="search" size={14} color={C.t2}/></span>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search for Filters"
               style={{width:"100%",height:32,border:`1px solid ${C.border}`,borderRadius:4,paddingLeft:28,paddingRight:8,fontSize:13,color:C.t1,background:C.field,boxSizing:"border-box",outline:"none"}} />
@@ -1770,7 +1785,6 @@ const COL_DEFS_BRM = [
   {key:"invoiceNo",    label:"Invoice No.",     defW:175},
   {key:"invoiceType",  label:"Invoice Type",    defW:130},
   {key:"vendor",       label:"Vendor",          defW:145},
-  {key:"poNumber",     label:"PO Number",       defW:115},
   {key:"compCode",     label:"Company Code",    defW:120},
   {key:"invDate",      label:"Invoice Date",    defW:88},
   {key:"submittedAt",  label:"Submitted Date",  defW:88},
@@ -2056,7 +2070,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   );
 };
 
-export const BrmInvoice = ({invoices,setInvoices}) => {
+export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif}:any) => {
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
@@ -2074,6 +2088,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
   );
   const emptyF={invoiceNoConds:[] as Cond[],vendorIds:[] as string[],companyCodes:[] as string[],statuses:[] as string[],currencies:[] as string[],dateFrom:"",dateTo:"",poNumbers:[] as string[],invoiceTypes:[] as string[],submittedFrom:"",submittedTo:"",approvedFrom:"",approvedTo:"",postedFrom:"",postedTo:"",amountMin:"",amountMax:"",sapDocNoConds:[] as any[],whtTypes:[] as string[]};
   const [draft,setDraft]=useState({...emptyF}); const [active,setActive]=useState({...emptyF});
+  useEffect(()=>{if(drillInvoiceNo){const c={op:"equal to",v1:drillInvoiceNo,v2:""};setDraft(p=>({...p,invoiceNoConds:[c]}));setActive(p=>({...p,invoiceNoConds:[c]}));onClearDrill?.();}}, [drillInvoiceNo]);
   const [expanded,setExpanded]=useState<Set<string>>(new Set());
   const [allExpanded,setAllExpanded]=useState(false);
   const [split,setSplit]=useState(60);
@@ -2137,7 +2152,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers?.length>0&&{label:"PO Number",val:active.poNumbers.length===1?active.poNumbers[0]:`${active.poNumbers.length} selected`,onClear:()=>clr("poNumbers")},
-    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:active.invoiceTypes.map(fmtInvType).join(", "),onClear:()=>clr("invoiceTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
     (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
     (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
@@ -2147,9 +2162,9 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.whtTypes?.length>0&&{label:"WHT Type",val:active.whtTypes.length===1?active.whtTypes[0]:`${active.whtTypes.length} selected`,onClear:()=>clr("whtTypes")},
   ].filter(Boolean);
 
-  const accept=id=>{setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));setView(null);};
-  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));setRejM(null);setRejR("");setView(null);};
-  const setUR=id=>setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));
+  const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
+  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
+  const setUR=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});};
   const postToSAP=(inv)=>{
     const isInv=inv.invoiceType==="Invoice";
     const num=(100000000+Math.floor(Math.random()*899999999)).toString();
@@ -2217,7 +2232,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
         {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
@@ -2336,15 +2351,19 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
                 {sel.length>0&&<span style={{fontSize:FS.xs,color:C.t2,marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
               </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <div style={{display:"flex",gap:0,alignItems:"center"}}>
                 <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(list.map((i:any)=>i.id)));setAllExpanded(true);}}}
-                  style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
                 </button>
-                <div style={{width:1,height:20,background:C.border}}/>
-                {tbBtn("Export",exportCSV,"excel-attachment",true)}
-                <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center"}}>
-                  <SapIcon name="action-settings" size={14} color={C.t1}/>
+                <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+                  <SapIcon name="excel-attachment" size={16} color="#217346"/>
+                </button>
+                <button onClick={()=>setVsOpen(true)} title="View Settings"
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+                  <SapIcon name="action-settings" size={16} color={C.t2}/>
                 </button>
               </div>
             </div>
@@ -2432,7 +2451,6 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                       <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
                     </td>}
-                    {!hiddenCols.has("poNumber")&&<td style={cs}><span style={{fontFamily:"monospace",fontSize:FS.sm}}>{fmtPOs(inv)||"—"}</span></td>}
                     {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>
                       <div style={{fontSize:FS.xs,color:C.t2}}>{ccName(inv.companyCode)}</div>

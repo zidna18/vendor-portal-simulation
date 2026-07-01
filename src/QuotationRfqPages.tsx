@@ -223,7 +223,7 @@ function AdaptFiltersDialog({open,onClose,visibleFields,onSave,draft,allFields,h
         </div>
         <div style={{padding:"8px 16px",flexShrink:0}}>
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:"#8a8d91",fontSize:14,pointerEvents:"none"}}>🔍</span>
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex",alignItems:"center"}}><SapIcon name="search" size={14} color="#8a8d91"/></span>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search for Filters"
               style={{width:"100%",height:32,border:"1px solid #d9d9d9",borderRadius:4,paddingLeft:28,paddingRight:8,fontSize:13,color:"#32363a",boxSizing:"border-box" as const,outline:"none"}}/>
           </div>

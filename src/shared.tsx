@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 
-// ── Mock Data ──────────────────────────────────────────────────
+// â"€â"€ Mock Data â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export const USERS = [
   { id:"V001", role:"vendor", username:"vendor1", password:"demo123", name:"PT Maju Bersama", vendorId:"10000001" },
   { id:"V002", role:"vendor", username:"vendor2", password:"demo123", name:"CV Sukses Mandiri", vendorId:"10000002" },
@@ -18,6 +18,16 @@ export const VENDORS = {
     cat:"Goods & Services", since:"2019-03-15", rep:"Budi Santoso", status:"Active",
     npwpAddress:"Jl. Sudirman No. 123, Jakarta Selatan 12190", pkp:"PKP", taxStatus:"Active",
     certExpiry:"2027-03-14", website:"www.majubersama.co.id", fax:"+62 21 5555-1235",
+    lfb1:[
+      { bukrs:"BRMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"BRM001", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"CPMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"CPM001", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"GMIN", akont:"160000", zterm:"NT14", zwels:"T", reprf:false, busab:"GMN001", fdgrp:"02", reconcAcct:"Accounts Payable - Trade" },
+    ],
+    lfm1:[
+      { ekorg:"BRMS", bukrs:"BRMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Jakarta",   minbw:0,         verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:true  },
+      { ekorg:"CPMS", bukrs:"CPMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Poboya",    minbw:5000000,   verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:true  },
+      { ekorg:"GMIN", bukrs:"GMIN", waers:"IDR", zterm:"NT14", inco1:"CIF", inco2:"Gorontalo", minbw:10000000,  verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:false },
+    ],
   },
   "10000002":{ id:"10000002", name:"CV Sukses Mandiri",  tax:"02.345.678.9-012.000", addr:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", phone:"+62 21 5555-5678", email:"finance@suksesmandiri.co.id",
     banks:[
@@ -27,9 +37,21 @@ export const VENDORS = {
     cat:"Services", since:"2021-07-22", rep:"Dewi Kusuma", status:"Active",
     npwpAddress:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", pkp:"Non-PKP", taxStatus:"Active",
     certExpiry:"2026-07-21", website:"www.suksesmandiri.co.id", fax:"+62 21 5555-5679",
+    lfb1:[
+      { bukrs:"CPMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"CPM002", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"GMIN", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"GMN002", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"SHSI", akont:"160001", zterm:"NT45", zwels:"U", reprf:false, busab:"SHS001", fdgrp:"02", reconcAcct:"Accounts Payable - Services" },
+      { bukrs:"LMRS", akont:"160001", zterm:"NT45", zwels:"U", reprf:false, busab:"LMR001", fdgrp:"02", reconcAcct:"Accounts Payable - Services" },
+    ],
+    lfm1:[
+      { ekorg:"CPMS", bukrs:"CPMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Poboya",    minbw:0,        verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:true  },
+      { ekorg:"GMIN", bukrs:"GMIN", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Gorontalo", minbw:0,        verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:true  },
+      { ekorg:"SHSI", bukrs:"SHSI", waers:"IDR", zterm:"NT45", inco1:"FCA", inco2:"Banten",    minbw:2000000,  verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:false },
+      { ekorg:"LMRS", bukrs:"LMRS", waers:"IDR", zterm:"NT45", inco1:"FCA", inco2:"Aceh",      minbw:2000000,  verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:false },
+    ],
   },
 };
-// SAP I_CompanyCode — five legal entities
+// SAP I_CompanyCode – five legal entities
 export const COMPANY_CODES = [
   { v:"BRMS", l:"PT Bumi Resource Minerals",  ctrl:"A000", city:"Jakarta",   country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
   { v:"CPMS", l:"PT Citra Palu Minerals",      ctrl:"A000", city:"Poboya",    country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
@@ -38,7 +60,15 @@ export const COMPANY_CODES = [
   { v:"LMRS", l:"PT Linge Minerals",           ctrl:"A000", city:"Aceh",      country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
 ];
 export const ccName = code => COMPANY_CODES.find(c=>c.v===code)?.l || "";
-// SAP I_Currency — ISO 4217 transaction currencies
+// SAP Purchasing Org – code mirrors Company Code 1:1
+export const PURCH_ORGS = [
+  { v:"BRMS", l:"Purchasing Org. Jakarta",   bukrs:"BRMS" },
+  { v:"CPMS", l:"Purchasing Org. Palu",      bukrs:"CPMS" },
+  { v:"GMIN", l:"Purchasing Org. Gorontalo", bukrs:"GMIN" },
+  { v:"SHSI", l:"Purchasing Org. Banten",    bukrs:"SHSI" },
+  { v:"LMRS", l:"Purchasing Org. Aceh",      bukrs:"LMRS" },
+];
+// SAP I_Currency – ISO 4217 transaction currencies
 export const CURRENCIES = [
   {v:"IDR",l:"IDR – Indonesian Rupiah"}, {v:"USD",l:"USD – US Dollar"},
   {v:"EUR",l:"EUR – Euro"},              {v:"SGD",l:"SGD – Singapore Dollar"},
@@ -47,16 +77,27 @@ export const CURRENCIES = [
   {v:"MYR",l:"MYR – Malaysian Ringgit"}, {v:"HKD",l:"HKD – Hong Kong Dollar"},
   {v:"SAR",l:"SAR – Saudi Riyal"},
 ];
-// SAP WithholdingTaxType / WithholdingTaxCode — Indonesian Pasal WHT
+// SAP WithholdingTaxType / WithholdingTaxCode – Indonesian Pasal WHT
 export const WHT_TYPES = [
-  {v:"",      l:"— None / Not Applicable —"},
+  {v:"",      l:"– None / Not Applicable –"},
   {v:"PPh21", l:"PPh Pasal 21 – Employment & Professional Income"},
   {v:"PPh22", l:"PPh Pasal 22 – Import & Certain Goods (1.5%)"},
   {v:"PPh23", l:"PPh Pasal 23 – Services, Rent & Royalties (2%)"},
   {v:"PPh26", l:"PPh Pasal 26 – Foreign Entity / Non-Resident (20%)"},
   {v:"PPh4a2",l:"PPh Pasal 4(2) – Final Tax: Rent & Construction (2–4%)"},
 ];
-// ── Invoice seed generator ─────────────────────────────────────
+// SAP I_PaymentTerms
+export const PAYMENT_TERMS = [
+  {v:"Z000", l:"Due immediately",    days:0},
+  {v:"Z007", l:"Due within 7 days",  days:7},
+  {v:"Z014", l:"Due within 14 days", days:14},
+  {v:"Z030", l:"Due within 30 days", days:30},
+  {v:"Z045", l:"Due within 45 days", days:45},
+  {v:"Z060", l:"Due within 60 days", days:60},
+];
+const _topDays:{[k:string]:number}={Z000:0,Z007:7,Z014:14,Z030:30,Z045:45,Z060:60};
+export const calcDueDate=(invDate:string,top:string):string=>{if(!invDate||!top)return "";const d=new Date(invDate);d.setDate(d.getDate()+(_topDays[top]||0));return d.toISOString().split("T")[0];};
+// ── Invoice seed generator â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const _genItems = (poNumbers:string[], seed:number) => {
   const MATS = [
     {id:"MAT-OFF-001",desc:"A4 Paper 80gsm",              uom:"Ream",     p:50000},
@@ -96,10 +137,9 @@ const _genItems = (poNumbers:string[], seed:number) => {
 
 const _genInvoices = () => {
   const V = [
-    {id:"10000001",name:"PT Maju Bersama",   pfx:"MJB"},
-    {id:"10000002",name:"CV Sukses Mandiri", pfx:"CSM"},
+    {id:"10000001",name:"PT Maju Bersama",   pfx:"MJB", ccs:["BRMS","CPMS","GMIN"]},
+    {id:"10000002",name:"CV Sukses Mandiri", pfx:"CSM", ccs:["CPMS","GMIN","SHSI","LMRS"]},
   ];
-  const CCS   = ["BRMS","CPMS","GMIN","SHSI","LMRS"];
   const CURRS:[string,number,number][] = [
     // [currency, minAmt, maxAmt]
     ["IDR",  5000000,  500000000],
@@ -173,7 +213,7 @@ const _genInvoices = () => {
     const pfx      = vendor.pfx;
     seqCounters[pfx] = (seqCounters[pfx]||0)+1;
     const seq      = seqCounters[pfx];
-    const cc       = rp(CCS);
+    const cc       = rp(vendor.ccs);
     const [curr,mn,mx] = rp(CURRS);
     const rawAmt   = ri(mn,mx);
     const amount   = curr==="IDR"?Math.round(rawAmt/1000)*1000:Math.round(rawAmt*100)/100;
@@ -189,7 +229,8 @@ const _genInvoices = () => {
     const month    = ri(1,12);
     const day      = ri(1,28);
     const invDate  = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    const dueDate  = dateAdd(invDate, ri(28,60));
+    const paymentTerms = rp(["Z014","Z030","Z030","Z030","Z045","Z060"]);
+    const dueDate  = dateAdd(invDate, _topDays[paymentTerms]);
 
     const status   = rp(STATUSES);
     const hasTax   = invType==="Invoice"&&rng()>0.25;
@@ -216,7 +257,7 @@ const _genInvoices = () => {
       invoiceType:invType,
       vendorId:vendor.id, vendorName:vendor.name,
       invoiceNo:`INV/${pfx}/${year}/${fmtSeq(seq)}`,
-      invoiceDate:invDate, dueDate,
+      invoiceDate:invDate, dueDate, paymentTerms,
       poNumbers, companyCode:cc,
       amount, currency:curr,
       vatBase, vatAmt, whtType, whtBase, whtAmt,
@@ -236,117 +277,117 @@ const _genInvoices = () => {
 
 export const INIT_INV = (() => {
   const base = [
-  { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:500000,  feeCategory:"Stamp Duty Fee",   desc:"Office supplies Q2 2025",                          status:"Posted",               sapDocNo:"5100000001/2025",      postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  additionalFee:0,       feeCategory:"",                  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, additionalFee:1000000, feeCategory:"Interest / Penalty Fee", desc:"Cleaning services contract Q2",                     status:"Submitted",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000, currency:"IDR", vatBase:15000000, vatAmt:1650000, whtType:"PPh23", whtBase:15000000, whtAmt:300000,  additionalFee:0,       feeCategory:"",                  desc:"Courier services May 2025",                         status:"Rejected",        sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
-  { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,      currency:"USD", vatBase:8500,      vatAmt:935,      whtType:"PPh26", whtBase:8500,      whtAmt:1700,    additionalFee:0,       feeCategory:"",                  desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",               sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     additionalFee:0,       feeCategory:"",                  desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
-  { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0001", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/001", invoiceDate:"2025-06-01", dueDate:"2025-07-01", paymentTerms:"Z030", poNumbers:["4500001234"], companyCode:"BRMS", amount:125000000, currency:"IDR", vatBase:125000000, vatAmt:13750000, whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:500000,  feeCategory:"Stamp Duty Fee",   desc:"Office supplies Q2 2025",                          status:"Posted",               sapDocNo:"5100000001/2025",      postedAt:"2025-06-10", taxDoc:"FP-010.000-25.00000001", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-02", confirmedAt:"2025-06-05", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0002", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/002", invoiceDate:"2025-06-10", dueDate:"2025-07-10", paymentTerms:"Z030", poNumbers:["4500001235"], companyCode:"CPMS", amount:87500000,  currency:"IDR", vatBase:87500000,  vatAmt:9625000,  whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"IT peripherals and accessories",                    status:"Under Review",         sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000002", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-11", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0003", invoiceType:"Invoice",      vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/003", invoiceDate:"2025-06-15", dueDate:"2025-07-15", paymentTerms:"Z030", poNumbers:["4500001236","4500001237"], companyCode:"BRMS", amount:45000000, currency:"IDR", vatBase:45000000, vatAmt:4950000, whtType:"PPh23", whtBase:45000000, whtAmt:900000,  additionalFee:0,       feeCategory:"",                  desc:"Maintenance services June 2025",                    status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0004", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/001", invoiceDate:"2025-06-05", dueDate:"2025-07-05", paymentTerms:"Z030", poNumbers:["4500001238"], companyCode:"SHSI", amount:230000000, currency:"IDR", vatBase:230000000, vatAmt:25300000, whtType:"PPh23", whtBase:230000000, whtAmt:4600000, additionalFee:1000000, feeCategory:"Interest / Penalty Fee", desc:"Cleaning services contract Q2",                     status:"Submitted",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000003", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-06", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0005", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/002", invoiceDate:"2025-06-18", dueDate:"2025-07-18", paymentTerms:"Z030", poNumbers:["4500001239","4500001240"], companyCode:"LMRS", amount:15000000, currency:"IDR", vatBase:15000000, vatAmt:1650000, whtType:"PPh23", whtBase:15000000, whtAmt:300000,  additionalFee:0,       feeCategory:"",                  desc:"Courier services May 2025",                         status:"Rejected",        sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000004", files:["invoice.pdf"],                    submittedAt:"2025-06-19", confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"Missing Faktur Pajak. Please resubmit with complete tax document." },
+  { id:"PI-2025-0006", invoiceType:"Supplier DPR", vendorId:"10000001", vendorName:"PT Maju Bersama",   invoiceNo:"INV/MJB/2025/004", invoiceDate:"2025-06-20", dueDate:"2025-07-20", paymentTerms:"Z030", poNumbers:["4500001241"], companyCode:"GMIN", amount:8500,      currency:"USD", vatBase:8500,      vatAmt:935,      whtType:"PPh26", whtBase:8500,      whtAmt:1700,    additionalFee:0,       feeCategory:"",                  desc:"Enterprise software license renewal (Salesforce)",  status:"Posted",               sapDocNo:"BRMS/1000000001/2025", postedAt:"2025-06-25", taxDoc:"FP-010.000-25.00000005", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-21", confirmedAt:"2025-06-23", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0007", invoiceType:"Supplier DPR", vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/003", invoiceDate:"2025-06-20", dueDate:"2025-07-20", paymentTerms:"Z030", poNumbers:["4500001242"], companyCode:"CPMS", amount:12000,     currency:"AUD", vatBase:12000,     vatAmt:1320,     whtType:"PPh23", whtBase:12000,     whtAmt:240,     additionalFee:0,       feeCategory:"",                  desc:"Training & consulting services – Sydney workshop",  status:"Confirmed",            sapDocNo:null,                   postedAt:null,          taxDoc:"FP-010.000-25.00000006", files:["invoice.pdf","faktur_pajak.pdf"], submittedAt:"2025-06-22", confirmedAt:"2025-06-24", convertedDocNo:null, clearingDocNo:null, rejReason:"" },
+  { id:"PI-2025-0008", invoiceType:"Invoice",      vendorId:"10000002", vendorName:"CV Sukses Mandiri", invoiceNo:"INV/CSM/2025/004", invoiceDate:"2025-06-22", dueDate:"2025-07-22", paymentTerms:"Z030", poNumbers:["4500001243"], companyCode:"GMIN", amount:45000,     currency:"CNY", vatBase:45000,     vatAmt:4950,     whtType:"",      whtBase:0,         whtAmt:0,       additionalFee:0,       feeCategory:"",                  desc:"Manufacturing components supply – June batch",      status:"Draft",                sapDocNo:null,                   postedAt:null,          taxDoc:"",                       files:[],                                 submittedAt:null,          confirmedAt:null,          convertedDocNo:null, clearingDocNo:null, rejReason:"" },
   ..._genInvoices(),
   ];
   return base.map((inv:any,idx:number)=>inv.items?inv:{...inv,items:_genItems(inv.poNumbers,idx+100)});
 })();
 export const INIT_RFQS = [
-  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
+  { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Open",
     items:[
       {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
       {no:2, desc:"Workstation Dell XPS",  type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-WKS-002", materialGroup:"IT Hardware",  plant:"PL01", qty:20,  uom:"Unit",         estPrice:12500000, requirementDate:"2025-07-15", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0002", title:"Office Supplies Annual Contract",         postedDate:"2025-06-10", closingDate:"2025-06-30", postedBy:"Siti Rahma",   targets:["10000001"],           cat:"Office Supplies", estVal:150000000, companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Annual supply of office stationery and printing consumables.", status:"On Process",
+  { id:"RFQ-2025-0002", title:"Office Supplies Annual Contract",         postedDate:"2025-06-10", closingDate:"2025-06-30", postedBy:"Siti Rahma",   targets:["10000001"],           cat:"Office Supplies", estVal:150000000, companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Annual supply of office stationery and printing consumables.", status:"On Process",
     items:[
       {no:1, desc:"A4 Paper 80gsm",              type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-PPR-001", materialGroup:"Office Supplies", plant:"PL02", qty:1000, uom:"Ream", estPrice:50000,  requirementDate:"2025-07-01", startDate:"", endDate:""},
       {no:2, desc:"Ink Cartridge (Various)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-INK-002", materialGroup:"Office Supplies", plant:"PL02", qty:200,  uom:"Pcs",  estPrice:300000, requirementDate:"2025-07-01", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"PO10", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Complete",
+  { id:"RFQ-2025-0003", title:"Security Services – HO Building",         postedDate:"2025-05-20", closingDate:"2025-06-10", postedBy:"Ahmad Rizki",  targets:["10000002"],           cat:"Services",        estVal:360000000, companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Security guard services for Head Office 24/7, 12 months.", status:"Complete",
     items:[
       {no:1, desc:"Security Guard Day Shift",   type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-001", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:8000000,  requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
       {no:2, desc:"Security Guard Night Shift", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-SEC-002", materialGroup:"Security Services", plant:"PL03", qty:12, uom:"Person/Month", estPrice:10000000, requirementDate:"", startDate:"2025-07-01", endDate:"2026-06-30"},
     ]},
-  { id:"RFQ-2025-0004", title:"HVAC Maintenance Contract",                    postedDate:"2025-06-15", closingDate:"2025-07-15", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Services",         estVal:240000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Annual preventive maintenance for HVAC systems across all floors.", status:"Closed",
+  { id:"RFQ-2025-0004", title:"HVAC Maintenance Contract",                    postedDate:"2025-06-15", closingDate:"2025-07-15", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Services",         estVal:240000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"GMIN", desc:"Annual preventive maintenance for HVAC systems across all floors.", status:"Closed",
     items:[
       {no:1, desc:"Preventive Maintenance Visit",      type:"Service",  acctAssign:"K – Cost Center", materialNo:"SVC-HVC-001", materialGroup:"Facility Services",   plant:"PL04", qty:12,   uom:"Visit",     estPrice:20000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-07-31"},
     ]},
-  { id:"RFQ-2025-0005", title:"Explosive Materials – Blasting Supplies",      postedDate:"2025-06-20", closingDate:"2025-07-20", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Goods",            estVal:875000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Supply of ANFO, detonators, and blasting accessories for open-pit operations.", status:"Open",
+  { id:"RFQ-2025-0005", title:"Explosive Materials – Blasting Supplies",      postedDate:"2025-06-20", closingDate:"2025-07-20", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Goods",            estVal:875000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Supply of ANFO, detonators, and blasting accessories for open-pit operations.", status:"Open",
     items:[
       {no:1, desc:"ANFO Bulk Explosive",               type:"Material", acctAssign:"P – Project",     materialNo:"MIN-EXP-001", materialGroup:"Mining Materials",    plant:"PL02", qty:50000,uom:"KG",      estPrice:8500,     requirementDate:"2025-08-15", startDate:"", endDate:""},
       {no:2, desc:"Electric Detonator",                type:"Material", acctAssign:"P – Project",     materialNo:"MIN-DET-002", materialGroup:"Mining Materials",    plant:"PL02", qty:2000, uom:"Pcs",     estPrice:35000,    requirementDate:"2025-08-15", startDate:"", endDate:""},
       {no:3, desc:"Safety Fuse (100m/roll)",           type:"Material", acctAssign:"P – Project",     materialNo:"MIN-FUS-003", materialGroup:"Mining Materials",    plant:"PL02", qty:500,  uom:"Roll",    estPrice:125000,   requirementDate:"2025-08-15", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0006", title:"Genset Rental – Remote Site Power",            postedDate:"2025-06-22", closingDate:"2025-07-22", postedBy:"Siti Rahma",  targets:["10000002"],            cat:"Services",         estVal:480000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"PO10", desc:"Rental of diesel generators (500 kVA) for Linge Minerals remote field site for 12 months.", status:"On Process",
+  { id:"RFQ-2025-0006", title:"Genset Rental – Remote Site Power",            postedDate:"2025-06-22", closingDate:"2025-07-22", postedBy:"Siti Rahma",  targets:["10000002"],            cat:"Services",         estVal:480000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS", desc:"Rental of diesel generators (500 kVA) for Linge Minerals remote field site for 12 months.", status:"On Process",
     items:[
       {no:1, desc:"Genset 500 kVA Rental",             type:"Service",  acctAssign:"P – Project",     materialNo:"SVC-GEN-001", materialGroup:"Equipment Rental",    plant:"PL05", qty:12,   uom:"Month",   estPrice:40000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-07-31"},
     ]},
-  { id:"RFQ-2025-0007", title:"Personal Protective Equipment (PPE)",          postedDate:"2025-06-25", closingDate:"2025-07-25", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Goods",            estVal:120000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Annual PPE procurement for all subsidiaries: helmets, boots, vests, gloves, and goggles.", status:"Open",
+  { id:"RFQ-2025-0007", title:"Personal Protective Equipment (PPE)",          postedDate:"2025-06-25", closingDate:"2025-07-25", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Goods",            estVal:120000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Annual PPE procurement for all subsidiaries: helmets, boots, vests, gloves, and goggles.", status:"Open",
     items:[
       {no:1, desc:"Safety Helmet (SNI certified)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-HLM-001", materialGroup:"Safety Equipment",    plant:"PL01", qty:500,  uom:"Pcs",     estPrice:75000,    requirementDate:"2025-08-20", startDate:"", endDate:""},
       {no:2, desc:"Safety Boot (Steel Toe)",           type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-BOT-002", materialGroup:"Safety Equipment",    plant:"PL01", qty:300,  uom:"Pair",    estPrice:350000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
       {no:3, desc:"High-Visibility Safety Vest",       type:"Material", acctAssign:"K – Cost Center", materialNo:"PPE-VST-003", materialGroup:"Safety Equipment",    plant:"PL01", qty:600,  uom:"Pcs",     estPrice:85000,    requirementDate:"2025-08-20", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0008", title:"ERP Consulting Services – SAP Add-On",         postedDate:"2025-06-10", closingDate:"2025-07-10", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"IT Services",      estVal:650000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Consulting & implementation services for SAP Public Cloud add-on modules (BTP, Analytics).", status:"Complete",
+  { id:"RFQ-2025-0008", title:"ERP Consulting Services – SAP Add-On",         postedDate:"2025-06-10", closingDate:"2025-07-10", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"IT Services",      estVal:650000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Consulting & implementation services for SAP Public Cloud add-on modules (BTP, Analytics).", status:"Complete",
     items:[
       {no:1, desc:"SAP BTP Integration Consultant",   type:"Service",  acctAssign:"P – Project",     materialNo:"SVC-SAP-001", materialGroup:"IT Consulting",       plant:"PL01", qty:6,    uom:"Month",   estPrice:85000000, requirementDate:"", startDate:"2025-08-01", endDate:"2026-01-31"},
       {no:2, desc:"SAP Analytics Cloud Specialist",   type:"Service",  acctAssign:"P – Project",     materialNo:"SVC-SAP-002", materialGroup:"IT Consulting",       plant:"PL01", qty:4,    uom:"Month",   estPrice:75000000, requirementDate:"", startDate:"2025-09-01", endDate:"2025-12-31"},
     ]},
-  { id:"RFQ-2025-0009", title:"Water Treatment Chemicals – Mining Site",       postedDate:"2025-06-28", closingDate:"2025-07-28", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Goods",            estVal:195000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Supply of coagulants, flocculants, and pH adjustment chemicals for wastewater treatment at Palu site.", status:"Open",
+  { id:"RFQ-2025-0009", title:"Water Treatment Chemicals – Mining Site",       postedDate:"2025-06-28", closingDate:"2025-07-28", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Goods",            estVal:195000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Supply of coagulants, flocculants, and pH adjustment chemicals for wastewater treatment at Palu site.", status:"Open",
     items:[
       {no:1, desc:"Coagulant PAC (25 kg/bag)",        type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-PAC-001", materialGroup:"Chemicals",           plant:"PL02", qty:500,  uom:"Bag",     estPrice:180000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
       {no:2, desc:"Anionic Flocculant (20 kg/bag)",   type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-FLC-002", materialGroup:"Chemicals",           plant:"PL02", qty:300,  uom:"Bag",     estPrice:250000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
       {no:3, desc:"Caustic Soda (NaOH) 50 kg/drum",  type:"Material", acctAssign:"K – Cost Center", materialNo:"CHM-NHO-003", materialGroup:"Chemicals",           plant:"PL02", qty:150,  uom:"Drum",    estPrice:420000,   requirementDate:"2025-08-20", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0010", title:"Medical & First Aid Supplies – All Sites",      postedDate:"2025-06-29", closingDate:"2025-07-29", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Medical Supplies", estVal:88000000,   companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Annual procurement of first aid kits, medicines, and medical consumables for all 5 site clinics.", status:"Open",
+  { id:"RFQ-2025-0010", title:"Medical & First Aid Supplies – All Sites",      postedDate:"2025-06-29", closingDate:"2025-07-29", postedBy:"Siti Rahma",  targets:["10000001","10000002"], cat:"Medical Supplies", estVal:88000000,   companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Annual procurement of first aid kits, medicines, and medical consumables for all 5 site clinics.", status:"Open",
     items:[
       {no:1, desc:"First Aid Kit (50-person)",        type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-FAK-001", materialGroup:"Medical Supplies",    plant:"PL01", qty:25,   uom:"Set",     estPrice:1200000,  requirementDate:"2025-08-10", startDate:"", endDate:""},
       {no:2, desc:"AED Defibrillator",                type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-AED-002", materialGroup:"Medical Equipment",   plant:"PL01", qty:5,    uom:"Unit",    estPrice:12000000, requirementDate:"2025-08-10", startDate:"", endDate:""},
       {no:3, desc:"Stretcher & Immobilization Board", type:"Material", acctAssign:"K – Cost Center", materialNo:"MED-STR-003", materialGroup:"Medical Equipment",   plant:"PL01", qty:10,   uom:"Pcs",     estPrice:850000,   requirementDate:"2025-08-10", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0011", title:"Drone Survey & Aerial Mapping Services",        postedDate:"2025-06-30", closingDate:"2025-07-30", postedBy:"Ahmad Rizki",  targets:["10000002"],            cat:"Survey Services",   estVal:320000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Topographic drone survey and 3D terrain modelling for Gorontalo open-pit expansion area (±2,500 ha).", status:"Open",
+  { id:"RFQ-2025-0011", title:"Drone Survey & Aerial Mapping Services",        postedDate:"2025-06-30", closingDate:"2025-07-30", postedBy:"Ahmad Rizki",  targets:["10000002"],            cat:"Survey Services",   estVal:320000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"GMIN", desc:"Topographic drone survey and 3D terrain modelling for Gorontalo open-pit expansion area (Â±2,500 ha).", status:"Open",
     items:[
       {no:1, desc:"Drone Aerial Survey (per hectare)", type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-DRN-001", materialGroup:"Survey Services",     plant:"PL04", qty:2500, uom:"Ha",      estPrice:120000,   requirementDate:"2025-08-25", startDate:"", endDate:""},
       {no:2, desc:"3D Point Cloud Processing & Report",type:"Service",  acctAssign:"P – Project",    materialNo:"SVC-DRN-002", materialGroup:"Survey Services",     plant:"PL04", qty:1,    uom:"Lump Sum",estPrice:45000000, requirementDate:"2025-09-15", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0012", title:"Heavy Equipment Rental – Excavator & Dozer",   postedDate:"2025-07-01", closingDate:"2025-08-01", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Equipment Rental",  estVal:960000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Rental of heavy earthmoving equipment for Palu open-pit stripping operations – 12 months.", status:"Open",
+  { id:"RFQ-2025-0012", title:"Heavy Equipment Rental – Excavator & Dozer",   postedDate:"2025-07-01", closingDate:"2025-08-01", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Equipment Rental",  estVal:960000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Rental of heavy earthmoving equipment for Palu open-pit stripping operations – 12 months.", status:"Open",
     items:[
       {no:1, desc:"Hydraulic Excavator 36T (Komatsu PC360)", type:"Service", acctAssign:"P – Project", materialNo:"EQP-EXC-001", materialGroup:"Heavy Equipment", plant:"PL02", qty:12, uom:"Month", estPrice:55000000, requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
       {no:2, desc:"Bulldozer D85 (Komatsu)",                  type:"Service", acctAssign:"P – Project", materialNo:"EQP-DZR-002", materialGroup:"Heavy Equipment", plant:"PL02", qty:12, uom:"Month", estPrice:25000000, requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
     ]},
-  { id:"RFQ-2025-0013", title:"Laboratory Testing Services – Ore Samples",     postedDate:"2025-07-02", closingDate:"2025-08-02", postedBy:"Ahmad Rizki",  targets:["10000001"],            cat:"Lab Services",      estVal:144000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"PO20", desc:"Third-party geochemical assay and fire assay services for Gorontalo gold ore samples.", status:"Open",
+  { id:"RFQ-2025-0013", title:"Laboratory Testing Services – Ore Samples",     postedDate:"2025-07-02", closingDate:"2025-08-02", postedBy:"Ahmad Rizki",  targets:["10000001"],            cat:"Lab Services",      estVal:144000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"GMIN", desc:"Third-party geochemical assay and fire assay services for Gorontalo gold ore samples.", status:"Open",
     items:[
       {no:1, desc:"Fire Assay – Au (per sample)",     type:"Service",  acctAssign:"P – Project",    materialNo:"LAB-FAS-001", materialGroup:"Lab Services",        plant:"PL04", qty:2000, uom:"Sample", estPrice:45000,    requirementDate:"2025-09-01", startDate:"", endDate:""},
       {no:2, desc:"ICP-MS Multi-element Analysis",   type:"Service",  acctAssign:"P – Project",    materialNo:"LAB-ICP-002", materialGroup:"Lab Services",        plant:"PL04", qty:1500, uom:"Sample", estPrice:55000,    requirementDate:"2025-09-01", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0014", title:"Catering & Mess Hall Services – Aceh Camp",     postedDate:"2025-07-03", closingDate:"2025-08-03", postedBy:"Siti Rahma",   targets:["10000002"],            cat:"Services",          estVal:540000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"PO10", desc:"Full catering services for 150-person mining camp at Linge Minerals, Aceh – 12 months.", status:"On Process",
+  { id:"RFQ-2025-0014", title:"Catering & Mess Hall Services – Aceh Camp",     postedDate:"2025-07-03", closingDate:"2025-08-03", postedBy:"Siti Rahma",   targets:["10000002"],            cat:"Services",          estVal:540000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS", desc:"Full catering services for 150-person mining camp at Linge Minerals, Aceh – 12 months.", status:"On Process",
     items:[
       {no:1, desc:"Catering per Person per Day",      type:"Service",  acctAssign:"K – Cost Center", materialNo:"CAT-MPD-001", materialGroup:"Catering Services",   plant:"PL05", qty:54750, uom:"Person/Day", estPrice:85000, requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
     ]},
-  { id:"RFQ-2025-0015", title:"Telecommunication – VSAT & Radio System",       postedDate:"2025-07-05", closingDate:"2025-08-05", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Services",       estVal:410000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"PO10", desc:"VSAT internet and VHF/UHF radio communication system for remote Aceh camp.", status:"Closed",
+  { id:"RFQ-2025-0015", title:"Telecommunication – VSAT & Radio System",       postedDate:"2025-07-05", closingDate:"2025-08-05", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Services",       estVal:410000000,  companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS", desc:"VSAT internet and VHF/UHF radio communication system for remote Aceh camp.", status:"Closed",
     items:[
       {no:1, desc:"VSAT Installation & Hardware",    type:"Material", acctAssign:"P – Project",    materialNo:"TEL-VST-001", materialGroup:"Telecom Equipment",   plant:"PL05", qty:1,    uom:"Set",     estPrice:180000000, requirementDate:"2025-09-15", startDate:"", endDate:""},
       {no:2, desc:"VSAT Monthly Bandwidth (100Mbps)",type:"Service",  acctAssign:"P – Project",    materialNo:"TEL-BND-002", materialGroup:"Telecom Services",    plant:"PL05", qty:12,   uom:"Month",   estPrice:15000000,  requirementDate:"", startDate:"2025-10-01", endDate:"2026-09-30"},
     ]},
-  { id:"RFQ-2025-0016", title:"Waste Management & Environmental Services",      postedDate:"2025-07-07", closingDate:"2025-08-07", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Environmental",     estVal:280000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Hazardous and non-hazardous waste collection, treatment, and disposal services for all BRM sites.", status:"Open",
+  { id:"RFQ-2025-0016", title:"Waste Management & Environmental Services",      postedDate:"2025-07-07", closingDate:"2025-08-07", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Environmental",     estVal:280000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Hazardous and non-hazardous waste collection, treatment, and disposal services for all BRM sites.", status:"Open",
     items:[
       {no:1, desc:"B3 Hazardous Waste Handling (kg)", type:"Service", acctAssign:"K – Cost Center", materialNo:"ENV-B3W-001", materialGroup:"Waste Management",    plant:"PL01", qty:50000,uom:"KG",      estPrice:3500,      requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
       {no:2, desc:"Non-B3 Waste Disposal (month)",   type:"Service",  acctAssign:"K – Cost Center", materialNo:"ENV-NBW-002", materialGroup:"Waste Management",    plant:"PL01", qty:12,   uom:"Month",   estPrice:8000000,   requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
     ]},
-  { id:"RFQ-2025-0017", title:"Fuel Supply – Diesel & Avgas",                   postedDate:"2025-07-08", closingDate:"2025-08-08", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Goods",             estVal:1200000000, companyCode:"CPMS", plant:"PL02", purchOrg:"PO20", desc:"Annual supply of HSD diesel fuel and aviation gasoline for plant and helicopter operations in Palu.", status:"Open",
+  { id:"RFQ-2025-0017", title:"Fuel Supply – Diesel & Avgas",                   postedDate:"2025-07-08", closingDate:"2025-08-08", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Goods",             estVal:1200000000, companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Annual supply of HSD diesel fuel and aviation gasoline for plant and helicopter operations in Palu.", status:"Open",
     items:[
       {no:1, desc:"HSD Diesel Fuel (Liter)",         type:"Material", acctAssign:"P – Project",    materialNo:"FUL-HSD-001", materialGroup:"Fuel & Energy",       plant:"PL02", qty:3000000,uom:"Liter",  estPrice:330,       requirementDate:"2025-09-01", startDate:"", endDate:""},
       {no:2, desc:"Aviation Gasoline – Avgas 100LL", type:"Material", acctAssign:"P – Project",    materialNo:"FUL-AVG-002", materialGroup:"Fuel & Energy",       plant:"PL02", qty:50000,  uom:"Liter",  estPrice:18000,     requirementDate:"2025-09-01", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0018", title:"Tailings Dam Monitoring – Instrumentation",      postedDate:"2025-07-10", closingDate:"2025-08-10", postedBy:"Siti Rahma",   targets:["10000001"],            cat:"Engineering",       estVal:375000000,  companyCode:"SHSI", plant:"PL03", purchOrg:"PO10", desc:"Supply and installation of geotechnical instrumentation for tailings storage facility monitoring at SHS.", status:"Open",
+  { id:"RFQ-2025-0018", title:"Tailings Dam Monitoring – Instrumentation",      postedDate:"2025-07-10", closingDate:"2025-08-10", postedBy:"Siti Rahma",   targets:["10000001"],            cat:"Engineering",       estVal:375000000,  companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Supply and installation of geotechnical instrumentation for tailings storage facility monitoring at SHS.", status:"Open",
     items:[
       {no:1, desc:"Piezometer (vibrating wire)",     type:"Material", acctAssign:"P – Project",    materialNo:"GEO-PIZ-001", materialGroup:"Geotechnical Equip",  plant:"PL03", qty:20,   uom:"Unit",    estPrice:8500000,   requirementDate:"2025-09-20", startDate:"", endDate:""},
       {no:2, desc:"Inclinometer Casing & Probe",     type:"Material", acctAssign:"P – Project",    materialNo:"GEO-INC-002", materialGroup:"Geotechnical Equip",  plant:"PL03", qty:5,    uom:"Set",     estPrice:25000000,  requirementDate:"2025-09-20", startDate:"", endDate:""},
       {no:3, desc:"Data Logger & Telemetry Unit",    type:"Material", acctAssign:"P – Project",    materialNo:"GEO-DLG-003", materialGroup:"Geotechnical Equip",  plant:"PL03", qty:3,    uom:"Unit",    estPrice:35000000,  requirementDate:"2025-09-20", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0019", title:"Office Renovation – Jakarta HQ 5th Floor",       postedDate:"2025-07-12", closingDate:"2025-08-12", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Construction",      estVal:850000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Interior renovation of BRM HQ 5th floor: open-plan workspace, meeting rooms, and executive lounge.", status:"Complete",
+  { id:"RFQ-2025-0019", title:"Office Renovation – Jakarta HQ 5th Floor",       postedDate:"2025-07-12", closingDate:"2025-08-12", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Construction",      estVal:850000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Interior renovation of BRM HQ 5th floor: open-plan workspace, meeting rooms, and executive lounge.", status:"Complete",
     items:[
       {no:1, desc:"Interior Design & Build Works",   type:"Service",  acctAssign:"K – Cost Center", materialNo:"CON-INT-001", materialGroup:"Construction Works",  plant:"PL01", qty:1,    uom:"Lump Sum",estPrice:700000000, requirementDate:"", startDate:"2025-10-01", endDate:"2026-01-31"},
       {no:2, desc:"Furniture & Fitout Supply",       type:"Material", acctAssign:"K – Cost Center", materialNo:"FRN-OFC-002", materialGroup:"Furniture",           plant:"PL01", qty:1,    uom:"Lump Sum",estPrice:150000000, requirementDate:"2025-11-01", startDate:"", endDate:""},
     ]},
-  { id:"RFQ-2025-0020", title:"Training – Mine Safety & Emergency Response",    postedDate:"2025-07-14", closingDate:"2025-08-14", postedBy:"Siti Rahma",   targets:["10000002"],            cat:"Training",          estVal:96000000,   companyCode:"BRMS", plant:"PL01", purchOrg:"PO10", desc:"Mandatory mine safety, first aid, fire-fighting, and emergency response training for 200 employees.", status:"Open",
+  { id:"RFQ-2025-0020", title:"Training – Mine Safety & Emergency Response",    postedDate:"2025-07-14", closingDate:"2025-08-14", postedBy:"Siti Rahma",   targets:["10000002"],            cat:"Training",          estVal:96000000,   companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Mandatory mine safety, first aid, fire-fighting, and emergency response training for 200 employees.", status:"Open",
     items:[
       {no:1, desc:"Mine Safety (SIMTK) Training",    type:"Service",  acctAssign:"K – Cost Center", materialNo:"TRN-SFT-001", materialGroup:"Training Services",   plant:"PL01", qty:200,  uom:"Person",  estPrice:200000,    requirementDate:"2025-10-01", startDate:"", endDate:""},
       {no:2, desc:"Emergency Response Drill",        type:"Service",  acctAssign:"K – Cost Center", materialNo:"TRN-EMG-002", materialGroup:"Training Services",   plant:"PL01", qty:4,    uom:"Session", estPrice:12000000,  requirementDate:"2025-10-15", startDate:"", endDate:""},
@@ -387,8 +428,8 @@ export const INIT_QT = [
   { id:"QT-2025-0028", rfqId:"RFQ-2025-0020", rfqTitle:"Training – Mine Safety & Emergency Response",    vendorId:"10000002", vendorName:"CV Sukses Mandiri", submittedDate:"2025-07-25", validUntil:"2025-08-25", totalAmt:93600000,   notes:"Trainers certified by BNSP & Kemnaker. Training held on-site. Certificate issued.",        status:"Submitted", files:["quotation.pdf","trainer_cv.pdf"],                   items:[{no:1,desc:"Mine Safety (SIMTK) Training",qty:200,uom:"Person",unitPrice:195000,total:39000000},{no:2,desc:"Emergency Response Drill",qty:4,uom:"Session",unitPrice:13650000,total:54600000}] },
 ];
 
-// ── Theme ──────────────────────────────────────────────────────
-// SAP Fiori Quartz Light — exact design tokens from quartzlight.css
+// â"€â"€ Theme â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// SAP Fiori Quartz Light – exact design tokens from quartzlight.css
 const LIGHT = {
   shell:"#354a5f", shellHov:"rgba(255,255,255,0.15)",
   primary:"#0a6ed1", primaryDk:"#0854a0",
@@ -443,7 +484,7 @@ const buildSTC = () => ({
 export let STC = buildSTC();
 export const applyTheme = mode => { C = mode==="dark"?DARK:LIGHT; STC = buildSTC(); };
 
-// ── Helpers ────────────────────────────────────────────────────
+// â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 export let SETTINGS = { numFmt:"comma", dateFmt:"YYYY-MM-DD" };
 export const applySettings = s => { SETTINGS = {...SETTINGS,...s}; };
 
@@ -459,7 +500,7 @@ export const fmtAmt = (n, currency = "IDR") => {
   return `${currency} ${ip.replace(/\B(?=(\d{3})+(?!\d))/g, t)}${dp ? d+dp : ""}`;
 };
 export const fmtDate = d => {
-  if (!d) return "—";
+  if (!d) return "–";
   const p = String(d).split("-");
   if (p.length !== 3 || p[0].length !== 4) return d;
   const [y,m,day] = p;
@@ -488,9 +529,9 @@ export const parseToISO = raw => {
   return isNaN(new Date(iso).getTime()) ? "" : iso;
 };
 export const uid = () => Date.now().toString(36);
-export const fmtPOs = inv => { const a=inv.poNumbers?.length?inv.poNumbers:inv.poNumber?[inv.poNumber]:[]; return a.join(", ")||"—"; };
+export const fmtPOs = inv => { const a=inv.poNumbers?.length?inv.poNumbers:inv.poNumber?[inv.poNumber]:[]; return a.join(", ")||"–"; };
 
-// ── Responsive helpers (read VP.w at render time, updated by resize listener) ──
+// â"€â"€ Responsive helpers (read VP.w at render time, updated by resize listener) â"€â"€
 export let VP = {w: typeof window!=="undefined" ? window.innerWidth : 1280};
 export const mob = () => VP.w < 768;
 export const tab = () => VP.w < 1024;
@@ -552,7 +593,7 @@ export const Inp = ({value,onChange,placeholder="",type="text",style={}}) => (
   <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
     style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
 );
-// Positive-only amount input — no spinner buttons, rejects negative/non-numeric input
+// Positive-only amount input – no spinner buttons, rejects negative/non-numeric input
 export const AmtInp = ({value,onChange,placeholder="0",style={}}) => (
   <input type="text" inputMode="decimal" value={value} onChange={e=>{const v=e.target.value;if(v===""||/^\d*\.?\d*$/.test(v))onChange(v);}} placeholder={placeholder}
     style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",...style}}/>
@@ -649,7 +690,7 @@ export const TA = ({value,onChange,placeholder="",rows=3}) => (
     style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box",resize:"vertical"}}/>
 );
 export const Lbl = ({children}) => <div style={{fontSize:12,color:C.t2,marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;
-export const Val = ({children}) => <div style={{fontSize:14,color:C.t1,lineHeight:1.5}}>{children||"—"}</div>;
+export const Val = ({children}) => <div style={{fontSize:14,color:C.t1,lineHeight:1.5}}>{children||"–"}</div>;
 export const Sep = () => <div style={{height:1,background:C.border,margin:"14px 0"}}/>;
 
 export const Modal = ({title,onClose,children,width=640}) => (
@@ -657,7 +698,7 @@ export const Modal = ({title,onClose,children,width=640}) => (
     <div style={{background:C.card,borderRadius:6,width,maxWidth:"95vw",maxHeight:"90vh",overflow:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.22)"}}>
       <div style={{padding:"14px 20px",borderBottom:`2px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:C.card,zIndex:1}}>
         <span style={{fontWeight:700,fontSize:16,color:C.t1}}>{title}</span>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>✕</button>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:4}}>âœ•</button>
       </div>
       <div style={{padding:mob()?14:20}}>{children}</div>
     </div>
@@ -675,34 +716,28 @@ export const FilterBar = ({opts,val,onChange}) => (
 );
 // SAP Fiori-style compact filter bar
 export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFiltersCount,children}:{activeTokens?:any[],onGo?:()=>void,onReset?:()=>void,onAdaptFilters?:()=>void,adaptFiltersCount?:number,children?:any}) => (
-  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
-        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"1.5rem",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
-        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
-        <Btn v="primary" sm onClick={onGo}>Go</Btn>
-      </div>
-    </div>
-    <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:4,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+    <div style={{padding:"12px 16px 10px",display:"grid",gridTemplateColumns:g4(),gap:"10px 16px"}}>
       {children}
     </div>
-    {activeTokens.length>0&&(
-      <div style={{padding:"6px 16px 10px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
-        <span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:6,letterSpacing:0.3}}>Active:</span>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px 10px",flexWrap:"wrap" as const,gap:6}}>
+      <div style={{display:"flex",flexWrap:"wrap" as const,gap:4,alignItems:"center",flex:1,minWidth:0}}>
+        {activeTokens.length>0&&<span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:4,letterSpacing:0.3,flexShrink:0}}>Active:</span>}
         {activeTokens.map((t,i)=>(
           <span key={i} style={{display:"inline-flex",alignItems:"center",height:"1.625rem",background:C.selection,border:`1px solid #8bb1d1`,borderRadius:"0.25rem",padding:"0 0 0 0.5rem",fontSize:12,color:C.t1,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",maxWidth:260}}>
             <span style={{fontWeight:600,color:C.t2,marginRight:3,flexShrink:0}}>{t.label}:</span>
             <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{t.val}</span>
             <button onClick={t.onClear} title={`Remove ${t.label} filter`}
-              style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:16,padding:"0 0.375rem",lineHeight:1,display:"flex",alignItems:"center",flexShrink:0,height:"100%"}}>×</button>
+              style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:16,padding:"0 0.375rem",lineHeight:1,display:"flex",alignItems:"center",flexShrink:0,height:"100%"}}>Ã—</button>
           </span>
         ))}
       </div>
-    )}
+      <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"2rem",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:400}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
+        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
+        <Btn v="primary" sm onClick={onGo}>Go</Btn>
+      </div>
+    </div>
   </div>
 );
 // Compact filter field label wrapper (Fiori style)
@@ -835,9 +870,9 @@ export const DateRangePicker = ({from,to,onChange}) => {
     if(k==="month")return(
       <div style={subInpSt}>
         <div style={{display:"flex",gap:4,alignItems:"center"}}>
-          <button onClick={()=>setMonSel(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>‹</button>
+          <button onClick={()=>setMonSel(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>â€¹</button>
           <span style={{flex:1,textAlign:"center" as const,fontSize:12,fontWeight:700,color:C.t1}}>{MNAMES[monSel.m]} {monSel.y}</span>
-          <button onClick={()=>setMonSel(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>›</button>
+          <button onClick={()=>setMonSel(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>â€º</button>
         </div>
         <Btn v="primary" sm onClick={()=>{const f=`${monSel.y}-${String(monSel.m+1).padStart(2,"0")}-01`;const l=new Date(monSel.y,monSel.m+1,0);apply(f,iso(l));}}>Select Month</Btn>
       </div>
@@ -847,8 +882,8 @@ export const DateRangePicker = ({from,to,onChange}) => {
   return(
     <div ref={ref} style={{position:"relative"}}>
       <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box" as const}}>
-        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
-        {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>×</button>}
+        <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date rangeâ€¦"}</span>
+        {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>Ã—</button>}
         <SapIcon name="calendar" size={14} color={C.t2} style={{flexShrink:0}}/>
       </div>
       {open&&(
@@ -867,8 +902,8 @@ export const DateRangePicker = ({from,to,onChange}) => {
           {row("to","To",true)}
           {row("year-to-date","Year to Date")}
           {row("date-to-year","Date to Year")}
-          {row("last-x","Last X Minutes / Hours / Days…")}
-          {row("next-x","Next X Minutes / Hours / Days…")}
+          {row("last-x","Last X Minutes / Hours / Daysâ€¦")}
+          {row("next-x","Next X Minutes / Hours / Daysâ€¦")}
           {row("today-xy","Today -X / +Y Days")}
           <div style={{height:1,background:C.border,margin:"4px 0"}}/>
           {secHdr("Weeks")}
@@ -903,15 +938,70 @@ export const DateRangePicker = ({from,to,onChange}) => {
 };
 
 // eslint-disable-next-line
-declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any } } }
+declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any; 'ui5-multi-combobox': any; 'ui5-mcb-item': any } } }
 export const SapIcon = ({name,size=16,color="",style={}}:{name:string,size?:number,color?:string,style?:any}) => (
   <ui5-icon name={name} style={{width:size,height:size,display:"inline-block",verticalAlign:"middle",...(color?{color}:{}),...style}}/>
 );
 
+const INV_TYPE_OPTS = [
+  {key:"Invoice",      text:"Invoice"},
+  {key:"Supplier DPR", text:"Down Payment Req"},
+];
+export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChange:(v:string[])=>void}) => {
+  const [open,setOpen]=useState(false);
+  const ref=useRef<any>(null);
+  useEffect(()=>{
+    if(!open) return;
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return ()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const toggle=(key:string)=>{
+    const next=value.includes(key)?value.filter(v=>v!==key):[...value,key];
+    onChange(next);
+  };
+  const remove=(key:string,e:React.MouseEvent)=>{
+    e.stopPropagation();
+    onChange(value.filter(v=>v!==key));
+  };
+  return (
+    <div ref={ref} style={{position:"relative" as const,fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div onClick={()=>setOpen(p=>!p)} style={{display:"flex",flexWrap:"wrap" as const,alignItems:"center",gap:4,minHeight:"2.25rem",padding:"3px 28px 3px 6px",border:`1px solid ${open?C.primary:C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",position:"relative" as const,boxSizing:"border-box" as const,boxShadow:open?`0 0 0 2px ${C.primary}22`:"none",transition:"border-color .1s"}}>
+        {value.length===0&&<span style={{color:"#bfbfbf",fontSize:14,padding:"2px 2px"}}>All Types</span>}
+        {value.map(k=>{
+          const opt=INV_TYPE_OPTS.find(o=>o.key===k);
+          return(
+            <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:"#e8f1fb",border:"1px solid #91b9e3",borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
+              {opt?.text||k}
+              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>Ã—</button>
+            </span>
+          );
+        })}
+        <span style={{position:"absolute" as const,right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none" as const}}>
+          <SapIcon name="slim-arrow-down" size={12} color={C.t2}/>
+        </span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute" as const,top:"calc(100% + 2px)",left:0,right:0,zIndex:1000,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",overflow:"hidden"}}>
+          {INV_TYPE_OPTS.map(opt=>(
+            <div key={opt.key} onClick={()=>toggle(opt.key)}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",background:value.includes(opt.key)?C.selection:"transparent",fontSize:14,color:C.t1}}
+              onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+              onMouseLeave={e=>(e.currentTarget.style.background=value.includes(opt.key)?C.selection:"transparent")}>
+              <input type="checkbox" readOnly checked={value.includes(opt.key)} style={{width:16,height:16,cursor:"pointer",accentColor:C.primary,flexShrink:0}}/>
+              <span>{opt.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
 export const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
 
-// ── Value Help Dialog (sap.ui.comp.valuehelpdialog.ValueHelpDialog) ──────────
+// â"€â"€ Value Help Dialog (sap.ui.comp.valuehelpdialog.ValueHelpDialog) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const VH_OPS = ["equal to","not equal to","starts with","contains","does not contain","empty","not empty"];
 const VH_NOVAL = new Set(["empty","not empty"]);
 export type VHCol = {key:string, label:string, width?:string|number};
@@ -986,7 +1076,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                       </th>
                       {cols.map(c=>(
                         <th key={c.key} style={{padding:"7px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,color:C.t2,fontSize:12,fontWeight:700,whiteSpace:"nowrap",width:c.width,maxWidth:c.width}}>
-                          {c.label} <span style={{color:C.t2,fontSize:9}}>▲</span>
+                          {c.label} <span style={{color:C.t2,fontSize:9}}>â–²</span>
                         </th>
                       ))}
                     </tr>
@@ -1016,7 +1106,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                 <select value={condOp} onChange={e=>setCondOp(e.target.value)} style={{height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",cursor:"pointer",background:C.field,color:C.t1}}>
                   {VH_OPS.map(o=><option key={o}>{o}</option>)}
                 </select>
-                {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Value…"
+                {!VH_NOVAL.has(condOp)&&<input value={condVal} onChange={e=>setCondVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCond()} placeholder="Valueâ€¦"
                   style={{flex:1,height:32,border:`1px solid ${C.fieldBorder}`,borderRadius:4,padding:"0 8px",fontSize:13,fontFamily:"inherit",outline:"none",background:C.field,color:C.t1}}/>}
                 <button onClick={addCond} style={{background:C.primary,color:"#fff",border:"none",borderRadius:4,height:32,padding:"0 14px",fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:600}}>Add Condition</button>
               </div>
@@ -1026,7 +1116,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                     <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<conds.length-1?`1px solid ${C.border}`:"none",background:i%2===0?C.card:C.subtle,gap:8}}>
                       <span style={{fontSize:12,color:C.t2,minWidth:120}}>{c.op}</span>
                       <span style={{fontSize:13,color:C.t1,flex:1}}>{c.val||<em style={{color:C.t2}}>any</em>}</span>
-                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>×</button>
+                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>Ã—</button>
                     </div>
                   ))}
                 </div>
@@ -1044,10 +1134,10 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
             {localSel.map(key=>(
               <span key={key} style={{display:"inline-flex",alignItems:"center",gap:3,background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 8px 1px 8px",fontSize:12,color:C.info,whiteSpace:"nowrap"}}>
                 {getLabel(key)}
-                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:C.info,padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>×</button>
+                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:C.info,padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>Ã—</button>
               </span>
             ))}
-            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">×</button>}
+            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">Ã—</button>}
           </div>
         </div>
         {/* Footer */}
@@ -1060,7 +1150,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
   );
 };
 
-export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
+export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Selectâ€¦"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
   <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:28,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 4px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
     {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
     {selected.map(k=>(
@@ -1071,3 +1161,4 @@ export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…
     </button>
   </div>
 );
+
