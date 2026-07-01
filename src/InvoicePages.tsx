@@ -5,7 +5,7 @@ import {
   mob, g2, g4, pg,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
-  ValueHelpDialog, ValueHelpInp,
+  ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox,
 } from "./shared";
 
 // ── PO Value Help ──────────────────────────────────────────────
@@ -1251,7 +1251,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Invoice Date",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers.length>0&&{label:"PO Number",val:active.poNumbers.join(", "),onClear:()=>clr("poNumbers")},
-    active.invoiceTypes.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes.length>0&&{label:"Invoice Type",val:active.invoiceTypes.map(fmtInvType).join(", "),onClear:()=>clr("invoiceTypes")},
     (active.dueDateFrom||active.dueDateTo)&&{label:"Due Date",val:[active.dueDateFrom&&fmtDate(active.dueDateFrom),active.dueDateTo&&fmtDate(active.dueDateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dueDateRange")},
     active.amountMin&&{label:"Amount ≥",val:active.amountMin,onClear:()=>clr("amountMin")},
     active.amountMax&&{label:"Amount ≤",val:active.amountMax,onClear:()=>clr("amountMax")},
@@ -1299,7 +1299,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid ${C.fieldBorder}`,fontSize:14,fontFamily:"inherit",color:C.t1,background:C.field,outline:"none",boxSizing:"border-box" as const}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amountMin")&&<FField label="Amount (From)"><Inp type="number" value={draft.amountMin} onChange={v=>setDraft(d=>({...d,amountMin:v}))} placeholder="Min amount"/></FField>}
         {visibleFields.has("amountMax")&&<FField label="Amount (To)"><Inp type="number" value={draft.amountMax} onChange={v=>setDraft(d=>({...d,amountMax:v}))} placeholder="Max amount"/></FField>}
@@ -1372,22 +1372,24 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
             <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
             <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400}}>({mine.length})</span>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <div style={{display:"flex",gap:0,alignItems:"center"}}>
             <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(mine.map((i:any)=>i.id)));setAllExpanded(true);}}}
-              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
             </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
-            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
-            </button>
-            <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="action-settings" size={14} color={C.t1}/>
-            </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
-              style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="add" size={13} color="#fff"/> Add Invoice
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="add" size={14} color={C.t1}/> Create
+            </button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+              <SapIcon name="excel-attachment" size={16} color="#217346"/>
+            </button>
+            <button onClick={()=>setVsOpen(true)} title="View Settings"
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+              <SapIcon name="action-settings" size={16} color={C.t2}/>
             </button>
           </div>
         </div>
@@ -2137,7 +2139,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
     active.currencies.length>0&&{label:"Currency",val:active.currencies.length===1?active.currencies[0]:`${active.currencies.length} selected`,onClear:()=>clr("currencies")},
     (active.dateFrom||active.dateTo)&&{label:"Date Range",val:[active.dateFrom&&fmtDate(active.dateFrom),active.dateTo&&fmtDate(active.dateTo)].filter(Boolean).join(" – "),onClear:()=>clr("dateRange")},
     active.poNumbers?.length>0&&{label:"PO Number",val:active.poNumbers.length===1?active.poNumbers[0]:`${active.poNumbers.length} selected`,onClear:()=>clr("poNumbers")},
-    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:fmtInvType(active.invoiceTypes[0]),onClear:()=>clr("invoiceTypes")},
+    active.invoiceTypes?.length>0&&{label:"Invoice Type",val:active.invoiceTypes.map(fmtInvType).join(", "),onClear:()=>clr("invoiceTypes")},
     (active.submittedFrom||active.submittedTo)&&{label:"Submitted Date",val:[active.submittedFrom&&fmtDate(active.submittedFrom),active.submittedTo&&fmtDate(active.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,submittedFrom:"",submittedTo:""}));setDraft(p=>({...p,submittedFrom:"",submittedTo:""}));}},
     (active.approvedFrom||active.approvedTo)&&{label:"Approved Date",val:[active.approvedFrom&&fmtDate(active.approvedFrom),active.approvedTo&&fmtDate(active.approvedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,approvedFrom:"",approvedTo:""}));setDraft(p=>({...p,approvedFrom:"",approvedTo:""}));}},
     (active.postedFrom||active.postedTo)&&{label:"Posted Date",val:[active.postedFrom&&fmtDate(active.postedFrom),active.postedTo&&fmtDate(active.postedTo)].filter(Boolean).join(" – "),onClear:()=>{setActive(p=>({...p,postedFrom:"",postedTo:""}));setDraft(p=>({...p,postedFrom:"",postedTo:""}));}},
@@ -2217,7 +2219,7 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}
-        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><select value={draft.invoiceTypes[0]||""} onChange={e=>setDraft(d=>({...d,invoiceTypes:e.target.value?[e.target.value]:[]}))} style={{width:"100%",padding:"7px 10px",borderRadius:2,border:`1px solid #89919a`,fontSize:14,fontFamily:"inherit",color:"#1d2d3e",outline:"none",boxSizing:"border-box" as const,background:"#ffffff"}}><option value="">All Types</option><option value="Invoice">Invoice</option><option value="Supplier DPR">Down Payment Req</option></select></FField>}
+        {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))} /><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))} /></div></FField>}
         {visibleFields.has("approvedDate")&&<FField label="Approved Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.approvedFrom} onChange={v=>setDraft(d=>({...d,approvedFrom:v}))} /><DateInp value={draft.approvedTo} onChange={v=>setDraft(d=>({...d,approvedTo:v}))} /></div></FField>}
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
@@ -2336,15 +2338,19 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
                 {sel.length>0&&<span style={{fontSize:FS.xs,color:C.t2,marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
               </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <div style={{display:"flex",gap:0,alignItems:"center"}}>
                 <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(list.map((i:any)=>i.id)));setAllExpanded(true);}}}
-                  style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
                 </button>
-                <div style={{width:1,height:20,background:C.border}}/>
-                {tbBtn("Export",exportCSV,"excel-attachment",true)}
-                <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center"}}>
-                  <SapIcon name="action-settings" size={14} color={C.t1}/>
+                <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+                  <SapIcon name="excel-attachment" size={16} color="#217346"/>
+                </button>
+                <button onClick={()=>setVsOpen(true)} title="View Settings"
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+                  <SapIcon name="action-settings" size={16} color={C.t2}/>
                 </button>
               </div>
             </div>
