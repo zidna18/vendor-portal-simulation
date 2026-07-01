@@ -1406,6 +1406,36 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           </div>
         </Modal>
       )}
+
+      {/* RFQ Status Legend */}
+      <div style={{margin:"20px 0 4px",padding:"14px 18px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:8}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:12,textTransform:"uppercase",letterSpacing:.6}}>RFQ Status Legend</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"10px 28px",marginBottom:14}}>
+          {[
+            {s:"Created",          desc:"RFQ created in SAP system – not yet published to vendors"},
+            {s:"Open",             desc:"RFQ published to vendors – quotations can be submitted"},
+            {s:"On Process",       desc:"Quotations being reviewed by procurement team"},
+            {s:"Complete",         desc:"All vendors have submitted – ready for tender committee"},
+            {s:"Pending Approval", desc:"Submitted to Tender Committee (Approver) for winner decision"},
+            {s:"Closed",           desc:"Winner determined – RFQ concluded, proceeding to PO"},
+          ].map(({s,desc})=>(
+            <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:300}}>
+              <Badge s={s}/>
+              <span style={{fontSize:12,color:C.t2}}>{desc}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Status Flow:</span>
+          {["Created","Open","On Process","Complete","Pending Approval","Closed"].map((s,i,arr)=>(
+            <span key={s} style={{display:"flex",alignItems:"center",gap:6}}>
+              <Badge s={s}/>
+              {i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
+            </span>
+          ))}
+        </div>
+      </div>
+
     </div>{/* end left panel */}
 
     {detailRfq&&<>
