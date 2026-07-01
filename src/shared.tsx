@@ -633,24 +633,13 @@ export const FilterBar = ({opts,val,onChange}) => (
 );
 // SAP Fiori-style compact filter bar
 export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFiltersCount,children}:{activeTokens?:any[],onGo?:()=>void,onReset?:()=>void,onAdaptFilters?:()=>void,adaptFiltersCount?:number,children?:any}) => (
-  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",background:C.subtle,borderBottom:`1px solid ${C.border}`}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>Filters</span>
-        {activeTokens.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 9px",fontWeight:700}}>{activeTokens.length} active</span>}
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"1.5rem",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
-        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
-        <Btn v="primary" sm onClick={onGo}>Go</Btn>
-      </div>
-    </div>
-    <div style={{padding:"14px 16px",display:"grid",gridTemplateColumns:g4(),gap:"12px 16px"}}>
+  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:4,marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+    <div style={{padding:"12px 16px 10px",display:"grid",gridTemplateColumns:g4(),gap:"10px 16px"}}>
       {children}
     </div>
-    {activeTokens.length>0&&(
-      <div style={{padding:"6px 16px 10px",borderTop:`1px solid ${C.border}`,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
-        <span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:6,letterSpacing:0.3}}>Active:</span>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px 10px",flexWrap:"wrap" as const,gap:6}}>
+      <div style={{display:"flex",flexWrap:"wrap" as const,gap:4,alignItems:"center",flex:1,minWidth:0}}>
+        {activeTokens.length>0&&<span style={{fontSize:11,color:C.t2,fontWeight:600,marginRight:4,letterSpacing:0.3,flexShrink:0}}>Active:</span>}
         {activeTokens.map((t,i)=>(
           <span key={i} style={{display:"inline-flex",alignItems:"center",height:"1.625rem",background:C.selection,border:`1px solid #8bb1d1`,borderRadius:"0.25rem",padding:"0 0 0 0.5rem",fontSize:12,color:C.t1,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",maxWidth:260}}>
             <span style={{fontWeight:600,color:C.t2,marginRight:3,flexShrink:0}}>{t.label}:</span>
@@ -660,7 +649,12 @@ export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFilte
           </span>
         ))}
       </div>
-    )}
+      <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"2rem",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:400}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
+        <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
+        <Btn v="primary" sm onClick={onGo}>Go</Btn>
+      </div>
+    </div>
   </div>
 );
 // Compact filter field label wrapper (Fiori style)

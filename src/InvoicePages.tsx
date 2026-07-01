@@ -1372,22 +1372,24 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
             <span style={{fontSize:FS.base,fontWeight:700,color:TK.rowText}}>Invoices</span>
             <span style={{fontSize:FS.sm,color:C.t2,fontWeight:400}}>({mine.length})</span>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <div style={{display:"flex",gap:0,alignItems:"center"}}>
             <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(mine.map((i:any)=>i.id)));setAllExpanded(true);}}}
-              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
             </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
-            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="excel-attachment" size={13} color={C.t1}/> Export
-            </button>
-            <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="action-settings" size={14} color={C.t1}/>
-            </button>
-            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
-              style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-              <SapIcon name="add" size={13} color="#fff"/> Add Invoice
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="add" size={14} color={C.t1}/> Create
+            </button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+            <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+              <SapIcon name="excel-attachment" size={16} color="#217346"/>
+            </button>
+            <button onClick={()=>setVsOpen(true)} title="View Settings"
+              style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+              <SapIcon name="action-settings" size={16} color={C.t2}/>
             </button>
           </div>
         </div>
@@ -2336,15 +2338,19 @@ export const BrmInvoice = ({invoices,setInvoices}) => {
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
                 {sel.length>0&&<span style={{fontSize:FS.xs,color:C.t2,marginLeft:8,flexShrink:0}}>{sel.length} selected</span>}
               </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <div style={{display:"flex",gap:0,alignItems:"center"}}>
                 <button onClick={()=>{if(allExpanded){setExpanded(new Set());setAllExpanded(false);}else{setExpanded(new Set(list.map((i:any)=>i.id)));setAllExpanded(true);}}}
-                  style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.875rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
-                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+                  <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
                 </button>
-                <div style={{width:1,height:20,background:C.border}}/>
-                {tbBtn("Export",exportCSV,"excel-attachment",true)}
-                <button onClick={()=>setVsOpen(true)} title="View Settings" style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center"}}>
-                  <SapIcon name="action-settings" size={14} color={C.t1}/>
+                <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+                <button onClick={exportCSV} title={selRows.size>0?`Export ${selRows.size} selected row(s)`:"Export all filtered invoices"}
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:3}}>
+                  <SapIcon name="excel-attachment" size={16} color="#217346"/>
+                </button>
+                <button onClick={()=>setVsOpen(true)} title="View Settings"
+                  style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.5rem",fontSize:FS.sm,fontFamily:"inherit",cursor:"pointer",height:36,display:"flex",alignItems:"center"}}>
+                  <SapIcon name="action-settings" size={16} color={C.t2}/>
                 </button>
               </div>
             </div>
