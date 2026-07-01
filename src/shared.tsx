@@ -855,10 +855,52 @@ export const DateRangePicker = ({from,to,onChange}) => {
 };
 
 // eslint-disable-next-line
-declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any } } }
+declare global { namespace JSX { interface IntrinsicElements { 'ui5-icon': any; 'ui5-multi-combobox': any; 'ui5-mcb-item': any } } }
 export const SapIcon = ({name,size=16,color="",style={}}:{name:string,size?:number,color?:string,style?:any}) => (
   <ui5-icon name={name} style={{width:size,height:size,display:"inline-block",verticalAlign:"middle",...(color?{color}:{}),...style}}/>
 );
+
+const INV_TYPE_OPTS = [
+  {key:"Invoice",      text:"Invoice"},
+  {key:"Supplier DPR", text:"Down Payment Req"},
+];
+export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChange:(v:string[])=>void}) => {
+  const ref = useRef<any>(null);
+  useEffect(()=>{
+    const el=ref.current; if(!el) return;
+    const fn=(e:any)=>{
+      const sel=(e.detail.items||[]).map((item:any)=>{
+        const txt=item.text||item.getAttribute?.('text')||'';
+        return INV_TYPE_OPTS.find(o=>o.text===txt)?.key||txt;
+      });
+      onChange(sel);
+    };
+    el.addEventListener('selection-change',fn);
+    return ()=>el.removeEventListener('selection-change',fn);
+  },[]);
+  useEffect(()=>{
+    const el=ref.current; if(!el) return;
+    // give UI5 a tick to upgrade the element before syncing selection
+    const sync=()=>{
+      const items=el.querySelectorAll('ui5-mcb-item');
+      items.forEach((item:any)=>{
+        const txt=item.getAttribute('text')||'';
+        const key=INV_TYPE_OPTS.find(o=>o.text===txt)?.key||txt;
+        if(value.includes(key)) item.setAttribute('selected','');
+        else item.removeAttribute('selected');
+      });
+    };
+    const t=setTimeout(sync,0);
+    return ()=>clearTimeout(t);
+  },[value.join(',')]);
+  return (
+    <ui5-multi-combobox ref={ref} placeholder="All Types"
+      style={{width:"100%","font-family":"'72','72full',Arial,Helvetica,sans-serif","font-size":"14px","--_ui5-input-height":"2.25rem"}}>
+      <ui5-mcb-item text="Invoice"/>
+      <ui5-mcb-item text="Down Payment Req"/>
+    </ui5-multi-combobox>
+  );
+};
 
 export const Th = ({children}) => <th style={{padding:"10px 14px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,borderBottom:`2px solid ${C.border}`,background:C.subtle,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{children}</th>;
 export const Td = ({children,style={}}) => <td style={{padding:"10px 14px",fontSize:14,color:C.t1,borderBottom:`1px solid ${C.border}`,...style}}>{children}</td>;
