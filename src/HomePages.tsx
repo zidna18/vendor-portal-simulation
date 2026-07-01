@@ -146,6 +146,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
 // ── BRM Dashboard ──────────────────────────────────────────────
 export const BrmHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvoice}) => {
   const [showKpi,setShowKpi]       = useState(true);
+  const [showPages,setShowPages]   = useState(true);
   const [showInv,setShowInv]       = useState(true);
   const [showQt,setShowQt]         = useState(true);
 
@@ -190,6 +191,30 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvoice
                 </div>
                 <div style={{fontSize:36,fontWeight:700,color:k.c,lineHeight:1}}>{k.n}</div>
                 <div style={{fontSize:12,color:C.primary,fontWeight:600,marginTop:8,borderTop:`1px solid ${C.border}`,paddingTop:8}}>View →</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Pages tiles ── */}
+        <SecHdr title="Pages" open={showPages} onToggle={()=>setShowPages(p=>!p)}/>
+        {showPages&&(
+          <div style={{display:"grid",gridTemplateColumns:g3(),gap:16,marginBottom:4}}>
+            {[
+              {id:"brm-invoice",   ico:"document-text", t:"Invoice Management",   sub:"Supplier Invoice API",      bg:"#107e3e"},
+              {id:"brm-quotation", ico:"notes",         t:"Quotation Management", sub:"Sourcing & Contracting",    bg:"#b44800"},
+              {id:"brm-rfq",       ico:"megamenu",      t:"RFQ Management",       sub:"Request for Quotation",     bg:"#1b5fac"},
+            ].map(p=>(
+              <div key={p.id} onClick={()=>setSection(p.id)}
+                style={{background:p.bg,borderRadius:4,padding:"22px 20px",cursor:"pointer",minHeight:110,display:"flex",flexDirection:"column" as const,justifyContent:"space-between",transition:"filter .15s"}}
+                onMouseEnter={e=>(e.currentTarget.style.filter="brightness(1.1)")}
+                onMouseLeave={e=>(e.currentTarget.style.filter="none")}>
+                <div>
+                  <div style={{marginBottom:10}}><SapIcon name={p.ico} size={26} color="rgba(255,255,255,0.92)"/></div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:3}}>{p.t}</div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,0.68)"}}>{p.sub}</div>
+                </div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.85)",fontWeight:600,marginTop:14}}>Open →</div>
               </div>
             ))}
           </div>
