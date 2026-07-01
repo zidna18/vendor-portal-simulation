@@ -5,7 +5,7 @@ import {
   g2, g3,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FilterBar, FioriBar, FField, SapIcon, Card, Th, Td,
-  ValueHelpInp, ValueHelpDialog, DateRangePicker,
+  ValueHelpInp, ValueHelpDialog, DateRangePicker, DatePickerInp,
 } from "./shared";
 
 // ── Quotation Form Modal ───────────────────────────────────────
@@ -1257,7 +1257,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             </div>
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Target Approval Date <span style={{color:C.err}}>*</span></label>
-              <DateInp value={apvForm.targetDate} onChange={v=>apv("targetDate",v)}/>
+              <DatePickerInp value={apvForm.targetDate} onChange={v=>apv("targetDate",v)}/>
             </div>
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Budget Reference / Cost Center <span style={{fontSize:10,fontWeight:400,color:C.t2,marginLeft:4}}>View Only</span></label>
@@ -1561,5 +1561,420 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       })()}
     </>}
   </div>
+  );
+};
+
+// ── Approver RFQ (Read-Only) ───────────────────────────────────
+export const ApproverRfq = ({rfqs, quotations}) => {
+  const [flt,setFlt]=useState("All");
+  const [expanded,setExpanded]=useState({});
+  const [allExpanded,setAllExpanded]=useState(false);
+  const [adaptOpen2,setAdaptOpen2]=useState(false);
+  const [visibleFields2,setVisibleFields2]=useState<Set<string>>(new Set(ALL_RFQ_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id)));
+  const EMPTY_FLT2={rfqNo:"",rfqTitle:"",companyCodes:[],statuses:[],postedBy:"",category:"",openFrom:"",openTo:"",closingFrom:"",closingTo:"",purchOrg:"",plant:"",estValMin:"",estValMax:""};
+  const [draft2,setDraft2]=useState(EMPTY_FLT2);
+  const [applied,setApplied]=useState(EMPTY_FLT2);
+  const sd2=(k,v)=>setDraft2(p=>({...p,[k]:v}));
+  const applyFilters=()=>setApplied({...draft2});
+  const resetFilters=()=>{setDraft2(EMPTY_FLT2);setApplied(EMPTY_FLT2);};
+  const [vhOpen2,setVhOpen2]=useState<string|null>(null);
+  const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
+  const ALL_RFQ_STATUSES=["Open","On Process","Complete","Closed"];
+  const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
+
+  const activeTokens=[
+    applied.companyCodes.length>0&&{label:"Company Code",val:applied.companyCodes.length===1?`${applied.companyCodes[0]} – ${ccName(applied.companyCodes[0])}`:`${applied.companyCodes.length} selected`,onClear:()=>clrA2("companyCodes")},
+    applied.statuses.length>0&&{label:"Status",val:applied.statuses.length===1?applied.statuses[0]:`${applied.statuses.length} selected`,onClear:()=>clrA2("statuses")},
+    applied.rfqNo&&{label:"RFQ No",val:applied.rfqNo,onClear:()=>clrA2("rfqNo")},
+    applied.rfqTitle&&{label:"RFQ Title",val:applied.rfqTitle,onClear:()=>clrA2("rfqTitle")},
+    applied.postedBy&&{label:"Tender Admin",val:applied.postedBy,onClear:()=>clrA2("postedBy")},
+    applied.category&&{label:"Category",val:applied.category,onClear:()=>clrA2("category")},
+    (applied.openFrom||applied.openTo)&&{label:"Open Date",val:[applied.openFrom&&fmtDate(applied.openFrom),applied.openTo&&fmtDate(applied.openTo)].filter(Boolean).join(" – "),onClear:()=>{clrA2("openFrom");clrA2("openTo");}},
+    (applied.closingFrom||applied.closingTo)&&{label:"Closing Date",val:[applied.closingFrom&&fmtDate(applied.closingFrom),applied.closingTo&&fmtDate(applied.closingTo)].filter(Boolean).join(" – "),onClear:()=>{clrA2("closingFrom");clrA2("closingTo");}},
+    applied.estValMin&&{label:"Est. Value ≥",val:`IDR ${Number(applied.estValMin).toLocaleString()}`,onClear:()=>clrA2("estValMin")},
+    applied.estValMax&&{label:"Est. Value ≤",val:`IDR ${Number(applied.estValMax).toLocaleString()}`,onClear:()=>clrA2("estValMax")},
+  ].filter(Boolean);
+
+  const list=rfqs
+    .filter(r=>flt==="All"||r.status===flt)
+    .filter(r=>applied.companyCodes.length===0||applied.companyCodes.includes(r.companyCode))
+    .filter(r=>applied.statuses.length===0||applied.statuses.includes(r.status))
+    .filter(r=>!applied.rfqNo    ||r.id?.toLowerCase().includes(applied.rfqNo.toLowerCase()))
+    .filter(r=>!applied.rfqTitle ||r.title?.toLowerCase().includes(applied.rfqTitle.toLowerCase()))
+    .filter(r=>!applied.postedBy ||r.postedBy?.toLowerCase().includes(applied.postedBy.toLowerCase()))
+    .filter(r=>!applied.category ||r.cat===applied.category)
+    .filter(r=>!applied.openFrom   ||(r.postedDate&&r.postedDate>=applied.openFrom))
+    .filter(r=>!applied.openTo     ||(r.postedDate&&r.postedDate<=applied.openTo))
+    .filter(r=>!applied.closingFrom||(r.closingDate&&r.closingDate>=applied.closingFrom))
+    .filter(r=>!applied.closingTo  ||(r.closingDate&&r.closingDate<=applied.closingTo))
+    .filter(r=>!applied.estValMin  ||r.estVal>=Number(applied.estValMin))
+    .filter(r=>!applied.estValMax  ||r.estVal<=Number(applied.estValMax));
+
+  const getQts=rfqId=>quotations.filter(q=>q.rfqId===rfqId);
+  const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
+
+  const HDR_COLS=["","Status","SAP RFQ No","RFQ Number","Description","Created Date","Closing Date","Tender Admin","Budget","Co. Code","Quotations"];
+  const [colW,setColW]=useState([32,90,130,115,200,85,90,120,120,60,75]);
+  const _rfqTot=colW.reduce((a,b)=>a+b,0);
+  const rfqMinW=_rfqTot;
+  const gridCols=colW.map(w=>`${(w/_rfqTot*100).toFixed(3)}%`).join(" ");
+
+  const CHILD_HDRS=["#","Material / Service","Mat. No.","Qty","UoM","Req. Date"];
+  const colW2=[50,220,130,60,90,170];
+  const gridCols2=colW2.map(w=>`${w}px`).join(" ");
+
+  return (
+    <div style={{padding:pg()}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management – View Only</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📋 Read-only view · Contact BRM Procurement to make changes</div>
+        </div>
+      </div>
+
+      {/* Info banner */}
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.infoBg,border:`1px solid ${C.info}40`,borderRadius:6,marginBottom:16,fontSize:13,color:C.info}}>
+        <SapIcon name="information" size={16} color={C.info}/>
+        <span>You have view-only access to RFQ data. To request changes, contact the BRM Procurement team.</span>
+      </div>
+
+      <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen2(true)} adaptFiltersCount={visibleFields2.size}>
+        {visibleFields2.has("companyCodes")&&<FField label="Company Code"><ValueHelpInp selected={draft2.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen2("companyCode")} placeholder="All Company Codes"/></FField>}
+        {visibleFields2.has("statuses")&&<FField label="Status"><ValueHelpInp selected={draft2.statuses} getLabel={k=>k} onOpen={()=>setVhOpen2("status")} placeholder="All Statuses"/></FField>}
+        {visibleFields2.has("rfqNo")&&<FField label="RFQ Number"><Inp value={draft2.rfqNo} onChange={v=>sd2("rfqNo",v)} placeholder="e.g. RFQ-2025-0001"/></FField>}
+        {visibleFields2.has("rfqTitle")&&<FField label="RFQ Title"><Inp value={draft2.rfqTitle} onChange={v=>sd2("rfqTitle",v)} placeholder="e.g. Laptops"/></FField>}
+        {visibleFields2.has("postedBy")&&<FField label="Tender Administrator"><Inp value={draft2.postedBy} onChange={v=>sd2("postedBy",v)} placeholder="e.g. Ahmad Rizki"/></FField>}
+        {visibleFields2.has("category")&&<FField label="Category"><ValueHelpInp selected={draft2.category?[draft2.category]:[]} getLabel={k=>k} onOpen={()=>setVhOpen2("category")} placeholder="All Categories"/></FField>}
+        {visibleFields2.has("openDate")&&<FField label="Open Date Range"><DateRangePicker from={draft2.openFrom} to={draft2.openTo} onChange={(f,t)=>{sd2("openFrom",f);sd2("openTo",t);}}/></FField>}
+        {visibleFields2.has("closingDate")&&<FField label="Closing Date Range"><DateRangePicker from={draft2.closingFrom} to={draft2.closingTo} onChange={(f,t)=>{sd2("closingFrom",f);sd2("closingTo",t);}}/></FField>}
+        {visibleFields2.has("estValMin")&&<FField label="Est. Value (From)"><Inp type="number" value={draft2.estValMin} onChange={v=>sd2("estValMin",v)} placeholder="Min (IDR)"/></FField>}
+        {visibleFields2.has("estValMax")&&<FField label="Est. Value (To)"><Inp type="number" value={draft2.estValMax} onChange={v=>sd2("estValMax",v)} placeholder="Max (IDR)"/></FField>}
+      </FioriBar>
+
+      <AdaptFiltersDialog open={adaptOpen2} onClose={()=>setAdaptOpen2(false)} visibleFields={visibleFields2}
+        onSave={s=>setVisibleFields2(s)} draft={draft2} allFields={ALL_RFQ_FILTER_FIELDS}
+        hasValue={id=>{
+          if(id==="companyCodes")return draft2.companyCodes.length>0;
+          if(id==="statuses")return draft2.statuses.length>0;
+          if(id==="openDate")return !!(draft2.openFrom||draft2.openTo);
+          if(id==="closingDate")return !!(draft2.closingFrom||draft2.closingTo);
+          return !!(draft2 as any)[id];
+        }}/>
+
+      {vhOpen2==="companyCode"&&(
+        <ValueHelpDialog title="Company Code" cols={[{key:"v",label:"Code",width:80},{key:"l",label:"Company Name",width:220}]}
+          rows={COMPANY_CODES} keyField="v" labelField="l"
+          selected={draft2.companyCodes} onConfirm={s=>{sd2("companyCodes",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+      {vhOpen2==="status"&&(
+        <ValueHelpDialog title="Status" cols={[{key:"v",label:"Status",width:180}]}
+          rows={ALL_RFQ_STATUSES.map(s=>({v:s,l:s}))} keyField="v" labelField="l"
+          selected={draft2.statuses} onConfirm={s=>{sd2("statuses",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+      {vhOpen2==="category"&&(
+        <ValueHelpDialog title="Category" cols={[{key:"v",label:"Category",width:200}]}
+          rows={ALL_CATEGORIES.map(c=>({v:c,l:c}))} keyField="v" labelField="l"
+          selected={draft2.category?[draft2.category]:[]} multiSelect={false}
+          onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+
+      <FilterBar opts={["All","Open","On Process","Complete","Closed"]} val={flt} onChange={setFlt}/>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
+          <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/>{allExpanded?"Collapse All":"Expand All"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`}}>
+      <div style={{minWidth:rfqMinW,background:C.card}}>
+        <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
+          {HDR_COLS.map((h,i)=>(
+            <div key={i} style={{padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2,whiteSpace:"nowrap",overflow:"hidden",userSelect:"none",display:"flex",alignItems:"center"}}>{h}</div>
+          ))}
+        </div>
+
+        {list.length===0&&<div style={{padding:"28px 16px",textAlign:"center",color:C.t2,fontSize:13}}>No RFQs found.</div>}
+
+        {list.map(rfq=>{
+          const open=!!expanded[rfq.id];
+          const qts=getQts(rfq.id);
+          const rowBg=C.card;
+          const cell=(extra?:any)=>({padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap" as const,...extra});
+          const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+          return (
+            <div key={rfq.id} style={{borderBottom:`1px solid ${C.border}`}}>
+              <div onClick={()=>toggle(rfq.id)} style={{display:"grid",gridTemplateColumns:gridCols,background:rowBg,cursor:"pointer",transition:"background .12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.infoBg}
+                onMouseLeave={e=>e.currentTarget.style.background=rowBg}>
+                <div onClick={e=>{e.stopPropagation();toggle(rfq.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
+                  <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                </div>
+                <div style={cell({justifyContent:"flex-start"})}><Badge s={rfq.status}/></div>
+                <div style={cell({overflow:"hidden"})}>
+                  {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<span style={{fontSize:13,fontWeight:600,color:C.primary,overflow:"hidden",textOverflow:"ellipsis"}}>{sapNo}</span>}
+                </div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.primary})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.id}</span></div>
+                <div style={cell({fontSize:13,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.title}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
+                <div style={cell({fontSize:13,fontWeight:600,color:C.t1})}>{fmtDate(rfq.closingDate)}</div>
+                <div style={cell({fontSize:13,color:C.t2})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.postedBy}</span></div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{rfq.companyCode||"—"}</div>
+                <div style={cell({fontSize:13,color:C.t2})}>
+                  {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700}}>{qts.length}</span>}
+                  {qts.length===0&&<span style={{color:C.t2}}>0</span>}
+                </div>
+              </div>
+
+              {open&&(
+                <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
+                  <div style={{display:"grid",gridTemplateColumns:gridCols2,background:"rgba(0,112,242,0.07)",borderBottom:`1px solid ${C.border}`}}>
+                    {CHILD_HDRS.map((h,i)=>(
+                      <div key={i} style={{padding:"6px 10px",fontSize:12,fontWeight:700,color:C.primary,textTransform:"uppercase",letterSpacing:.4,whiteSpace:"nowrap",userSelect:"none"}}>{h}</div>
+                    ))}
+                  </div>
+                  {rfq.items.map((it,ii)=>(
+                    <div key={ii} style={{display:"grid",gridTemplateColumns:gridCols2,borderBottom:ii<rfq.items.length-1?`1px solid ${C.border}`:"none",background:ii%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
+                      <div style={{padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2}}>{String(it.no).padStart(3,"0")}</div>
+                      <div style={{padding:"8px 10px"}}>
+                        <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{it.desc}</div>
+                        <div style={{fontSize:11,color:C.t2,marginTop:2}}>
+                          <span style={{background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 6px",fontWeight:700,marginRight:6}}>{it.type}</span>
+                          {it.acctAssign}
+                        </div>
+                      </div>
+                      <div style={{padding:"8px 10px",fontSize:12,fontFamily:"monospace",color:C.t1,display:"flex",alignItems:"center"}}>{it.materialNo||"—"}</div>
+                      <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:C.t1,display:"flex",alignItems:"center"}}>{it.qty}</div>
+                      <div style={{padding:"8px 10px",fontSize:12,color:C.t2,display:"flex",alignItems:"center"}}>{it.uom}</div>
+                      <div style={{padding:"8px 10px",fontSize:12,color:C.t2,display:"flex",alignItems:"center"}}>{fmtDate(it.requirementDate)||fmtDate(it.startDate)||"—"}</div>
+                    </div>
+                  ))}
+                  {qts.length>0&&(
+                    <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Received Quotations</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        {qts.map(qt=>(
+                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontWeight:600}}>{qt.vendorName}</span>
+                            <span style={{color:C.t2}}>·</span>
+                            <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
+                            <Badge s={qt.status}/>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`}}>
+                    <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
+                    <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Approver Quotation (Approve/Reject) ────────────────────────
+export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
+  const [flt,setFlt]=useState("All");
+  const [aprModal,setAprModal]=useState<{qt:any,action:"approve"|"reject"}|null>(null);
+  const [notes,setNotes]=useState("");
+
+  const EMPTY_FLT={rfqTitle:"",rfqId:"",vendorIds:[],statuses:[],submittedFrom:"",submittedTo:""};
+  const [draft,setDraft]=useState(EMPTY_FLT);
+  const [applied,setApplied]=useState(EMPTY_FLT);
+  const sd=(k,v)=>setDraft(p=>({...p,[k]:v}));
+  const applyFilters=()=>setApplied({...draft});
+  const resetFilters=()=>{setDraft(EMPTY_FLT);setApplied(EMPTY_FLT);};
+  const [adaptOpen,setAdaptOpen]=useState(false);
+  const [visibleFields,setVisibleFields]=useState<Set<string>>(new Set(["vendorIds","statuses","rfqId","rfqTitle","submittedDate"]));
+  const [vhOpen,setVhOpen]=useState<string|null>(null);
+  const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
+
+  const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","Approved"];
+
+  const activeTokens=[
+    applied.vendorIds.length>0&&{label:"Vendor",val:applied.vendorIds.length===1?(VENDORS[applied.vendorIds[0]] as any)?.name||applied.vendorIds[0]:`${applied.vendorIds.length} selected`,onClear:()=>clrA("vendorIds")},
+    applied.statuses.length>0&&{label:"Status",val:applied.statuses.length===1?applied.statuses[0]:`${applied.statuses.length} selected`,onClear:()=>clrA("statuses")},
+    applied.rfqId&&{label:"RFQ No",val:applied.rfqId,onClear:()=>clrA("rfqId")},
+    applied.rfqTitle&&{label:"RFQ Title",val:applied.rfqTitle,onClear:()=>clrA("rfqTitle")},
+    (applied.submittedFrom||applied.submittedTo)&&{label:"Submitted Date",val:[applied.submittedFrom&&fmtDate(applied.submittedFrom),applied.submittedTo&&fmtDate(applied.submittedTo)].filter(Boolean).join(" – "),onClear:()=>{clrA("submittedFrom");clrA("submittedTo");}},
+  ].filter(Boolean);
+
+  const list=quotations
+    .filter(q=>flt==="All"||q.status===flt)
+    .filter(q=>applied.vendorIds.length===0||applied.vendorIds.includes(q.vendorId))
+    .filter(q=>applied.statuses.length===0||applied.statuses.includes(q.status))
+    .filter(q=>!applied.rfqId    ||q.rfqId?.toLowerCase().includes(applied.rfqId.toLowerCase()))
+    .filter(q=>!applied.rfqTitle ||q.rfqTitle?.toLowerCase().includes(applied.rfqTitle.toLowerCase()))
+    .filter(q=>!applied.submittedFrom||(q.submittedDate&&q.submittedDate>=applied.submittedFrom))
+    .filter(q=>!applied.submittedTo  ||(q.submittedDate&&q.submittedDate<=applied.submittedTo));
+
+  const APR_FILTER_FIELDS=[
+    {id:"vendorIds",     label:"Vendor",               defaultOn:true},
+    {id:"statuses",      label:"Status",               defaultOn:true},
+    {id:"rfqId",         label:"RFQ Number",           defaultOn:true},
+    {id:"rfqTitle",      label:"RFQ Title",            defaultOn:true},
+    {id:"submittedDate", label:"Submitted Date Range", defaultOn:true},
+  ];
+
+  const openApprove=(qt)=>{setNotes("");setAprModal({qt,action:"approve"});};
+  const openReject=(qt)=>{setNotes("");setAprModal({qt,action:"reject"});};
+  const confirmAction=()=>{
+    if(!aprModal)return;
+    if(aprModal.action==="reject"&&!notes.trim()){alert("Please provide rejection notes.");return;}
+    const action=aprModal.action;
+    setQuotations(prev=>prev.map(q=>
+      q.id===aprModal.qt.id
+        ?{...q,approvalStatus:action==="approve"?"Approved":"Rejected",
+               approvalNotes:notes,
+               approvedBy:user.name,
+               approvedAt:new Date().toISOString().split("T")[0]}
+        :q
+    ));
+    setAprModal(null);setNotes("");
+  };
+
+  const approvalBadge=(qt)=>{
+    if(qt.approvalStatus==="Approved") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dcfce7",color:"#107e3e",whiteSpace:"nowrap"}}>✓ Approved by You</span>;
+    if(qt.approvalStatus==="Rejected") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#fff1f0",color:"#bb0000",whiteSpace:"nowrap"}}>✗ Rejected by You</span>;
+    return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.subtle,color:C.t2,whiteSpace:"nowrap"}}>Pending</span>;
+  };
+
+  return (
+    <div style={{padding:pg()}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Approval</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📋 Review vendor quotations and submit your approval decision</div>
+        </div>
+      </div>
+
+      <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen(true)} adaptFiltersCount={visibleFields.size}>
+        {visibleFields.has("vendorIds")&&<FField label="Vendor"><ValueHelpInp selected={draft.vendorIds} getLabel={k=>(VENDORS[k] as any)?.name||k} onOpen={()=>setVhOpen("vendor")} placeholder="All Vendors"/></FField>}
+        {visibleFields.has("statuses")&&<FField label="Status"><ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/></FField>}
+        {visibleFields.has("rfqId")&&<FField label="RFQ Number"><Inp value={draft.rfqId} onChange={v=>sd("rfqId",v)} placeholder="e.g. RFQ-2025-0001"/></FField>}
+        {visibleFields.has("rfqTitle")&&<FField label="RFQ Title"><Inp value={draft.rfqTitle} onChange={v=>sd("rfqTitle",v)} placeholder="e.g. Laptops"/></FField>}
+        {visibleFields.has("submittedDate")&&<FField label="Submitted Date Range"><DateRangePicker from={draft.submittedFrom} to={draft.submittedTo} onChange={(f,t)=>{sd("submittedFrom",f);sd("submittedTo",t);}}/></FField>}
+      </FioriBar>
+
+      <AdaptFiltersDialog open={adaptOpen} onClose={()=>setAdaptOpen(false)} visibleFields={visibleFields}
+        onSave={s=>setVisibleFields(s)} draft={draft} allFields={APR_FILTER_FIELDS}
+        hasValue={id=>{
+          if(id==="vendorIds")return draft.vendorIds.length>0;
+          if(id==="statuses")return draft.statuses.length>0;
+          if(id==="submittedDate")return !!(draft.submittedFrom||draft.submittedTo);
+          return !!(draft as any)[id];
+        }}/>
+
+      {vhOpen==="vendor"&&(
+        <ValueHelpDialog title="Vendor" cols={[{key:"v",label:"Vendor ID",width:100},{key:"l",label:"Vendor Name",width:220}]}
+          rows={VENDOR_ROWS} keyField="v" labelField="l"
+          selected={draft.vendorIds} onConfirm={s=>{sd("vendorIds",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
+      )}
+      {vhOpen==="status"&&(
+        <ValueHelpDialog title="Status" cols={[{key:"v",label:"Status",width:180}]}
+          rows={ALL_QT_STATUSES.map(s=>({v:s,l:s}))} keyField="v" labelField="l"
+          selected={draft.statuses} onConfirm={s=>{sd("statuses",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
+      )}
+
+      <FilterBar opts={["All","Submitted","Accepted","Rejected"]} val={flt} onChange={setFlt}/>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>Quotations</span>
+          <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+        </div>
+      </div>
+
+      <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:"0 0 8px 8px"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+          <thead>
+            <tr style={{background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
+              {["Status","SAP Quotation No","Quotation ID","RFQ Title","Vendor","Submitted","Valid Until","Total Amount","Approval","Actions"].map(h=>(
+                <Th key={h}>{h}</Th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {list.length===0&&(
+              <tr><Td colSpan={10} style={{textAlign:"center",padding:40,color:C.t2}}>No quotations found.</Td></tr>
+            )}
+            {list.map(qt=>{
+              const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+              const canAct=qt.status==="Submitted"&&!qt.approvalStatus;
+              return (
+                <tr key={qt.id} style={{borderBottom:`1px solid ${C.border}`}}
+                  onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+                  onMouseLeave={e=>(e.currentTarget.style.background="")}>
+                  <Td><Badge s={qt.status}/></Td>
+                  <Td><span style={{fontSize:12,color:C.primary,fontFamily:"monospace"}}>{sapNo}</span></Td>
+                  <Td><span style={{fontSize:12,fontWeight:700,color:C.primary}}>{qt.id}</span></Td>
+                  <Td>
+                    <div style={{fontSize:13,fontWeight:600,color:C.t1}}>{qt.rfqTitle}</div>
+                    <div style={{fontSize:11,color:C.t2}}>{qt.rfqId}</div>
+                  </Td>
+                  <Td>
+                    <div style={{fontSize:13,color:C.t1}}>{qt.vendorName}</div>
+                    <div style={{fontSize:11,color:C.t2}}>{qt.vendorId}</div>
+                  </Td>
+                  <Td style={{fontSize:12,color:C.t2}}>{fmtDate(qt.submittedDate)||"—"}</Td>
+                  <Td style={{fontSize:12,color:C.t2}}>{fmtDate(qt.validUntil)||"—"}</Td>
+                  <Td style={{fontSize:13,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</Td>
+                  <Td>{approvalBadge(qt)}</Td>
+                  <Td>
+                    {canAct&&(
+                      <div style={{display:"flex",gap:5}}>
+                        <Btn v="success" sm onClick={()=>openApprove(qt)}>Approve</Btn>
+                        <Btn v="danger" sm onClick={()=>openReject(qt)}>Reject</Btn>
+                      </div>
+                    )}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Approval Modal */}
+      {aprModal&&(
+        <Modal title={aprModal.action==="approve"?"Approve Quotation":"Reject Quotation"} onClose={()=>setAprModal(null)} width={540}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+            <div><Lbl>Quotation ID</Lbl><Val>{aprModal.qt.id}</Val></div>
+            <div><Lbl>RFQ</Lbl><Val>{aprModal.qt.rfqTitle}</Val></div>
+            <div><Lbl>Vendor</Lbl><Val>{aprModal.qt.vendorName}</Val></div>
+            <div><Lbl>Total Amount</Lbl><Val style={{fontWeight:700,color:C.t1}}>{idr(aprModal.qt.totalAmt)}</Val></div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <Lbl>Approval Notes {aprModal.action==="reject"&&<span style={{color:C.err}}>*</span>}</Lbl>
+            <TA value={notes} onChange={setNotes} placeholder={aprModal.action==="approve"?"Optional notes for this approval…":"Please provide rejection reason…"} rows={3}/>
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+            <Btn v="ghost" onClick={()=>setAprModal(null)}>Cancel</Btn>
+            {aprModal.action==="approve"
+              ?<Btn v="success" onClick={confirmAction}>Confirm Approve</Btn>
+              :<Btn v="danger"  onClick={confirmAction}>Confirm Reject</Btn>
+            }
+          </div>
+        </Modal>
+      )}
+    </div>
   );
 };
