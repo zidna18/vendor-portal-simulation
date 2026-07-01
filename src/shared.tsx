@@ -304,6 +304,44 @@ export const INIT_RFQS = [
     items:[
       {no:1, desc:"FIBC Bulk Bag 1T – 4-loop (per unit)", type:"Material", acctAssign:"P – Project", materialNo:"PKG-FBC-001", materialGroup:"Packaging Materials", plant:"PL05", qty:20000, uom:"Pcs", estPrice:16000, requirementDate:"2025-10-01", startDate:"", endDate:""},
     ]},
+  { id:"RFQ-2025-0044", title:"Stationery & Office Consumables – Q4 2025",        postedDate:"2025-08-18", closingDate:"2025-09-18", postedBy:"Siti Rahma",   targets:["10000001"],            cat:"Office Supplies",  estVal:75000000,   companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Q4 procurement of stationery, toner cartridges, and general office consumables for all departments.", status:"Created",
+    items:[
+      {no:1, desc:"A4 Paper 80gsm (500 sheets/ream)",      type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-PPR-004", materialGroup:"Office Supplies", plant:"PL01", qty:2000, uom:"Ream", estPrice:55000,  requirementDate:"2025-10-01", startDate:"", endDate:""},
+      {no:2, desc:"Laser Toner Cartridge (HP LaserJet)",   type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-TNR-002", materialGroup:"Office Supplies", plant:"PL01", qty:150,  uom:"Pcs",  estPrice:350000, requirementDate:"2025-10-01", startDate:"", endDate:""},
+      {no:3, desc:"Whiteboard Marker Set (12 colors)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"OFF-MRK-003", materialGroup:"Office Supplies", plant:"PL01", qty:100,  uom:"Set",  estPrice:85000,  requirementDate:"2025-10-01", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0045", title:"Pump Overhaul – Slurry Pumps Batch 2025",          postedDate:"2025-08-19", closingDate:"2025-09-19", postedBy:"Ahmad Rizki",  targets:["10000002"],            cat:"Engineering",      estVal:560000000,  companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Overhaul and reconditioning of 8 units slurry pumps at SHS processing plant – annual maintenance program.", status:"Created",
+    items:[
+      {no:1, desc:"Slurry Pump Overhaul (per unit)",        type:"Service",  acctAssign:"K – Cost Center", materialNo:"PMP-OVH-001", materialGroup:"Maintenance Svc", plant:"PL03", qty:8,  uom:"Unit",    estPrice:55000000, requirementDate:"", startDate:"2025-11-01", endDate:"2025-12-31"},
+      {no:2, desc:"Wear Parts Kit (impeller, casing liner)", type:"Material", acctAssign:"K – Cost Center", materialNo:"PMP-WPK-002", materialGroup:"Spare Parts",     plant:"PL03", qty:8,  uom:"Set",     estPrice:15000000, requirementDate:"2025-10-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0046", title:"Uniform & Workwear – Annual Supply 2026",          postedDate:"2025-08-20", closingDate:"2025-09-20", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Goods",            estVal:180000000,  companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"Annual supply of company uniforms and field workwear for all BRM Group employees (estimated 600 persons).", status:"Created",
+    items:[
+      {no:1, desc:"Office Uniform Set (shirt + pants)",     type:"Material", acctAssign:"K – Cost Center", materialNo:"UNF-OFC-001", materialGroup:"Uniforms", plant:"PL01", qty:600,  uom:"Set", estPrice:180000, requirementDate:"2026-01-01", startDate:"", endDate:""},
+      {no:2, desc:"Field Coverall Wearpack",                type:"Material", acctAssign:"K – Cost Center", materialNo:"UNF-FLD-002", materialGroup:"Uniforms", plant:"PL01", qty:400,  uom:"Pcs", estPrice:120000, requirementDate:"2026-01-01", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0047", title:"CCTV & Access Control – Site Security Upgrade",    postedDate:"2025-08-21", closingDate:"2025-09-21", postedBy:"Ahmad Rizki",  targets:["10000001"],            cat:"IT Equipment",     estVal:420000000,  companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS", desc:"Supply and installation of IP CCTV cameras, NVR, and access control system for CPMS site perimeter.", status:"Created",
+    items:[
+      {no:1, desc:"IP Camera 4MP Outdoor (Hikvision)",      type:"Material", acctAssign:"P – Project", materialNo:"SEC-CAM-001", materialGroup:"Security Equip", plant:"PL02", qty:80,  uom:"Unit",    estPrice:2500000,  requirementDate:"2025-11-01", startDate:"", endDate:""},
+      {no:2, desc:"NVR 64-channel + Storage (30TB)",        type:"Material", acctAssign:"P – Project", materialNo:"SEC-NVR-002", materialGroup:"Security Equip", plant:"PL02", qty:4,   uom:"Unit",    estPrice:45000000, requirementDate:"2025-11-01", startDate:"", endDate:""},
+      {no:3, desc:"Access Control System – Gate",           type:"Service",  acctAssign:"P – Project", materialNo:"SEC-ACS-003", materialGroup:"Security Equip", plant:"PL02", qty:1,   uom:"Lump Sum",estPrice:80000000, requirementDate:"", startDate:"2025-11-15", endDate:"2025-12-31"},
+    ]},
+  { id:"RFQ-2025-0048", title:"Photovoltaic Solar Panel – Camp Power",            postedDate:"2025-08-22", closingDate:"2025-09-22", postedBy:"Siti Rahma",   targets:["10000001","10000002"], cat:"Engineering",      estVal:1100000000, companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS", desc:"Design, supply, and installation of 500 kWp solar PV hybrid system to reduce diesel dependency at Linge camp.", status:"Created",
+    items:[
+      {no:1, desc:"Solar Panel 550Wp Monocrystalline",      type:"Material", acctAssign:"P – Project", materialNo:"SOL-PNL-001", materialGroup:"Energy Equip", plant:"PL05", qty:910,  uom:"Unit",    estPrice:850000,    requirementDate:"2026-01-01", startDate:"", endDate:""},
+      {no:2, desc:"Inverter 100kW Grid-Tie",                type:"Material", acctAssign:"P – Project", materialNo:"SOL-INV-002", materialGroup:"Energy Equip", plant:"PL05", qty:5,    uom:"Unit",    estPrice:75000000,  requirementDate:"2026-01-01", startDate:"", endDate:""},
+      {no:3, desc:"EPC & Commissioning Service",            type:"Service",  acctAssign:"P – Project", materialNo:"SOL-EPC-003", materialGroup:"Energy Equip", plant:"PL05", qty:1,    uom:"Lump Sum",estPrice:325000000, requirementDate:"", startDate:"2026-01-15", endDate:"2026-04-30"},
+    ]},
+  { id:"RFQ-2025-0049", title:"Drilling Consumables – Diamond Core Bits",         postedDate:"2025-08-23", closingDate:"2025-09-23", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"Goods",            estVal:490000000,  companyCode:"GMIN", plant:"PL04", purchOrg:"GMIN", desc:"Supply of diamond core drill bits (NQ, HQ, PQ) and drill rods for Gorontalo exploration program.", status:"Created",
+    items:[
+      {no:1, desc:"Diamond Core Bit NQ (per unit)",         type:"Material", acctAssign:"P – Project", materialNo:"DRL-BIT-001", materialGroup:"Drilling Supplies", plant:"PL04", qty:500,  uom:"Pcs", estPrice:550000,   requirementDate:"2025-10-15", startDate:"", endDate:""},
+      {no:2, desc:"Diamond Core Bit HQ (per unit)",         type:"Material", acctAssign:"P – Project", materialNo:"DRL-BIT-002", materialGroup:"Drilling Supplies", plant:"PL04", qty:300,  uom:"Pcs", estPrice:750000,   requirementDate:"2025-10-15", startDate:"", endDate:""},
+      {no:3, desc:"Drill Rod NQ 3m (per rod)",              type:"Material", acctAssign:"P – Project", materialNo:"DRL-ROD-003", materialGroup:"Drilling Supplies", plant:"PL04", qty:200,  uom:"Pcs", estPrice:1200000,  requirementDate:"2025-10-15", startDate:"", endDate:""},
+    ]},
+  { id:"RFQ-2025-0050", title:"Air Compressor Rental – Plant Maintenance",        postedDate:"2025-08-24", closingDate:"2025-09-24", postedBy:"Siti Rahma",   targets:["10000002"],            cat:"Equipment Rental",  estVal:216000000,  companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI", desc:"Rental of portable diesel air compressors (375 CFM) for plant maintenance and pneumatic tool operations.", status:"Created",
+    items:[
+      {no:1, desc:"Air Compressor 375 CFM Diesel Rental",   type:"Service",  acctAssign:"K – Cost Center", materialNo:"EQP-ACP-001", materialGroup:"Equipment Rental", plant:"PL03", qty:12, uom:"Month", estPrice:18000000, requirementDate:"", startDate:"2025-11-01", endDate:"2026-10-31"},
+    ]},
   { id:"RFQ-2025-0001", title:"Procurement of Laptops & Workstations", postedDate:"2025-06-01", closingDate:"2025-06-20", postedBy:"Ahmad Rizki",  targets:["10000001","10000002"], cat:"IT Equipment",    estVal:500000000, companyCode:"BRMS", plant:"PL01", purchOrg:"BRMS", desc:"BRM requires 50 laptops and 20 workstations for office expansion.", status:"Complete",
     items:[
       {no:1, desc:"Laptop 14\" Core i7",   type:"Material", acctAssign:"K – Cost Center", materialNo:"IT-LPT-001", materialGroup:"IT Hardware",  plant:"PL01", qty:50,  uom:"Unit",         estPrice:8000000,  requirementDate:"2025-07-15", startDate:"", endDate:""},
