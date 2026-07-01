@@ -67,14 +67,14 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
         </div>
       </div>
 
-      <div style={{padding:"0 32px",maxWidth:1200,margin:"0 auto"}}>
+      <div style={{padding:"0 32px"}}>
 
         {/* ── KPI cards ── */}
         <SecHdr title="Overview" open={showKpi} onToggle={()=>setShowKpi(p=>!p)}/>
         {showKpi&&(
           <div style={{display:"grid",gridTemplateColumns:g4(),gap:16,marginBottom:4}}>
             {kpis.map(k=>(
-              <div key={k.l} style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",padding:"18px 20px"}}>
+              <div key={k.l} style={{background:C.card,borderRadius:4,border:`1px solid ${C.border}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",padding:"18px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
                   <span style={{fontSize:12,fontWeight:600,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.4}}>{k.l}</span>
                   <SapIcon name={k.ico} size={20} color={k.c} style={{opacity:0.65}}/>
@@ -92,7 +92,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
           <div style={{display:"grid",gridTemplateColumns:g3(),gap:16,marginBottom:4}}>
             {pages.map(p=>(
               <div key={p.id} onClick={()=>setSection(p.id)}
-                style={{background:p.bg,borderRadius:8,padding:"22px 20px",cursor:"pointer",minHeight:110,display:"flex",flexDirection:"column" as const,justifyContent:"space-between",transition:"filter .15s"}}
+                style={{background:p.bg,borderRadius:4,padding:"22px 20px",cursor:"pointer",minHeight:110,display:"flex",flexDirection:"column" as const,justifyContent:"space-between",transition:"filter .15s"}}
                 onMouseEnter={e=>(e.currentTarget.style.filter="brightness(1.1)")}
                 onMouseLeave={e=>(e.currentTarget.style.filter="none")}>
                 <div>
@@ -110,7 +110,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
         <SecHdr title="Recent Invoice Activity" open={showActivity} onToggle={()=>setShowActivity(p=>!p)}
           action={<button onClick={()=>setSection("invoice")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:600,padding:0}}>View all →</button>}/>
         {showActivity&&(
-          <div style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden",marginBottom:28}}>
+          <div style={{background:C.card,borderRadius:4,border:`1px solid ${C.border}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",overflow:"hidden",marginBottom:28}}>
             {mi.length===0
               ?<div style={{padding:"20px",color:C.t2,fontSize:14}}>No invoices submitted yet.</div>
               :mi.slice(0,5).map((inv,idx)=>(
@@ -173,7 +173,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
         </div>
       </div>
 
-      <div style={{padding:"0 32px",maxWidth:1200,margin:"0 auto"}}>
+      <div style={{padding:"0 32px"}}>
 
         {/* ── KPI cards ── */}
         <SecHdr title="Overview" open={showKpi} onToggle={()=>setShowKpi(p=>!p)}/>
@@ -181,9 +181,9 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
           <div style={{display:"grid",gridTemplateColumns:g4(),gap:16,marginBottom:4}}>
             {kpis.map(k=>(
               <div key={k.l} onClick={()=>setSection(k.s)}
-                style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",padding:"18px 20px",cursor:"pointer",transition:"box-shadow .15s"}}
+                style={{background:C.card,borderRadius:4,border:`1px solid ${C.border}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",padding:"18px 20px",cursor:"pointer",transition:"box-shadow .15s"}}
                 onMouseEnter={e=>(e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.11)")}
-                onMouseLeave={e=>(e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.06)")}>
+                onMouseLeave={e=>(e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.08)")}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
                   <span style={{fontSize:12,fontWeight:600,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.4}}>{k.l}</span>
                   <SapIcon name={k.ico} size={20} color={k.c} style={{opacity:0.65}}/>
@@ -202,7 +202,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
             <SecHdr title="Invoices Awaiting Action" open={showInv} onToggle={()=>setShowInv(p=>!p)}
               action={pending.length>5&&<button onClick={()=>setSection("brm-invoice")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:600,padding:0}}>View all {pending.length} →</button>}/>
             {showInv&&(
-              <div style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden",marginBottom:4}}>
+              <div style={{background:C.card,borderRadius:4,border:`1px solid ${C.border}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",overflow:"hidden",marginBottom:4}}>
                 {pending.length===0
                   ?<div style={{padding:"20px",color:C.t2,fontSize:14}}>No invoices pending review.</div>
                   :pending.slice(0,5).map((inv,idx)=>(
@@ -231,7 +231,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection}) => {
             <SecHdr title="Quotations to Evaluate" open={showQt} onToggle={()=>setShowQt(p=>!p)}
               action={pendingQt.length>5&&<button onClick={()=>setSection("brm-quotation")} style={{background:"none",border:"none",color:C.primary,cursor:"pointer",fontSize:12,fontWeight:600,padding:0}}>View all →</button>}/>
             {showQt&&(
-              <div style={{background:C.card,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",overflow:"hidden",marginBottom:4}}>
+              <div style={{background:C.card,borderRadius:4,border:`1px solid ${C.border}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",overflow:"hidden",marginBottom:4}}>
                 {pendingQt.length===0
                   ?<div style={{padding:"20px",color:C.t2,fontSize:14}}>No quotations awaiting evaluation.</div>
                   :pendingQt.slice(0,5).map((qt,idx)=>(
