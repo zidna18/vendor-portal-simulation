@@ -51,6 +51,8 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 
 // ── Invoice Form Modal ─────────────────────────────────────────
 export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[]}) => {
+  const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
+  const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
   const isNew=!inv;
   const [f,setF]=useState(inv?{...inv}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:"",dueDate:"",poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -89,7 +91,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         </div>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
-          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+          <Sel value={f.companyCode} onChange={v=>s("companyCode",v)} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
           <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
         <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
