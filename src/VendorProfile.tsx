@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  C, VENDORS,
+  C, VENDORS, COMPANY_CODES, PURCH_ORGS,
   fmtDate, pg,
   Badge, SapIcon,
 } from "./shared";
@@ -24,7 +24,7 @@ const Row = ({label,value,mono=false}:{label:string,value:any,mono?:boolean}) =>
 
 export const VendorProfile = ({user}) => {
   const [loading,setL]=useState(true);
-  const [tab,setTab]=useState<"info"|"bank"|"tax">("info");
+  const [tab,setTab]=useState<"info"|"bank"|"tax"|"cc">("info");
   useEffect(()=>{setTimeout(()=>setL(false),700);},[]);
   const v=VENDORS[user.vendorId] as any;
   if(!v) return null;
@@ -38,9 +38,10 @@ export const VendorProfile = ({user}) => {
   const TK={hdrBg:"#f2f2f2",hdrBorder:"#e5e5e5",hdrText:"#6a6d70",rowBg:"#ffffff",rowBorder:"#e5e5e5"};
 
   const tabs=[
-    {id:"info",  label:"General Information", icon:"employee"},
-    {id:"bank",  label:"Bank Accounts",        icon:"payment-approval"},
-    {id:"tax",   label:"Tax & Compliance",     icon:"document-text"},
+    {id:"info",  label:"General Information",      icon:"employee"},
+    {id:"bank",  label:"Bank Accounts",             icon:"payment-approval"},
+    {id:"tax",   label:"Tax & Compliance",          icon:"document-text"},
+    {id:"cc",    label:"Company Code Assignment",   icon:"business-objects-experience"},
   ] as const;
 
   return(
@@ -194,6 +195,105 @@ export const VendorProfile = ({user}) => {
           </div>
         </div>
       )}
+
+      {/* Tab: Company Code Assignment */}
+      {tab==="cc"&&(()=>{
+        const lfb1 = v.lfb1||[];
+        const lfm1 = v.lfm1||[];
+        const thSt:any={padding:"0 14px",textAlign:"left",fontSize:11,fontWeight:700,color:TK.hdrText,borderBottom:`1px solid ${TK.hdrBorder}`,whiteSpace:"nowrap",letterSpacing:.3,textTransform:"uppercase",height:36};
+        const tdSt:any=(i)=>({padding:"0 14px",fontSize:13,height:46,borderBottom:`1px solid ${TK.rowBorder}`,background:i%2===0?TK.rowBg:"#fafafa"});
+        const chip=(txt,c,bg)=><span style={{display:"inline-block",padding:"2px 8px",borderRadius:3,fontSize:11,fontWeight:700,color:c,background:bg,border:`1px solid ${c}33`}}>{txt}</span>;
+        return(
+          <div style={{display:"flex",flexDirection:"column" as const,gap:20}}>
+
+            {/* LFB1 */}
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+              <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <SapIcon name="building" size={15} color={C.primary}/>
+                  <span style={{fontSize:14,fontWeight:700,color:C.t1}}>LFB1 — Vendor per Company Code</span>
+                  <span style={{fontSize:12,color:C.t2}}>({lfb1.length} assignment{lfb1.length!==1?"s":""})</span>
+                </div>
+                <span style={{fontSize:12,color:C.t2,display:"flex",alignItems:"center",gap:5}}>
+                  <SapIcon name="locked" size={12} color={C.t2}/>Table: LFB1
+                </span>
+              </div>
+              <div style={{overflowX:"auto" as const}}>
+                <table style={{width:"100%",borderCollapse:"collapse" as const,fontSize:13}}>
+                  <thead>
+                    <tr style={{background:TK.hdrBg}}>
+                      {["Company Code","Company Name","Recon. Account","Reconciliation Acct Name","Payment Terms","Pmt Method","Accounting Clerk","Check Dbl Inv","Planning Grp"].map(h=><th key={h} style={thSt}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lfb1.map((r,i)=>{
+                      const cc=COMPANY_CODES.find(c=>c.v===r.bukrs);
+                      return(
+                        <tr key={r.bukrs}>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",fontWeight:700,color:C.primary}}>{r.bukrs}</span></td>
+                          <td style={tdSt(i)}>{cc?.l||r.bukrs}</td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",color:C.t1,fontWeight:600}}>{r.akont}</span></td>
+                          <td style={tdSt(i)}><span style={{color:C.t2}}>{r.reconcAcct}</span></td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",fontWeight:600}}>{r.zterm}</span></td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",color:C.t1}}>{r.zwels}</span></td>
+                          <td style={tdSt(i)}>{r.busab}</td>
+                          <td style={tdSt(i)}>{r.reprf?chip("Yes",C.ok,C.okBg):chip("No",C.t2,"#f4f4f4")}</td>
+                          <td style={tdSt(i)}>{r.fdgrp}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* LFM1 */}
+            <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
+              <div style={{padding:"12px 20px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <SapIcon name="customer-order-entry" size={15} color={C.primary}/>
+                  <span style={{fontSize:14,fontWeight:700,color:C.t1}}>LFM1 — Vendor per Purchasing Org</span>
+                  <span style={{fontSize:12,color:C.t2}}>({lfm1.length} assignment{lfm1.length!==1?"s":""})</span>
+                </div>
+                <span style={{fontSize:12,color:C.t2,display:"flex",alignItems:"center",gap:5}}>
+                  <SapIcon name="locked" size={12} color={C.t2}/>Table: LFM1
+                </span>
+              </div>
+              <div style={{overflowX:"auto" as const}}>
+                <table style={{width:"100%",borderCollapse:"collapse" as const,fontSize:13}}>
+                  <thead>
+                    <tr style={{background:TK.hdrBg}}>
+                      {["Purch. Org","Purch. Org Name","Company Code","Order Currency","Payment Terms","Incoterms","Incoterms Location","Min. Order Value","Salesperson","Telephone","Auto PO"].map(h=><th key={h} style={thSt}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lfm1.map((r,i)=>{
+                      const po=PURCH_ORGS.find(p=>p.v===r.ekorg);
+                      const cc=COMPANY_CODES.find(c=>c.v===r.bukrs);
+                      return(
+                        <tr key={r.ekorg}>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",fontWeight:700,color:C.primary}}>{r.ekorg}</span></td>
+                          <td style={tdSt(i)}>{po?.l||r.ekorg}</td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",fontWeight:600}}>{r.bukrs}</span> <span style={{color:C.t2,fontSize:12}}>{cc?.l}</span></td>
+                          <td style={tdSt(i)}><span style={{background:C.infoBg,color:C.info,border:`1px solid ${C.info}30`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700,fontFamily:"monospace"}}>{r.waers}</span></td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace",fontWeight:600}}>{r.zterm}</span></td>
+                          <td style={tdSt(i)}><span style={{fontFamily:"monospace"}}>{r.inco1}</span></td>
+                          <td style={tdSt(i)}>{r.inco2}</td>
+                          <td style={tdSt(i)}>{r.minbw>0?new Intl.NumberFormat("id-ID").format(r.minbw)+" IDR":"—"}</td>
+                          <td style={tdSt(i)}>{r.verkf}</td>
+                          <td style={tdSt(i)}><span style={{color:C.t2,fontSize:12}}>{r.telf1}</span></td>
+                          <td style={tdSt(i)}>{r.autom?chip("Yes",C.ok,C.okBg):chip("No",C.t2,"#f4f4f4")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
 
       {/* Read-only notice */}
       <div style={{marginTop:20,padding:"10px 14px",background:C.warnBg,borderRadius:4,border:`1px solid ${C.warn}33`,fontSize:12,color:C.t2,display:"flex",alignItems:"flex-start",gap:8}}>

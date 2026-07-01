@@ -17,6 +17,16 @@ export const VENDORS = {
     cat:"Goods & Services", since:"2019-03-15", rep:"Budi Santoso", status:"Active",
     npwpAddress:"Jl. Sudirman No. 123, Jakarta Selatan 12190", pkp:"PKP", taxStatus:"Active",
     certExpiry:"2027-03-14", website:"www.majubersama.co.id", fax:"+62 21 5555-1235",
+    lfb1:[
+      { bukrs:"BRMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"BRM001", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"CPMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"CPM001", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"GMIN", akont:"160000", zterm:"NT14", zwels:"T", reprf:false, busab:"GMN001", fdgrp:"02", reconcAcct:"Accounts Payable - Trade" },
+    ],
+    lfm1:[
+      { ekorg:"1010", bukrs:"BRMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Jakarta",   minbw:0,         verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:true  },
+      { ekorg:"1020", bukrs:"CPMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Poboya",    minbw:5000000,   verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:true  },
+      { ekorg:"1030", bukrs:"GMIN", waers:"IDR", zterm:"NT14", inco1:"CIF", inco2:"Gorontalo", minbw:10000000,  verkf:"Budi Santoso", telf1:"+62 21 5555-1234", autom:false },
+    ],
   },
   "10000002":{ id:"10000002", name:"CV Sukses Mandiri",  tax:"02.345.678.9-012.000", addr:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", phone:"+62 21 5555-5678", email:"finance@suksesmandiri.co.id",
     banks:[
@@ -26,6 +36,18 @@ export const VENDORS = {
     cat:"Services", since:"2021-07-22", rep:"Dewi Kusuma", status:"Active",
     npwpAddress:"Jl. Gatot Subroto No. 45, Jakarta Pusat 10270", pkp:"Non-PKP", taxStatus:"Active",
     certExpiry:"2026-07-21", website:"www.suksesmandiri.co.id", fax:"+62 21 5555-5679",
+    lfb1:[
+      { bukrs:"CPMS", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"CPM002", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"GMIN", akont:"160000", zterm:"NT30", zwels:"T", reprf:true,  busab:"GMN002", fdgrp:"01", reconcAcct:"Accounts Payable - Trade" },
+      { bukrs:"SHSI", akont:"160001", zterm:"NT45", zwels:"U", reprf:false, busab:"SHS001", fdgrp:"02", reconcAcct:"Accounts Payable - Services" },
+      { bukrs:"LMRS", akont:"160001", zterm:"NT45", zwels:"U", reprf:false, busab:"LMR001", fdgrp:"02", reconcAcct:"Accounts Payable - Services" },
+    ],
+    lfm1:[
+      { ekorg:"1020", bukrs:"CPMS", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Poboya",    minbw:0,        verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:true  },
+      { ekorg:"1030", bukrs:"GMIN", waers:"IDR", zterm:"NT30", inco1:"DAP", inco2:"Gorontalo", minbw:0,        verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:true  },
+      { ekorg:"1040", bukrs:"SHSI", waers:"IDR", zterm:"NT45", inco1:"FCA", inco2:"Banten",    minbw:2000000,  verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:false },
+      { ekorg:"1050", bukrs:"LMRS", waers:"IDR", zterm:"NT45", inco1:"FCA", inco2:"Aceh",      minbw:2000000,  verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:false },
+    ],
   },
 };
 // SAP I_CompanyCode — five legal entities
@@ -37,6 +59,14 @@ export const COMPANY_CODES = [
   { v:"LMRS", l:"PT Linge Minerals",           ctrl:"A000", city:"Aceh",      country:"ID", currency:"IDR", lang:"ID", chart:"YCOA" },
 ];
 export const ccName = code => COMPANY_CODES.find(c=>c.v===code)?.l || "";
+// SAP Purchasing Org — mirrors Company Code 1:1
+export const PURCH_ORGS = [
+  { v:"1010", l:"Purchasing Org. Jakarta",   bukrs:"BRMS" },
+  { v:"1020", l:"Purchasing Org. Palu",      bukrs:"CPMS" },
+  { v:"1030", l:"Purchasing Org. Gorontalo", bukrs:"GMIN" },
+  { v:"1040", l:"Purchasing Org. Banten",    bukrs:"SHSI" },
+  { v:"1050", l:"Purchasing Org. Aceh",      bukrs:"LMRS" },
+];
 // SAP I_Currency — ISO 4217 transaction currencies
 export const CURRENCIES = [
   {v:"IDR",l:"IDR – Indonesian Rupiah"}, {v:"USD",l:"USD – US Dollar"},
