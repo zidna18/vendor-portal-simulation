@@ -1214,7 +1214,8 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     a.download=`invoices_${new Date().toISOString().slice(0,10)}.csv`;
     a.click();URL.revokeObjectURL(a.href);
   };
-  const mineFiltered=invoices.filter(i=>i.vendorId===user.vendorId).filter(i=>
+  const assignedCCs=(VENDORS[user.vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
+  const mineFiltered=invoices.filter(i=>i.vendorId===user.vendorId&&(assignedCCs.length===0||assignedCCs.includes(i.companyCode))).filter(i=>
     (active.invoiceNoConds.length===0||active.invoiceNoConds.some(c=>evalCond(i.invoiceNo,c)))&&
     (active.statuses.length===0||active.statuses.includes(i.status))&&
     (active.companyCodes.length===0||active.companyCodes.includes(i.companyCode))&&
@@ -1311,7 +1312,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
       {vhOpen==="companyCode"&&(
         <ValueHelpDialog title="Company Code"
           cols={[{key:"v",label:"Company...",width:80},{key:"l",label:"Company Name",width:200},{key:"ctrl",label:"Controlling...",width:100},{key:"city",label:"City",width:100},{key:"country",label:"Country/Reg...",width:90},{key:"currency",label:"Currency",width:80},{key:"lang",label:"Language...",width:80},{key:"chart",label:"Chart of",width:70}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={COMPANY_CODES.filter(c=>assignedCCs.length===0||assignedCCs.includes(c.v))} keyField="v" labelField="l"
           selected={draft.companyCodes}
           onConfirm={s=>{sd("companyCodes",s);setVhOpen(null);}}
           onClose={()=>setVhOpen(null)}/>
