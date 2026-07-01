@@ -8,7 +8,7 @@ import {
 } from "./shared";
 import { VendorInvoice, BrmInvoice } from "./InvoicePages";
 import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation } from "./QuotationRfqPages";
-import { VendorHome, BrmHome } from "./HomePages";
+import { VendorHome, BrmHome, ApproverHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
 
 // ── Notification mock data ──────────────────────────────────────
@@ -26,6 +26,18 @@ const BRM_NOTIFS = [
   {id:"n9", type:"deadline-miss", icon:"warning2", color:"#bb0000", title:"Quotation Deadline Missed", msg:"2 target vendors did not submit quotations for RFQ-2025-0002 before the closing date.", time:"2 days ago", read:true},
   {id:"n10", type:"report-ready", icon:"bar-chart", color:"#0070f2", title:"Monthly Report Ready", msg:"June 2025 procurement summary is ready. 34 RFQs closed, IDR 8.2B in quotations evaluated.", time:"3 days ago", read:true},
 ];
+const APPROVER_NOTIFS = [
+  // Pending approval — what he should act on
+  {id:"a1", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0001 (IDR 490,000,000) — Procurement of Laptops & Workstations by PT Maju Bersama. Submitted 12 Jun 2025.", time:"Just now", read:false},
+  {id:"a2", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0029 (IDR 510,000,000) — Procurement of Laptops & Workstations by CV Sukses Mandiri. Submitted 14 Jun 2025.", time:"5 min ago", read:false},
+  {id:"a3", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0030 (IDR 90,500,000) — Medical & First Aid Supplies – All Sites by CV Sukses Mandiri. Submitted 08 Jun 2025.", time:"1 hr ago", read:false},
+  {id:"a4", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0031 (IDR 283,500,000) — Waste Management & Environmental Services by CV Sukses Mandiri. Submitted 10 Jun 2025.", time:"2 hr ago", read:false},
+  // Final approved — outcomes
+  {id:"a5", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0003 (IDR 350,000,000) — Security Services – HO Building by CV Sukses Mandiri has been fully approved and awarded.", time:"Yesterday", read:true},
+  {id:"a6", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0004 (IDR 228,000,000) — HVAC Maintenance Contract by PT Maju Bersama has been fully approved. PO in progress.", time:"Yesterday", read:true},
+  {id:"a7", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0006 (IDR 175,000,000) — Industrial Safety Equipment by PT Maju Bersama has been fully approved and closed.", time:"2 days ago", read:true},
+  {id:"a8", type:"approval-rejected", icon:"decline", color:"#bb0000", title:"Approval Rejected", msg:"QT-2025-0008 (IDR 620,000,000) — IT Infrastructure Services by PT Maju Bersama was rejected by you. Reason: Exceeds budget ceiling.", time:"3 days ago", read:true},
+];
 const VENDOR_NOTIFS = [
   {id:"v1", type:"rfq-invite", icon:"add-document", color:"#0070f2", title:"New RFQ Invitation", msg:"You have been invited to submit a quotation for RFQ-2025-0008 (IT Infrastructure Services). Deadline: 14 Jul 2025.", time:"10 min ago", read:false},
   {id:"v2", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Accepted", msg:"Your quotation QT-2025-0003 for RFQ-2025-0001 (Laptops & Workstations) has been accepted. PO will follow.", time:"1 hr ago", read:false},
@@ -42,7 +54,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const [notifOpen,setNotifOpen]=useState(false);
   const [readIds,setReadIds]=useState<Set<string>>(new Set());
   const notifRef=useRef<HTMLDivElement>(null);
-  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:BRM_NOTIFS;
+  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:user.role==="approver"?APPROVER_NOTIFS:BRM_NOTIFS;
   const notifs=allNotifs.map(n=>({...n,read:n.read||readIds.has(n.id)}));
   const unread=notifs.filter(n=>!n.read).length;
   useEffect(()=>{
@@ -54,7 +66,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :user.role==="approver"
-    ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Mgmt"},{id:"apr-quotation",l:"Quotation Approval"}]
+    ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Approval"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
   const isMob=mob();
   const iconBtn=(onClick,title,children)=>(
@@ -541,9 +553,9 @@ export default function App() {
       default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
     }
     if(user.role==="approver") switch(section){
-      case "apr-rfq":       return <ApproverRfq rfqs={rfqs} quotations={quotations}/>;
+      case "apr-rfq":       return <ApproverRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
       case "apr-quotation": return <ApproverQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} user={user}/>;
-      default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
+      default:              return <ApproverHome user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} setRfqs={setRfqs} setSection={setSection}/>;
     }
     switch(section){
       case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices}/>;
