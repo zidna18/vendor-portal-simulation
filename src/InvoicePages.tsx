@@ -50,6 +50,27 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 };
 
 // ── Invoice Form Modal ─────────────────────────────────────────
+const PO_MOCK_POOL = [
+  {matCode:"MAT-1001",matDesc:"Activated Carbon Filter Media",uom:"KG",unitAmt:850000},
+  {matCode:"MAT-1002",matDesc:'Stainless Steel Pipe 2"',uom:"M",unitAmt:1250000},
+  {matCode:"MAT-1003",matDesc:"Industrial Filter Bag 25μm",uom:"PCS",unitAmt:420000},
+  {matCode:"MAT-1004",matDesc:"Centrifugal Pump Assembly",uom:"EA",unitAmt:18500000},
+  {matCode:"MAT-1005",matDesc:"Chemical Reagent H₂SO₄ 98%",uom:"L",unitAmt:320000},
+  {matCode:"MAT-2001",matDesc:"Technical Consulting Services",uom:"HR",unitAmt:1500000},
+  {matCode:"MAT-2002",matDesc:"Maintenance & Repair Service",uom:"LS",unitAmt:25000000},
+  {matCode:"MAT-3001",matDesc:"Safety Equipment & PPE Kit",uom:"SET",unitAmt:2800000},
+];
+const getMockPoItem = (po:string) => {
+  const h=po.split("").reduce((a,c)=>a+c.charCodeAt(0),0);
+  const m=PO_MOCK_POOL[h%PO_MOCK_POOL.length];
+  const qty=10+(h%41);
+  const poAmt=m.unitAmt*qty;
+  const grPct=0.6+((h*7)%41)/100;
+  const grAmt=Math.round(poAmt*grPct);
+  const dpAmt=Math.round(grAmt*((h*3)%31)/100);
+  const invAmt=grAmt-dpAmt;
+  return {...m,item:"10",qty,poAmt,grAmt,dpAmt,invAmt};
+};
 const VAT_RATES = [
   {v:"0",l:"0%",r:0},{v:"1.1",l:"1.1% (PPN PMSE)",r:0.011},
   {v:"10",l:"10%",r:0.10},{v:"11",l:"11% (Standard PPN)",r:0.11},{v:"12",l:"12%",r:0.12},
@@ -76,11 +97,14 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
      otherFees:[],additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
+  const [expanded,setExpanded]=useState(false);
+  const [attRefs,setAttRefs]=useState<Record<string,string>>(inv?.attRefs||{"invoice.pdf":"","faktur_pajak.pdf":"","gr_document.pdf":""});
+  const updateAttRef=(key:string,v:string)=>setAttRefs(p=>({...p,[key]:v}));
   const autoCalcVat=(base:any,rate:string)=>Math.round(Number(base||0)*(VAT_RATES.find(r=>r.v===rate)?.r||0.11));
   const getWhtRate=(whtType:string,whtCode:string)=>(WHT_CODES[whtType]||[]).find(c=>c.v===whtCode)?.rate||0;
   const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
   const netBalance=Number(f.amount||0)+Number(f.vatAmt||0)+totalOtherFee-Number(f.whtAmt||0);
-  const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",ref:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",ref:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",ref:"50002103"}];
+  const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",placeholder:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",placeholder:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",placeholder:"50002103"}];
   const addFile=(name:string)=>{if(!(f.files||[]).includes(name))s("files",[...(f.files||[]),name]);};
   const rmFile=(name:string)=>s("files",(f.files||[]).filter((x:string)=>x!==name));
   const addFeeRow=()=>s("otherFees",[...(f.otherFees||[]),{category:"",amount:0}]);
@@ -98,7 +122,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     const fees=f.otherFees||[];
     const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
     const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
-    const obj={...f,vatRate:f.vatRate,whtCode:f.whtCode,otherFees:fees,additionalFee,feeCategory,
+    const obj={...f,vatRate:f.vatRate,whtCode:f.whtCode,otherFees:fees,additionalFee,feeCategory,attRefs,
       status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,
       submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
@@ -112,7 +136,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   );
   const fixedKeys=FIXED_ATT.map(a=>a.key);
   return (
-    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={860}>
+    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={860} expanded={expanded} onToggleExpand={()=>setExpanded(p=>!p)}>
       {/* Invoice balance strip */}
       <div style={{display:"flex",alignItems:"center",gap:16,padding:"8px 12px",background:C.subtle,borderRadius:4,marginBottom:4,border:`1px solid ${C.border}`}}>
         <div style={{fontSize:12,fontWeight:600,color:C.t2}}>Invoice Balance:</div>
@@ -122,19 +146,13 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
 
       {/* GENERAL INFORMATION */}
       <SHdr>General Information</SHdr>
-      <div style={{padding:"8px 12px",background:"#fef6ee",borderRadius:4,border:"1px solid #f5c98a",display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
-        <SapIcon name="information" size={14} color="#c87941"/>
-        <span style={{fontSize:12,color:"#6a6d70",fontWeight:700}}>Document Type:</span>
-        {[["Invoice","Standard supplier invoice (PO-based, Indonesian vendor)"],["Supplier DPR","Supplier Down Payment Request (non-PO GR or foreign vendor)"]].map(([t,hint])=>(
-          <label key={t} title={hint} style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:13,color:f.invoiceType===t?"#0a6ed1":"#32363a",fontWeight:f.invoiceType===t?700:400}}>
-            <input type="radio" checked={f.invoiceType===t} onChange={()=>s("invoiceType",t)} style={{accentColor:"#0a6ed1",cursor:"pointer"}}/>
-            {t}
-          </label>
-        ))}
-        <span style={{fontSize:11,color:"#c87941",marginLeft:"auto"}}>{f.invoiceType==="Supplier DPR"?"Routes to SAP BPA Down Payment workflow":"Indonesian vendor · Routes to SAP Flexible Workflow (Supplier Invoice)"}</span>
-      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px"}}>
-        <div style={{gridColumn:"1/-1"}}>
+        <div>
+          <Lbl>Document Type *</Lbl>
+          <Sel value={f.invoiceType} onChange={v=>s("invoiceType",v)} opts={[{v:"Invoice",l:"Invoice"},{v:"Supplier DPR",l:"Down Payment Request"}]}/>
+          <div style={{fontSize:10,color:"#c87941",marginTop:2}}>{f.invoiceType==="Supplier DPR"?"📡 Routes to SAP BPA Down Payment workflow":"📡 Indonesian vendor · SAP Flexible Workflow"}</div>
+        </div>
+        <div>
           <Lbl>Company Code *</Lbl>
           <Sel value={f.companyCode} onChange={v=>{const term=(VENDORS[vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===v)?.zterm||f.paymentTerms;setF(p=>({...p,companyCode:v,paymentTerms:term,dueDate:calcDueDate(p.invoiceDate,term)}));}} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
           <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP CDS: I_CompanyCode</div>
@@ -192,22 +210,25 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
               </tr>
             </thead>
             <tbody>
-              {(f.poNumbers||[]).map((po:string,pi:number)=>(
+              {(f.poNumbers||[]).map((po:string,pi:number)=>{
+                const m=getMockPoItem(po);
+                return(
                 <tr key={pi} style={{background:pi%2===0?C.card:C.subtle}}>
                   <td style={{padding:"5px 7px",fontFamily:"monospace",fontSize:10,color:C.primary}}>{po}</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>10</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2,fontStyle:"italic",fontSize:10}}>Auto-populate on SAP integration</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>{m.item}</td>
+                  <td style={{padding:"5px 7px",color:C.t2,fontFamily:"monospace",fontSize:10}}>{m.matCode}</td>
+                  <td style={{padding:"5px 7px",color:C.t1}}>{m.matDesc}</td>
+                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>{m.uom}</td>
+                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{(m.unitAmt/1000).toFixed(0)}K</td>
+                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"5px 7px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"5px 7px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
                   <td style={{padding:"5px 7px",minWidth:100}}><AmtInp value="" onChange={()=>{}}/></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           <div style={{padding:"4px 8px",background:C.subtle,fontSize:10,color:C.t2,borderTop:`1px solid ${C.border}`}}>Invoicable Amount = GR Amount – DP Amount</div>
@@ -299,9 +320,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
             const uploaded=(f.files||[]).includes(att.key);
             return(
               <tr key={att.key} style={{borderBottom:`1px solid ${C.border}`}}>
-                <td style={{padding:"6px 10px",fontWeight:600,color:C.t1}}>{att.label}</td>
-                <td style={{padding:"6px 10px",color:C.t2,fontSize:12,fontFamily:"monospace"}}>{att.ref}</td>
-                <td style={{padding:"6px 10px",textAlign:"center"}}>
+                <td style={{padding:"6px 10px",fontWeight:600,color:C.t1,whiteSpace:"nowrap" as const}}>{att.label}</td>
+                <td style={{padding:"4px 6px"}}>
+                  <Inp value={attRefs[att.key]||""} onChange={v=>updateAttRef(att.key,v)} placeholder={att.placeholder}/>
+                </td>
+                <td style={{padding:"6px 10px",textAlign:"center",whiteSpace:"nowrap" as const}}>
                   {uploaded
                     ?<span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:C.ok}}>
                         <SapIcon name="accept" size={12} color={C.ok}/>{att.key}
