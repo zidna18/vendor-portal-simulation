@@ -82,7 +82,7 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
                 <tr key={po.v} onClick={()=>toggle(po.v)} style={{background:sel.has(po.v)?"#e8f1fb":i%2===0?C.card:C.subtle,cursor:"pointer"}}>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><input type="checkbox" checked={sel.has(po.v)} onChange={()=>toggle(po.v)} onClick={e=>e.stopPropagation()}/></td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,fontFamily:"monospace",fontWeight:600,color:C.primary}}>{po.v}</td>
-                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><span style={{background:C.infoBg,color:C.primary,border:`1px solid ${C.info}`,borderRadius:3,padding:"1px 7px",fontSize:12,fontWeight:600}}>{po.companyCode}</span></td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t1,fontWeight:600}}>{po.companyCode}</td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t1}}>{po.desc}</td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t2}}>{po.currency}</td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,textAlign:"right",fontVariantNumeric:"tabular-nums" as const,fontWeight:600}}>{fmtAmt(po.amount,po.currency)}</td>
@@ -177,6 +177,10 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const [expanded,setExpanded]=useState(false);
   const [attRefs,setAttRefs]=useState<Record<string,string>>(inv?.attRefs||{"invoice.pdf":"","faktur_pajak.pdf":"","gr_document.pdf":""});
   const updateAttRef=(key:string,v:string)=>setAttRefs(p=>({...p,[key]:v}));
+  const [poItemChecked,setPoItemChecked]=useState<Record<string,boolean>>(()=>{const o:any={};(inv?.poNumbers||[]).forEach((po:string)=>{o[po]=true;});return o;});
+  const addPo=(po:string)=>{s("poNumbers",[...(f.poNumbers||[]),po]);setPoItemChecked(p=>({...p,[po]:true}));};
+  const removePo=(po:string)=>{s("poNumbers",(f.poNumbers||[]).filter((x:string)=>x!==po));setPoItemChecked(p=>{const n={...p};delete n[po];return n;});};
+  const removeUnchecked=()=>{const keep=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false);s("poNumbers",keep);setPoItemChecked(p=>{const n:any={};keep.forEach(po=>n[po]=p[po]);return n;});};
   const autoCalcVat=(base:any,rate:string)=>Math.round(Number(base||0)*(VAT_RATES.find(r=>r.v===rate)?.r||0.11));
   const getWhtRate=(whtType:string,whtCode:string)=>(WHT_CODES[whtType]||[]).find(c=>c.v===whtCode)?.rate||0;
   const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
@@ -266,9 +270,9 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           <div style={{display:"flex",border:`1px solid ${poDropOpen?C.primary:C.border}`,borderRadius:2,background:C.field,minHeight:38}}>
             <div style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"4px 8px",alignContent:"flex-start",minHeight:34}}>
               {(f.poNumbers||[]).map((po,i)=>(
-                <span key={i} style={{display:"inline-flex",alignItems:"center",background:"#e8f1fb",border:`1px solid #c0d4ed`,borderRadius:12,padding:"2px 10px",fontSize:13,gap:5,lineHeight:"20px",color:"#0854a0"}}>
-                  <span style={{fontFamily:"monospace",fontWeight:600}}>{po}</span>
-                  <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#0854a0",cursor:"pointer",fontSize:12,padding:0,lineHeight:1,opacity:0.7}}>✕</button>
+                <span key={i} style={{display:"inline-flex",alignItems:"center",background:"#f2f4f5",border:"1px solid #8a9bb0",borderRadius:4,padding:"2px 6px",fontSize:12,gap:4,lineHeight:"18px",color:C.t1,maxWidth:200}}>
+                  <span style={{fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{po}</span>
+                  <button onClick={e=>{e.stopPropagation();removePo(po);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1,flexShrink:0}}>✕</button>
                 </span>
               ))}
               <input value={poSearch} onChange={e=>setPoSearch(e.target.value)} onFocus={()=>setPoDropOpen(true)}
@@ -278,16 +282,17 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
             <button onClick={()=>{setShowPoHelp(true);setPoDropOpen(false);}} title="Value Help (F4)" style={{padding:"0 12px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:11,color:C.t1,fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap" as const}}>⊞ F4</button>
           </div>
           {poDropOpen&&(()=>{
-            const avail=MOCK_POS.filter(p=>!(f.poNumbers||[]).includes(p.v)&&(!poSearch||p.v.includes(poSearch)||p.desc.toLowerCase().includes(poSearch.toLowerCase())||p.companyCode.toLowerCase().includes(poSearch.toLowerCase())));
+            const byCC=f.companyCode?MOCK_POS.filter(p=>p.companyCode===f.companyCode):MOCK_POS;
+            const avail=byCC.filter(p=>!(f.poNumbers||[]).includes(p.v)&&(!poSearch||p.v.includes(poSearch)||p.desc.toLowerCase().includes(poSearch.toLowerCase())));
             return(
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 4px 4px",boxShadow:"0 4px 12px rgba(0,0,0,0.12)",maxHeight:220,overflowY:"auto",marginBottom:4}}>
-                {avail.length===0?<div style={{padding:"12px 14px",color:C.t2,fontSize:13,fontStyle:"italic"}}>No available POs{poSearch?` matching "${poSearch}"`:""}.</div>:
+                {!f.companyCode&&<div style={{padding:"8px 14px",background:"#fef6ee",borderBottom:`1px solid ${C.border}`,fontSize:12,color:"#c87941"}}>Select a Company Code to filter available POs.</div>}
+                {avail.length===0?<div style={{padding:"12px 14px",color:C.t2,fontSize:13,fontStyle:"italic"}}>No available POs{poSearch?` matching "${poSearch}"`:f.companyCode?` for ${f.companyCode}`:""}.</div>:
                 avail.map((po,idx)=>(
-                  <div key={po.v} onMouseDown={e=>{e.preventDefault();s("poNumbers",[...(f.poNumbers||[]),po.v]);setPoSearch("");}}
+                  <div key={po.v} onMouseDown={e=>{e.preventDefault();addPo(po.v);setPoSearch("");}}
                     style={{padding:"8px 14px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,display:"flex",gap:12,alignItems:"center",background:idx%2===0?C.card:C.subtle}}>
                     <span style={{fontFamily:"monospace",fontWeight:700,color:C.primary,fontSize:13,minWidth:90}}>{po.v}</span>
                     <span style={{fontSize:13,color:C.t1,flex:1}}>{po.desc}</span>
-                    <span style={{fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 6px"}}>{po.companyCode}</span>
                     <span style={{fontSize:12,color:C.t2,minWidth:80,textAlign:"right" as const,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(po.amount,po.currency)}</span>
                   </div>
                 ))}
@@ -298,38 +303,55 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Type to search, or press <strong>⊞ F4</strong> for full value help dialog</div>
       </div>
       {(f.poNumbers||[]).length>0&&(
-        <div style={{marginBottom:4,overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:900}}>
-            <thead>
-              <tr style={{background:"#e8f1fb"}}>
-                {["Purchasing Document","PO Item","Material Code","Material Desc","PO Quant","UOM","Unit Amount","PO Amount","GR Amount","DP Amount","Invoicable Amount","Invoice Amount"].map(h=>(
-                  <th key={h} style={{padding:"7px 9px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:12}}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(f.poNumbers||[]).map((po:string,pi:number)=>{
-                const m=getMockPoItem(po);
-                return(
-                <tr key={pi} style={{background:pi%2===0?C.card:C.subtle}}>
-                  <td style={{padding:"7px 9px",fontFamily:"monospace",fontSize:13,color:C.primary,fontWeight:600}}>{po}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"center"}}>{m.item}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,fontFamily:"monospace",fontSize:12}}>{m.matCode}</td>
-                  <td style={{padding:"7px 9px",color:C.t1}}>{m.matDesc}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
-                  <td style={{padding:"7px 9px",color:C.t2}}>{m.uom}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.unitAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"5px 7px",minWidth:110}}><AmtInp value="" onChange={()=>{}}/></td>
+        <div style={{marginBottom:4}}>
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}>
+            <Btn v="danger" sm onClick={removeUnchecked}>Remove Unchecked</Btn>
+          </div>
+          <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:900}}>
+              <thead>
+                <tr style={{background:"#e8f1fb"}}>
+                  <th style={{padding:"7px 9px",width:36,borderBottom:"1px solid #c0d4ed"}}>
+                    <input type="checkbox" title="Select all"
+                      checked={(f.poNumbers||[]).every((po:string)=>poItemChecked[po]!==false)}
+                      onChange={e=>{const v=e.target.checked;setPoItemChecked(p=>{const n={...p};(f.poNumbers||[]).forEach((po:string)=>{n[po]=v;});return n;});}}
+                      style={{cursor:"pointer"}}/>
+                  </th>
+                  {["Purchasing Document","PO Item","Material Code","Material Desc","PO Quant","UOM","Unit Amount","PO Amount","GR Amount","DP Amount","Invoicable Amount","Invoice Amount"].map(h=>(
+                    <th key={h} style={{padding:"7px 9px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:12}}>{h}</th>
+                  ))}
                 </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div style={{padding:"4px 8px",background:C.subtle,fontSize:10,color:C.t2,borderTop:`1px solid ${C.border}`}}>Invoicable Amount = GR Amount – DP Amount</div>
+              </thead>
+              <tbody>
+                {(f.poNumbers||[]).map((po:string,pi:number)=>{
+                  const m=getMockPoItem(po);
+                  const checked=poItemChecked[po]!==false;
+                  return(
+                  <tr key={pi} style={{background:checked?(pi%2===0?C.card:C.subtle):"#fff8f8",opacity:checked?1:0.65}}>
+                    <td style={{padding:"7px 9px",textAlign:"center"}}>
+                      <input type="checkbox" checked={checked}
+                        onChange={e=>setPoItemChecked(p=>({...p,[po]:e.target.checked}))}
+                        style={{cursor:"pointer"}}/>
+                    </td>
+                    <td style={{padding:"7px 9px",fontFamily:"monospace",fontSize:13,color:C.primary,fontWeight:600}}>{po}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"center"}}>{m.item}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,fontFamily:"monospace",fontSize:12}}>{m.matCode}</td>
+                    <td style={{padding:"7px 9px",color:C.t1}}>{m.matDesc}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
+                    <td style={{padding:"7px 9px",color:C.t2}}>{m.uom}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.unitAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"5px 7px",minWidth:110}}><AmtInp value="" onChange={()=>{}}/></td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div style={{padding:"4px 8px",background:C.subtle,fontSize:10,color:C.t2,borderTop:`1px solid ${C.border}`}}>Invoicable Amount = GR Amount – DP Amount · Uncheck a row and click "Remove Unchecked" to exclude it from this invoice</div>
+          </div>
         </div>
       )}
 
@@ -442,7 +464,6 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           ))}
         </tbody>
       </table>
-      <Btn v="neutral" sm onClick={()=>{const name=window.prompt("Enter file name:");if(name&&name.trim())addFile(name.trim());}}>+ Add More</Btn>
 
       {/* NOTES */}
       <SHdr>Notes</SHdr>
