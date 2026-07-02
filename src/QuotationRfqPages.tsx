@@ -1539,7 +1539,6 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
                     <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
                     <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
                   </div>
-                  <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
                 </div>
               )}
             </div>
@@ -1878,8 +1877,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
         const r=detailRfq;
         const qts=getQts(r.id);
         const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
-        const TABS=["general","items","quotations","notes"];
-        const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes"};
+        const TABS=["general","items","quotations","notes","discussion"];
+        const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`};
         const field=(label,val)=>(
           <div style={{marginBottom:12}}>
             <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
@@ -2030,6 +2029,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
                   </div>
                 )}
               </div>
+            )}
+
+            {rfqTab==="discussion"&&(
+              <DiscussionBox rfqId={r.id} discussions={r.discussions||[]} onPost={postDiscussion} user={user}/>
             )}
 
           </div>
