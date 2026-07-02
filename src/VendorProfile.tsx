@@ -125,7 +125,7 @@ export const VendorProfile = ({user}) => {
                 {no:"0004",type:"NPWP / Tax Office",default:false, street:v.npwpAddress||v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:"—", email:"tax@"+v.email?.split("@")[1]},
               ];
               const addrCols=["No.","Address Type","Street / Address","City","Postal","Country","Phone","Fax","Email","Default"];
-              const colW=["48px","150px","auto","120px","70px","100px","130px","130px","200px","70px"];
+              const colW=["48px","150px","260px","130px","70px","100px","140px","140px","210px","70px"];
               return(
                 <div style={{marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:10,borderBottom:`2px solid ${C.border}`}}>
@@ -134,7 +134,7 @@ export const VendorProfile = ({user}) => {
                     <span style={{marginLeft:"auto",fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px"}}>{addrRows.length} addresses</span>
                   </div>
                   <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,tableLayout:"fixed" as const}}>
+                    <table style={{borderCollapse:"collapse",fontSize:13,minWidth:1320}}>
                       <colgroup>{colW.map((w,i)=><col key={i} style={{width:w}}/>)}</colgroup>
                       <thead>
                         <tr style={{background:TK.hdrBg}}>
@@ -148,7 +148,7 @@ export const VendorProfile = ({user}) => {
                           <tr key={a.no} style={{background:i%2===0?TK.rowBg:C.subtle,borderBottom:`1px solid ${TK.rowBorder}`}}>
                             <td style={{padding:"8px 10px",fontFamily:"monospace",fontSize:12,color:C.t2}}>{a.no}</td>
                             <td style={{padding:"8px 10px",fontSize:13,fontWeight:600,color:C.t1,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{a.type}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.street}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis",maxWidth:260}}>{a.street}</td>
                             <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const}}>{a.city}</td>
                             <td style={{padding:"8px 10px",fontSize:13,color:C.t2,fontFamily:"monospace"}}>{a.postal}</td>
                             <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.country}</td>

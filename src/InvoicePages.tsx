@@ -230,17 +230,17 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px"}}>
         <div>
           <Lbl>Document Type *</Lbl>
-          <Sel value={f.invoiceType} onChange={v=>s("invoiceType",v)} opts={[{v:"Invoice",l:"Invoice"},{v:"Supplier DPR",l:"Down Payment Request"}]}/>
+          <Sel value={f.invoiceType} onChange={v=>{s("invoiceType",v);if(v!==f.invoiceType){s("poNumbers",[]);setPoItemChecked({});}}} opts={[{v:"Invoice",l:"Invoice"},{v:"Supplier DPR",l:"Down Payment Request"}]}/>
           <div style={{fontSize:10,color:"#c87941",marginTop:2}}>{f.invoiceType==="Supplier DPR"?"📡 Routes to SAP BPA Down Payment workflow":"📡 Indonesian vendor · SAP Flexible Workflow"}</div>
         </div>
         <div>
           <Lbl>Company Code *</Lbl>
-          <Sel value={f.companyCode} onChange={v=>{const term=(VENDORS[vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===v)?.zterm||f.paymentTerms;setF(p=>({...p,companyCode:v,paymentTerms:term,dueDate:calcDueDate(p.invoiceDate,term)}));}} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+          <Sel value={f.companyCode} onChange={v=>{const term=(VENDORS[vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===v)?.zterm||f.paymentTerms;setF(p=>({...p,companyCode:v,paymentTerms:term,dueDate:calcDueDate(p.invoiceDate,term),poNumbers:[]}));setPoItemChecked({});}} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
           <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
         <div>
           <Lbl>Currency *</Lbl>
-          <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
+          <Sel value={f.currency} onChange={v=>{s("currency",v);if(v!==f.currency){s("poNumbers",[]);setPoItemChecked({});}}} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
           <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: I_Currency</div>
         </div>
         <div><Lbl>Invoice Date *</Lbl><Ui5DatePicker value={f.invoiceDate} onChange={v=>{if(v&&f.paymentTerms)setF(p=>({...p,invoiceDate:v,dueDate:calcDueDate(v,p.paymentTerms)}));else s("invoiceDate",v);}}/></div>
@@ -1031,7 +1031,7 @@ const InvoiceStatusIcon = ({s}) => {
 // ── Column Settings Popup ──────────────────────────────────────
 const fmtInvType=(t:string)=>t==="Supplier DPR"?"Down Payment Req":(t||"Invoice");
 const COL_DEFS = [
-  {key:"status",       label:"Status",        defW:120},
+  {key:"status",       label:"Status",        defW:165},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
   {key:"invoiceType",  label:"Invoice Type",  defW:130},
   {key:"compCode",     label:"Company Code",  defW:150},
