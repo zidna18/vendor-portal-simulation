@@ -1144,9 +1144,8 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
           <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",background:C.subtle,borderBottom:files.length?`1px solid ${C.border}`:"none"}}>
               <span style={{fontWeight:600,fontSize:12,color:C.t1}}>Uploaded ({files.length})</span>
-              {canEdit&&<span style={{fontSize:11,color:C.t2,flex:1}}>Add new files and press Start to upload:</span>}
+              {canEdit&&<span style={{fontSize:11,color:C.t2,flex:1}}>Add new files to upload:</span>}
               {!canEdit&&<span style={{flex:1}}/>}
-              {canEdit&&<button style={{background:C.primary,border:`1px solid ${C.primary}`,color:"#fff",borderRadius:3,padding:"0 8px",fontSize:11,fontFamily:"inherit",fontWeight:600,cursor:"pointer",height:22}}>Start</button>}
               {canEdit&&<button style={{width:22,height:22,background:"none",border:`1px solid ${C.border}`,borderRadius:3,cursor:"pointer",fontSize:14,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
             </div>
             {files.length===0&&<div style={{padding:"20px",textAlign:"center",color:C.t2,fontSize:12}}>No attachments uploaded.</div>}
