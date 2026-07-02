@@ -2075,6 +2075,47 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const [winnerVendorId,setWinnerVendorId]=useState("");
   const [actionNotes,setActionNotes]=useState("");
 
+  // Scoring modal state
+  const [scoreModal,setScoreModal]=useState<any>(null); // {rfq, qts}
+  const SCORE_CRITERIA=[
+    {key:"technical",label:"Technical Aspect",weight:0.40,desc:"Scope coverage, methodology, experience, proposed team"},
+    {key:"commercial",label:"Commercial Aspect",weight:0.40,desc:"Total price, payment terms, validity, price competitiveness"},
+    {key:"hse",label:"HSE & Compliance",weight:0.20,desc:"Safety record, K3 certifications, BPJS enrollment, environmental permits"},
+  ];
+  const [scores,setScores]=useState<{[qtId:string]:{technical:string,commercial:string,hse:string}}>({});
+  const [scoreNotes,setScoreNotes]=useState("");
+  const initScores=(qts)=>{
+    const s={};
+    qts.forEach(qt=>{
+      const existing=qt.scores||{};
+      s[qt.id]={technical:String(existing.technical||""),commercial:String(existing.commercial||""),hse:String(existing.hse||"")};
+    });
+    return s;
+  };
+  const getWeightedTotal=(qtId)=>{
+    const s=scores[qtId]||{};
+    const t=Number(s.technical)||0, c=Number(s.commercial)||0, h=Number(s.hse)||0;
+    if(!s.technical&&!s.commercial&&!s.hse) return null;
+    return Math.round(t*0.4+c*0.4+h*0.2);
+  };
+  const submitScores=()=>{
+    const {rfq,qts}=scoreModal;
+    const today=new Date().toISOString().split("T")[0];
+    // Save scores to quotation records
+    setQuotations(p=>p.map(q=>{
+      if(!scores[q.id]) return q;
+      const s=scores[q.id];
+      return {...q,scores:{technical:Number(s.technical)||0,commercial:Number(s.commercial)||0,hse:Number(s.hse)||0,weighted:getWeightedTotal(q.id)||0}};
+    }));
+    // Find highest scorer to recommend as winner
+    const ranked=[...qts].sort((a,b)=>(getWeightedTotal(b.id)||0)-(getWeightedTotal(a.id)||0));
+    const winnerId=ranked[0]?.vendorId||"";
+    // Approve & close RFQ with winner = highest scorer
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",approvalNotes:scoreNotes,winnerVendorId:winnerId,scored:true}:r));
+    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerId?"Win":"Accepted"}:q));
+    setScoreModal(null);setScores({});setScoreNotes("");
+  };
+
   const activeTokens=[
     applied.companyCodes.length>0&&{label:"Company Code",val:applied.companyCodes.length===1?`${applied.companyCodes[0]} – ${ccName(applied.companyCodes[0])}`:`${applied.companyCodes.length} selected`,onClear:()=>clrA2("companyCodes")},
     applied.statuses.length>0&&{label:"Status",val:applied.statuses.length===1?applied.statuses[0]:`${applied.statuses.length} selected`,onClear:()=>clrA2("statuses")},
@@ -2118,17 +2159,11 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
   const submitAction=()=>{
     if(!actionModal) return;
-    const {rfq,action}=actionModal;
+    const {rfq}=actionModal;
     const today=new Date().toISOString().split("T")[0];
-    if(action==="approve"){
-      if(!winnerVendorId){alert("Please select the winning vendor.");return;}
-      setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",approvalNotes:actionNotes,winnerVendorId}:r));
-      setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerVendorId?"Win":"Accepted"}:q));
-    } else {
-      if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
-      setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Complete",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
-    }
-    setActionModal(null);setWinnerVendorId("");setActionNotes("");
+    if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Complete",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
+    setActionModal(null);setActionNotes("");
   };
 
   return (
@@ -2146,48 +2181,136 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         <span>Showing RFQs pending your approval. Expand an RFQ to compare vendor quotations side-by-side before deciding.</span>
       </div>
 
-      {/* Action Modal */}
+      {/* Action Modal (Reject only) */}
       {actionModal&&(
-        <Modal title={actionModal.action==="approve"?"Approve RFQ – Select Winner":"Reject RFQ – Send Back to Buyer"} onClose={()=>{setActionModal(null);setWinnerVendorId("");setActionNotes("");}}>
+        <Modal title="Reject RFQ – Send Back to Buyer" onClose={()=>{setActionModal(null);setActionNotes("");}}>
           <div style={{padding:20,minWidth:420,maxWidth:560}}>
             <div style={{marginBottom:14,padding:"10px 14px",background:C.subtle,borderRadius:6,fontSize:13}}>
               <span style={{fontWeight:700,color:C.t1}}>{actionModal.rfq.id}</span>
               <span style={{color:C.t2,marginLeft:8}}>{actionModal.rfq.title}</span>
             </div>
-            {actionModal.action==="approve"&&(()=>{
-              const qts=quotations.filter(q=>q.rfqId===actionModal.rfq.id&&q.status==="Submitted");
-              return(
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>Select Winning Vendor</div>
-                  {qts.length===0&&<div style={{color:C.t2,fontSize:13,marginBottom:12}}>No submitted quotations found for this RFQ.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-                    {qts.map(qt=>(
-                      <label key={qt.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",border:`2px solid ${winnerVendorId===qt.vendorId?C.primary:C.border}`,borderRadius:6,cursor:"pointer",background:winnerVendorId===qt.vendorId?C.infoBg:C.card}}>
-                        <input type="radio" name="winner" value={qt.vendorId} checked={winnerVendorId===qt.vendorId} onChange={()=>setWinnerVendorId(qt.vendorId)} style={{accentColor:C.primary}}/>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,color:C.t1,fontSize:13}}>{qt.vendorName}</div>
-                          <div style={{fontSize:12,color:C.t2}}>Quotation: {qt.id} · Total: <strong>{idr(qt.totalAmt)}</strong></div>
-                        </div>
-                        {winnerVendorId===qt.vendorId&&<Badge s="Win"/>}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
             <div style={{marginBottom:16}}>
-              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Notes {actionModal.action==="reject"&&<span style={{color:C.err}}>*</span>}</label>
-              <TA value={actionNotes} onChange={setActionNotes} rows={3} placeholder={actionModal.action==="approve"?"Approval notes (optional)...":"Reason for rejection (required)..."}/>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Rejection Reason <span style={{color:C.err}}>*</span></label>
+              <TA value={actionNotes} onChange={setActionNotes} rows={3} placeholder="Provide reason for rejection…"/>
             </div>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <Btn v="ghost" onClick={()=>{setActionModal(null);setWinnerVendorId("");setActionNotes("");}}>Cancel</Btn>
-              {actionModal.action==="approve"
-                ?<Btn v="success" onClick={submitAction}>Approve & Close RFQ</Btn>
-                :<Btn v="danger" onClick={submitAction}>Reject – Return to Buyer</Btn>}
+              <Btn v="ghost" onClick={()=>{setActionModal(null);setActionNotes("");}}>Cancel</Btn>
+              <Btn v="danger" onClick={submitAction}>Reject – Return to Buyer</Btn>
             </div>
           </div>
         </Modal>
       )}
+
+      {/* Score Modal */}
+      {scoreModal&&(()=>{
+        const {rfq,qts}=scoreModal;
+        const totals=qts.map(qt=>({qt,total:getWeightedTotal(qt.id)}));
+        const maxTotal=Math.max(...totals.map(t=>t.total||0));
+        return(
+        <Modal title="Submit Evaluation Score" onClose={()=>{setScoreModal(null);setScores({});setScoreNotes("");}}>
+          <div style={{padding:20,minWidth:Math.min(900,560+qts.length*180),maxWidth:960,overflowX:"auto"}}>
+            {/* RFQ header */}
+            <div style={{marginBottom:16,padding:"10px 14px",background:C.subtle,borderRadius:6,fontSize:13,display:"flex",gap:16,alignItems:"center"}}>
+              <span style={{fontWeight:700,color:C.t1}}>{rfq.id}</span>
+              <span style={{color:C.t2}}>{rfq.title}</span>
+            </div>
+
+            {/* Scoring criteria info */}
+            <div style={{marginBottom:14,display:"flex",gap:8,flexWrap:"wrap"}}>
+              {SCORE_CRITERIA.map(c=>(
+                <div key={c.key} style={{flex:1,minWidth:160,padding:"8px 12px",background:C.infoBg,borderRadius:6,border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:11,fontWeight:700,color:C.primary}}>{c.label} <span style={{color:C.t2,fontWeight:400}}>({(c.weight*100).toFixed(0)}%)</span></div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2,lineHeight:1.4}}>{c.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Score table */}
+            <table style={{borderCollapse:"collapse",width:"100%",fontSize:13,marginBottom:16}}>
+              <thead>
+                <tr style={{background:"rgba(0,112,242,0.07)"}}>
+                  <th style={{padding:"8px 12px",textAlign:"left",fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,width:200}}>Criteria</th>
+                  {qts.map(qt=>(
+                    <th key={qt.id} style={{padding:"8px 12px",textAlign:"center",fontWeight:700,color:C.primary,borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`}}>
+                      <div style={{fontSize:13}}>{qt.vendorName}</div>
+                      <div style={{fontSize:11,fontWeight:400,color:C.t2}}>{qt.id}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {SCORE_CRITERIA.map((crit,ri)=>(
+                  <tr key={crit.key} style={{background:ri%2===0?"transparent":C.subtle}}>
+                    <td style={{padding:"10px 12px",borderBottom:`1px solid ${C.border}`,verticalAlign:"middle"}}>
+                      <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{crit.label}</div>
+                      <div style={{fontSize:11,color:C.t2}}>Weight: {(crit.weight*100).toFixed(0)}% · Score 0–100</div>
+                    </td>
+                    {qts.map(qt=>{
+                      const val=(scores[qt.id]||{})[crit.key]||"";
+                      const num=Number(val);
+                      const scoreColor=num>=80?"#107e3e":num>=60?"#0a6ed1":num>=40?"#e9730c":"#bb0000";
+                      return(
+                        <td key={qt.id} style={{padding:"8px 12px",borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`,textAlign:"center",verticalAlign:"middle"}}>
+                          <input
+                            type="number" min={0} max={100}
+                            value={val}
+                            onChange={e=>{
+                              const v=e.target.value;
+                              setScores(p=>({...p,[qt.id]:{...(p[qt.id]||{}),[crit.key]:v}}));
+                            }}
+                            style={{width:72,textAlign:"center",padding:"5px 8px",border:`2px solid ${val?scoreColor:C.border}`,borderRadius:6,fontSize:15,fontWeight:700,color:val?scoreColor:C.t2,background:C.card,outline:"none"}}
+                            placeholder="—"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {/* Weighted Total row */}
+                <tr style={{background:"rgba(0,112,242,0.05)"}}>
+                  <td style={{padding:"10px 12px",borderTop:`2px solid ${C.primary}`,fontWeight:700,color:C.t1,fontSize:12}}>
+                    Weighted Total Score<br/>
+                    <span style={{fontSize:11,fontWeight:400,color:C.t2}}>40% Tech + 40% Com + 20% HSE</span>
+                  </td>
+                  {qts.map(qt=>{
+                    const total=getWeightedTotal(qt.id);
+                    const isTop=total!==null&&total===maxTotal&&maxTotal>0;
+                    return(
+                      <td key={qt.id} style={{padding:"10px 12px",borderTop:`2px solid ${C.primary}`,borderLeft:`1px solid ${C.border}`,textAlign:"center"}}>
+                        {total!==null
+                          ?<div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                            <span style={{fontSize:22,fontWeight:700,color:isTop?"#107e3e":C.t1}}>{total}</span>
+                            {isTop&&<span style={{fontSize:10,fontWeight:700,color:"#107e3e",background:"#e8f5e9",padding:"1px 8px",borderRadius:10}}>★ RECOMMENDED</span>}
+                          </div>
+                          :<span style={{color:C.t2,fontSize:13}}>—</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Notes */}
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Evaluation Notes / Remarks</label>
+              <TA value={scoreNotes} onChange={setScoreNotes} rows={3} placeholder="Summarize evaluation rationale, key differentiators, or committee remarks…"/>
+            </div>
+
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
+              <span style={{fontSize:11,color:C.t2,flex:1}}>Highest scorer will be automatically selected as the winning vendor.</span>
+              <Btn v="ghost" onClick={()=>{setScoreModal(null);setScores({});setScoreNotes("");}}>Cancel</Btn>
+              <Btn v="success" onClick={()=>{
+                const allFilled=qts.every(qt=>SCORE_CRITERIA.every(c=>(scores[qt.id]||{})[c.key]!==""));
+                if(!allFilled){alert("Please fill in all scores for all vendors before submitting.");return;}
+                submitScores();
+              }}>
+                <SapIcon name="accept" size={13} color="#fff"/> Submit Score & Close RFQ
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+        );
+      })()}
 
       <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen2(true)} adaptFiltersCount={visibleFields2.size}>
         {visibleFields2.has("companyCodes")&&<FField label="Company Code"><ValueHelpInp selected={draft2.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen2("companyCode")} placeholder="All Company Codes"/></FField>}
@@ -2372,11 +2495,11 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                       <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
                         <span style={{fontSize:12,color:C.t2,marginRight:4}}>Submitted by <strong style={{color:C.t1}}>{rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.submittedForApprovalAt)}</span>
                         <div style={{flex:1}}/>
-                        <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");setWinnerVendorId("");}}>
+                        <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");}}>
                           <SapIcon name="cancel" size={13} color="#fff"/> Reject
                         </Btn>
-                        <Btn v="success" sm onClick={()=>{setActionModal({rfq,action:"approve"});setActionNotes("");setWinnerVendorId("");}}>
-                          <SapIcon name="accept" size={13} color="#fff"/> Approve & Select Winner
+                        <Btn v="success" sm onClick={()=>{const qts=getQts(rfq.id);setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}}>
+                          <SapIcon name="scoring" size={13} color="#fff"/> Submit Score
                         </Btn>
                       </div>
                     )}
