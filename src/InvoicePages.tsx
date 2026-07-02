@@ -210,8 +210,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     if(!draft)addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
   };
   const SHdr=({children}:any)=>(
-    <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 10px",borderTop:`1px solid ${C.border}`,paddingTop:14}}>
-      <span style={{fontSize:12,fontWeight:700,color:C.t1,whiteSpace:"nowrap" as const}}>{children}</span>
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 10px",borderTop:`2px solid ${C.border}`,paddingTop:14}}>
+      <span style={{fontSize:15,fontWeight:700,color:C.primary,letterSpacing:0.1,whiteSpace:"nowrap" as const}}>{children}</span>
       <div style={{flex:1,height:1,background:C.border}}/>
     </div>
   );
