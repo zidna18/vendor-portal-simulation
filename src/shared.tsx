@@ -7,6 +7,7 @@ export const USERS = [
   { id:"B001", role:"brm",    username:"brm.user", password:"demo123", name:"Ahmad Rizki",  title:"Procurement Manager" },
   { id:"B002", role:"brm",    username:"buyer1",   password:"demo123", name:"Siti Rahma",   title:"Senior Buyer" },
   { id:"A001", role:"approver", username:"approver1", password:"demo123", name:"Budi Santoso", title:"Finance Approver" },
+  { id:"D001", role:"director", username:"director1", password:"demo123", name:"Arief Budiman", title:"Director" },
 ];
 export const VENDORS = {
   "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",
@@ -586,6 +587,57 @@ export const INIT_RFQS = [
       {no:1, desc:"Topsoil Spreading & Seeding",      type:"Service",  acctAssign:"P – Project",     materialNo:"REC-TOP-001", materialGroup:"Reclamation Works", plant:"PL04", qty:500, uom:"Ha",    estPrice:2400000,  requirementDate:"", startDate:"2026-01-01", endDate:"2026-12-31"},
       {no:2, desc:"Native Tree Planting (per stem)",  type:"Service",  acctAssign:"P – Project",     materialNo:"REC-TRE-002", materialGroup:"Reclamation Works", plant:"PL04", qty:50000,uom:"Stem", estPrice:15000,    requirementDate:"", startDate:"2026-02-01", endDate:"2026-12-31"},
     ]},
+
+  // ── Sample RFQs for evaluation demo ─────────────────────────
+  // 1. FULLY EVALUATED — all vendors scored, winner selected, approvalNotes filled
+  { id:"RFQ-2025-0051", title:"Geotechnical Investigation – Open Pit Expansion", postedDate:"2025-05-10", closingDate:"2025-06-05", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Engineering", estVal:920000000, companyCode:"CPMS", plant:"PL02", purchOrg:"CPMS",
+    desc:"Geotechnical investigation and slope stability analysis for CPMS open pit expansion – Phase 3 (50 ha). Includes borehole drilling, laboratory testing, and detailed geotechnical report.",
+    status:"Pending Approval", submittedForApprovalAt:"2025-06-08", submittedForApprovalBy:"Ahmad Rizki",
+    scored:true, closedAt:"2025-06-15", closedBy:"Budi Santoso", winnerVendorId:"10000001",
+    approvalNotes:"Evaluation completed by Finance Approver (Budi Santoso) on 15 Jun 2025.\n\nPT Maju Bersama scores highest across all criteria — particularly Technical (88) due to their certified geotechnical engineers and prior experience with CPMS Phase 2 pit. Commercial score (82) reflects competitive pricing with comprehensive lab test package included. HSE score (90) confirmed by site safety record — zero LTI in last 24 months.\n\nCV Sukses Mandiri competitive on price but lower technical score (72) due to limited slope stability analysis portfolio.\n\nRecommendation: Award to PT Maju Bersama (Weighted Total: 86). Contract value IDR 895,000,000. Requesting Director approval to proceed to PO issuance.",
+    items:[
+      {no:1, desc:"Borehole Drilling & Sampling (per meter)", type:"Service", acctAssign:"P – Project", materialNo:"GEO-DRL-001", materialGroup:"Geotech Services", plant:"PL02", qty:1500, uom:"Meter",    estPrice:350000,    requirementDate:"", startDate:"2025-07-01", endDate:"2025-09-30"},
+      {no:2, desc:"Laboratory Testing (per sample)",          type:"Service", acctAssign:"P – Project", materialNo:"GEO-LAB-002", materialGroup:"Geotech Services", plant:"PL02", qty:800,  uom:"Sample",   estPrice:180000,    requirementDate:"2025-08-01", startDate:"", endDate:""},
+      {no:3, desc:"Geotechnical Report & Slope Analysis",     type:"Service", acctAssign:"P – Project", materialNo:"GEO-RPT-003", materialGroup:"Geotech Services", plant:"PL02", qty:1,    uom:"Lump Sum", estPrice:200000000, requirementDate:"2025-10-15", startDate:"", endDate:""},
+    ],
+    discussions:[
+      {id:"D-051-001", userId:"brm.user",  userName:"Ahmad Rizki",  role:"Procurement Manager", postedAt:"2025-06-06 09:00", message:"Both quotations received. PT Maju Bersama submitted a very comprehensive technical proposal including CV of 3 certified geotechnical engineers. Forwarding to Finance Approver for evaluation."},
+      {id:"D-051-002", userId:"approver1", userName:"Budi Santoso", role:"Finance Approver",    postedAt:"2025-06-10 10:15", message:"Technical review completed. PT Maju Bersama clearly stronger on methodology — their slope stability model references Phase 2 data which is highly relevant. Starting commercial review."},
+      {id:"D-051-003", userId:"approver1", userName:"Budi Santoso", role:"Finance Approver",    postedAt:"2025-06-15 14:30", message:"Scoring finalized. PT Maju Bersama recommended as winner. Evaluation notes submitted. Requesting Director's approval to proceed."},
+    ]},
+
+  // 2. PARTIALLY EVALUATED — scoring started, only 1 of 2 vendors scored (commercial missing for vendor 2)
+  { id:"RFQ-2025-0052", title:"Port Handling & Stevedoring – Mineral Export", postedDate:"2025-06-01", closingDate:"2025-06-28", postedBy:"Siti Rahma", targets:["10000001","10000002"], cat:"Services", estVal:1450000000, companyCode:"LMRS", plant:"PL05", purchOrg:"LMRS",
+    desc:"Annual contract for port handling, stevedoring, and vessel loading services for LMRS mineral concentrate export through Lhokseumawe Port. Estimated 120,000 MT per year.",
+    status:"Pending Approval", submittedForApprovalAt:"2025-07-01", submittedForApprovalBy:"Siti Rahma",
+    scored:false,
+    items:[
+      {no:1, desc:"Stevedoring – Loading (per MT)",          type:"Service", acctAssign:"P – Project", materialNo:"PRT-STD-001", materialGroup:"Port Services", plant:"PL05", qty:120000, uom:"MT",      estPrice:8500,      requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
+      {no:2, desc:"Port Storage / Stockpile Management",     type:"Service", acctAssign:"P – Project", materialNo:"PRT-STK-002", materialGroup:"Port Services", plant:"PL05", qty:12,     uom:"Month",   estPrice:35000000,  requirementDate:"", startDate:"2025-09-01", endDate:"2026-08-31"},
+      {no:3, desc:"Ship Agency & Documentation",             type:"Service", acctAssign:"P – Project", materialNo:"PRT-AGC-003", materialGroup:"Port Services", plant:"PL05", qty:24,     uom:"Vessel",  estPrice:12500000,  requirementDate:"", startDate:"", endDate:""},
+    ],
+    discussions:[
+      {id:"D-052-001", userId:"buyer1",    userName:"Siti Rahma",   role:"Senior Buyer",        postedAt:"2025-07-02 08:30", message:"Two quotations received. Both vendors have Lhokseumawe Port operating licenses. CV Sukses Mandiri has 5 years track record at this port; PT Maju Bersama is newer but pricing is more competitive."},
+      {id:"D-052-002", userId:"approver1", userName:"Budi Santoso", role:"Finance Approver",    postedAt:"2025-07-05 11:00", message:"I have completed the technical review for PT Maju Bersama. Still reviewing CV Sukses Mandiri's HSE documentation — they need to submit their ISPS Code compliance certificate. Will complete scoring once received."},
+      {id:"D-052-003", userId:"buyer1",    userName:"Siti Rahma",   role:"Senior Buyer",        postedAt:"2025-07-07 09:15", message:"Chased CV Sukses Mandiri — ISPS certificate coming by end of this week. Approver please hold scoring until then."},
+    ]},
+
+  // 3. WAITING FOR EVALUATION — Pending Approval, no scoring done yet
+  { id:"RFQ-2025-0053", title:"Concrete Batching Plant – Ready Mix Supply", postedDate:"2025-06-15", closingDate:"2025-07-10", postedBy:"Ahmad Rizki", targets:["10000001","10000002"], cat:"Goods", estVal:2800000000, companyCode:"SHSI", plant:"PL03", purchOrg:"SHSI",
+    desc:"Supply of ready-mix concrete (K-300, K-350, K-400) for SHS Processing Plant civil construction works – estimated 25,000 M³ over 18 months. Vendor to provide mobile batching plant on-site.",
+    status:"Pending Approval", submittedForApprovalAt:"2025-07-12", submittedForApprovalBy:"Ahmad Rizki",
+    scored:false,
+    items:[
+      {no:1, desc:"Ready Mix Concrete K-300 (per M³)",  type:"Material", acctAssign:"P – Project", materialNo:"CON-K30-001", materialGroup:"Construction Material", plant:"PL03", qty:12000, uom:"M³",      estPrice:950000,    requirementDate:"", startDate:"2025-09-01", endDate:"2026-03-31"},
+      {no:2, desc:"Ready Mix Concrete K-350 (per M³)",  type:"Material", acctAssign:"P – Project", materialNo:"CON-K35-002", materialGroup:"Construction Material", plant:"PL03", qty:9000,  uom:"M³",      estPrice:1050000,   requirementDate:"", startDate:"2025-09-01", endDate:"2026-03-31"},
+      {no:3, desc:"Ready Mix Concrete K-400 (per M³)",  type:"Material", acctAssign:"P – Project", materialNo:"CON-K40-003", materialGroup:"Construction Material", plant:"PL03", qty:4000,  uom:"M³",      estPrice:1150000,   requirementDate:"", startDate:"2025-10-01", endDate:"2026-06-30"},
+      {no:4, desc:"Mobile Batching Plant – On-site",    type:"Service",  acctAssign:"P – Project", materialNo:"CON-BAT-004", materialGroup:"Construction Material", plant:"PL03", qty:18,    uom:"Month",    estPrice:25000000,  requirementDate:"", startDate:"2025-08-15", endDate:"2026-02-14"},
+    ],
+    discussions:[
+      {id:"D-053-001", userId:"brm.user",  userName:"Ahmad Rizki",  role:"Procurement Manager", postedAt:"2025-07-11 10:00", message:"Two quotations received before closing. Both vendors propose on-site batching plant which is our requirement. Submitting for Approver evaluation."},
+      {id:"D-053-002", userId:"buyer1",    userName:"Siti Rahma",   role:"Senior Buyer",        postedAt:"2025-07-11 11:30", message:"Confirmed — PT Maju Bersama offers Liebherr batching plant (120 M³/hr capacity), CV Sukses Mandiri offers ELKON (100 M³/hr). Both meet minimum spec of 80 M³/hr. Ready for evaluation."},
+      {id:"D-053-003", userId:"approver1", userName:"Budi Santoso", role:"Finance Approver",    postedAt:"2025-07-14 09:00", message:"Received the quotations. Will start evaluation this week — currently reviewing the technical specifications and concrete mix design proposals from both vendors."},
+    ]},
 ];
 export const INIT_QT = [
   { id:"QT-2025-0001", rfqId:"RFQ-2025-0001", rfqTitle:"Procurement of Laptops & Workstations",      vendorId:"10000001", vendorName:"PT Maju Bersama",   salesPerson:"Budi Hartono · +62-811-2345-001",  submittedDate:"2025-06-12", validUntil:"2025-07-12", totalAmt:490000000, notes:"Price includes 2-year warranty and free delivery.",                                   status:"Submitted", files:["quotation.pdf"],                          items:[{no:1,desc:"Laptop 14\" Core i7",qty:50,uom:"Unit",unitPrice:7800000,total:390000000},{no:2,desc:"Workstation Dell XPS",qty:20,uom:"Unit",unitPrice:5000000,total:100000000}] },
@@ -639,6 +691,93 @@ export const INIT_QT = [
   { id:"QT-2025-0048", rfqId:"RFQ-2025-0031", rfqTitle:"Environmental Impact Assessment (AMDAL)",           vendorId:"10000002", vendorName:"CV Sukses Mandiri", salesPerson:"Rizky Pratama · +62-812-9876-003",  submittedDate:"2025-08-22", validUntil:"2025-09-22", totalAmt:980000000,  notes:"KLHK-registered consultant. RKL/RPL tracking system included.",                           status:"Submitted", files:["quotation.pdf","lsv_license.pdf"],                  items:[{no:1,desc:"AMDAL Study & Documentation",qty:1,uom:"Lump Sum",unitPrice:650000000,total:650000000},{no:2,desc:"RKL-RPL Annual Reporting",qty:2,uom:"Year",unitPrice:165000000,total:330000000}] },
   { id:"QT-2025-0049", rfqId:"RFQ-2025-0032", rfqTitle:"Welding & Fabrication – Steel Structure",           vendorId:"10000001", vendorName:"PT Maju Bersama",   salesPerson:"Andi Setiawan · +62-811-2345-004", submittedDate:"2025-08-25", validUntil:"2025-09-25", totalAmt:620000000,  notes:"SMAW & GTAW certified welders. NDT testing included.",                                    status:"Submitted", files:["quotation.pdf","welder_certs.pdf"],                 items:[{no:1,desc:"Structural Steel Fabrication",qty:200,uom:"Ton",unitPrice:2800000,total:560000000},{no:2,desc:"NDT / UT Inspection",qty:1,uom:"Lump Sum",unitPrice:60000000,total:60000000}] },
   { id:"QT-2025-0050", rfqId:"RFQ-2025-0033", rfqTitle:"Corporate Event – Annual Meeting & Gala",           vendorId:"10000002", vendorName:"CV Sukses Mandiri", salesPerson:"Dewi Kusuma · +62-812-9876-002",   submittedDate:"2025-08-27", validUntil:"2025-09-27", totalAmt:480000000,  notes:"Venue: Grand Hyatt Jakarta. AV, catering, entertainment all-in package.",                 status:"Submitted", files:["quotation.pdf","venue_layout.pdf"],                 items:[{no:1,desc:"Event Venue & Catering",qty:400,uom:"Pax",unitPrice:850000,total:340000000},{no:2,desc:"AV & Entertainment Package",qty:1,uom:"Lump Sum",unitPrice:140000000,total:140000000}] },
+
+  // ── Quotations for evaluation demo RFQs ─────────────────────
+  // RFQ-2025-0051: FULLY EVALUATED — both vendors scored
+  { id:"QT-2025-0051", rfqId:"RFQ-2025-0051", rfqTitle:"Geotechnical Investigation – Open Pit Expansion",
+    vendorId:"10000001", vendorName:"PT Maju Bersama",   salesPerson:"Budi Hartono · +62-811-2345-001",
+    submittedDate:"2025-06-03", validUntil:"2025-07-03", totalAmt:895000000,
+    notes:"Team of 3 certified geotechnical engineers. Includes slope stability modelling using Phase 2 existing data. All lab tests accredited by KAN.",
+    deliveryTerms:"Mobilization within 2 weeks of PO", paymentTerms:"Monthly progress billing, net 14 days",
+    status:"Win",
+    scores:{ technical:88, commercial:82, hse:90, weighted:87 },
+    files:["quotation.pdf","technical_proposal.pdf","team_cv.pdf"],
+    items:[
+      {no:1,desc:"Borehole Drilling & Sampling",qty:1500,uom:"Meter",unitPrice:340000,total:510000000},
+      {no:2,desc:"Laboratory Testing",qty:800,uom:"Sample",unitPrice:170000,total:136000000},
+      {no:3,desc:"Geotechnical Report & Slope Analysis",qty:1,uom:"Lump Sum",unitPrice:249000000,total:249000000},
+    ]},
+  { id:"QT-2025-0052", rfqId:"RFQ-2025-0051", rfqTitle:"Geotechnical Investigation – Open Pit Expansion",
+    vendorId:"10000002", vendorName:"CV Sukses Mandiri", salesPerson:"Dewi Kusuma · +62-812-9876-002",
+    submittedDate:"2025-06-04", validUntil:"2025-07-04", totalAmt:872000000,
+    notes:"Lower unit price on drilling. Lab tests subcontracted to certified partner. Limited slope stability modelling experience for open-pit scale.",
+    deliveryTerms:"Mobilization within 3 weeks of PO", paymentTerms:"Monthly progress billing, net 21 days",
+    status:"Accepted",
+    scores:{ technical:72, commercial:85, hse:78, weighted:78 },
+    files:["quotation.pdf","technical_proposal.pdf"],
+    items:[
+      {no:1,desc:"Borehole Drilling & Sampling",qty:1500,uom:"Meter",unitPrice:325000,total:487500000},
+      {no:2,desc:"Laboratory Testing",qty:800,uom:"Sample",unitPrice:178125,total:142500000},
+      {no:3,desc:"Geotechnical Report & Slope Analysis",qty:1,uom:"Lump Sum",unitPrice:242000000,total:242000000},
+    ]},
+
+  // RFQ-2025-0052: PARTIALLY EVALUATED — only PT Maju Bersama scored, CV Sukses Mandiri pending
+  { id:"QT-2025-0053", rfqId:"RFQ-2025-0052", rfqTitle:"Port Handling & Stevedoring – Mineral Export",
+    vendorId:"10000001", vendorName:"PT Maju Bersama",   salesPerson:"Hendra Wijaya · +62-811-2345-005",
+    submittedDate:"2025-06-25", validUntil:"2025-07-25", totalAmt:1380000000,
+    notes:"New entrant at Lhokseumawe Port but competitive on price. Has ISPS compliance and ILO 152 certified. 2-year track record at Kuala Tanjung Port.",
+    deliveryTerms:"Operational within 4 weeks of contract signing", paymentTerms:"Monthly invoicing, net 30 days",
+    status:"Submitted",
+    scores:{ technical:76, commercial:88, hse:80, weighted:81 },
+    files:["quotation.pdf","isps_certificate.pdf"],
+    items:[
+      {no:1,desc:"Stevedoring – Loading",qty:120000,uom:"MT",unitPrice:8000,total:960000000},
+      {no:2,desc:"Port Storage / Stockpile Management",qty:12,uom:"Month",unitPrice:30000000,total:360000000},
+      {no:3,desc:"Ship Agency & Documentation",qty:24,uom:"Vessel",unitPrice:2500000,total:60000000},
+    ]},
+  { id:"QT-2025-0054", rfqId:"RFQ-2025-0052", rfqTitle:"Port Handling & Stevedoring – Mineral Export",
+    vendorId:"10000002", vendorName:"CV Sukses Mandiri", salesPerson:"Rizky Pratama · +62-812-9876-003",
+    submittedDate:"2025-06-26", validUntil:"2025-07-26", totalAmt:1465000000,
+    notes:"5-year track record at Lhokseumawe Port. Owns 3 units harbour crane. ISPS compliance certificate being renewed (expected end of July).",
+    deliveryTerms:"Operational within 2 weeks of contract signing", paymentTerms:"Monthly invoicing, net 21 days",
+    status:"Submitted",
+    scores:{},
+    files:["quotation.pdf","company_profile.pdf"],
+    items:[
+      {no:1,desc:"Stevedoring – Loading",qty:120000,uom:"MT",unitPrice:8800,total:1056000000},
+      {no:2,desc:"Port Storage / Stockpile Management",qty:12,uom:"Month",unitPrice:29083333,total:349000000},
+      {no:3,desc:"Ship Agency & Documentation",qty:24,uom:"Vessel",unitPrice:2500000,total:60000000},
+    ]},
+
+  // RFQ-2025-0053: WAITING FOR EVALUATION — no scores at all
+  { id:"QT-2025-0055", rfqId:"RFQ-2025-0053", rfqTitle:"Concrete Batching Plant – Ready Mix Supply",
+    vendorId:"10000001", vendorName:"PT Maju Bersama",   salesPerson:"Andi Setiawan · +62-811-2345-004",
+    submittedDate:"2025-07-08", validUntil:"2025-08-08", totalAmt:2730000000,
+    notes:"Liebherr Mobilmix 2.5 batching plant – 120 M³/hr. All concrete mixes meet SNI 03-2834. Dedicated quality control lab on-site.",
+    deliveryTerms:"Batching plant on-site by 15 Aug 2025; first pour within 7 days of plant commissioning", paymentTerms:"Monthly billing per delivery docket, net 30 days",
+    status:"Submitted",
+    scores:{},
+    files:["quotation.pdf","mix_design.pdf","plant_spec.pdf"],
+    items:[
+      {no:1,desc:"Ready Mix Concrete K-300",qty:12000,uom:"M³",unitPrice:920000,total:11040000000},
+      {no:2,desc:"Ready Mix Concrete K-350",qty:9000,uom:"M³",unitPrice:1020000,total:9180000000},
+      {no:3,desc:"Ready Mix Concrete K-400",qty:4000,uom:"M³",unitPrice:1120000,total:4480000000},
+      {no:4,desc:"Mobile Batching Plant – On-site",qty:18,uom:"Month",unitPrice:22000000,total:396000000},
+    ]},
+  { id:"QT-2025-0056", rfqId:"RFQ-2025-0053", rfqTitle:"Concrete Batching Plant – Ready Mix Supply",
+    vendorId:"10000002", vendorName:"CV Sukses Mandiri", salesPerson:"Dewi Kusuma · +62-812-9876-002",
+    submittedDate:"2025-07-09", validUntil:"2025-08-09", totalAmt:2815000000,
+    notes:"ELKON ELKOMatic 100 batching plant – 100 M³/hr. Concrete tested at independent KAN-accredited lab. 3-year track record supplying major civil contractors.",
+    deliveryTerms:"Batching plant on-site by 20 Aug 2025; production starts within 5 days", paymentTerms:"Monthly billing, net 21 days; 2% discount if paid within 10 days",
+    status:"Submitted",
+    scores:{},
+    files:["quotation.pdf","mix_design.pdf"],
+    items:[
+      {no:1,desc:"Ready Mix Concrete K-300",qty:12000,uom:"M³",unitPrice:945000,total:11340000000},
+      {no:2,desc:"Ready Mix Concrete K-350",qty:9000,uom:"M³",unitPrice:1048000,total:9432000000},
+      {no:3,desc:"Ready Mix Concrete K-400",qty:4000,uom:"M³",unitPrice:1148000,total:4592000000},
+      {no:4,desc:"Mobile Batching Plant – On-site",qty:18,uom:"Month",unitPrice:24500000,total:441000000},
+    ]},
 ];
 
 // â"€â"€ Theme â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€

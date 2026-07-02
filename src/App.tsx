@@ -7,7 +7,7 @@ import {
   g2, pg,
 } from "./shared";
 import { VendorInvoice, BrmInvoice } from "./InvoicePages";
-import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation } from "./QuotationRfqPages";
+import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation, DirectorHome, DirectorRfq } from "./QuotationRfqPages";
 import { VendorHome, BrmHome, ApproverHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
 
@@ -38,6 +38,13 @@ const APPROVER_NOTIFS = [
   {id:"a7", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0006 (IDR 175,000,000) — Industrial Safety Equipment by PT Maju Bersama has been fully approved and closed.", time:"2 days ago", read:true},
   {id:"a8", type:"approval-rejected", icon:"decline", color:"#bb0000", title:"Approval Rejected", msg:"QT-2025-0008 (IDR 620,000,000) — IT Infrastructure Services by PT Maju Bersama was rejected by you. Reason: Exceeds budget ceiling.", time:"3 days ago", read:true},
 ];
+const DIRECTOR_NOTIFS = [
+  {id:"d1", type:"pending-approval", icon:"approvals", color:"#e76500", title:"5 RFQs Awaiting Approval", msg:"RFQ-2025-0003, 0008, 0021, 0022, 0028 are pending Finance Approver decision. Total value IDR 6.13B.", time:"Just now", read:false},
+  {id:"d2", type:"score-submitted", icon:"performance", color:"#107e3e", title:"Evaluation Score Submitted", msg:"Budi Santoso submitted evaluation scores for RFQ-2025-0021 (Road Infrastructure). Winner: PT Maju Bersama (score: 86).", time:"2 hr ago", read:false},
+  {id:"d3", type:"rfq-closed", icon:"complete", color:"#107e3e", title:"RFQ Closed – Winner Selected", msg:"RFQ-2025-0001 (Laptops & Workstations) closed. Winner: PT Maju Bersama. Contract value IDR 490,000,000.", time:"Yesterday", read:true},
+  {id:"d4", type:"budget-alert", icon:"alert", color:"#e76500", title:"High-Value RFQ Submitted", msg:"RFQ-2025-0028 (IT Hardware Refresh – IDR 2.2B) submitted for approval. Requires Director awareness.", time:"2 days ago", read:true},
+  {id:"d5", type:"discussion-activity", icon:"discussion", color:"#0070f2", title:"Active Discussion", msg:"5 new messages in RFQ-2025-0021 discussion thread. Procurement Manager and Finance Approver are aligned on vendor selection.", time:"3 days ago", read:true},
+];
 const VENDOR_NOTIFS = [
   {id:"v1", type:"rfq-invite", icon:"add-document", color:"#0070f2", title:"New RFQ Invitation", msg:"You have been invited to submit a quotation for RFQ-2025-0008 (IT Infrastructure Services). Deadline: 14 Jul 2025.", time:"10 min ago", read:false},
   {id:"v2", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Accepted", msg:"Your quotation QT-2025-0003 for RFQ-2025-0001 (Laptops & Workstations) has been accepted. PO will follow.", time:"1 hr ago", read:false},
@@ -54,7 +61,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const [notifOpen,setNotifOpen]=useState(false);
   const [readIds,setReadIds]=useState<Set<string>>(new Set());
   const notifRef=useRef<HTMLDivElement>(null);
-  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:user.role==="approver"?APPROVER_NOTIFS:BRM_NOTIFS;
+  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:user.role==="approver"?APPROVER_NOTIFS:user.role==="director"?DIRECTOR_NOTIFS:BRM_NOTIFS;
   const notifs=allNotifs.map(n=>({...n,read:n.read||readIds.has(n.id)}));
   const unread=notifs.filter(n=>!n.read).length;
   useEffect(()=>{
@@ -67,6 +74,8 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :user.role==="approver"
     ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Approval"}]
+    :user.role==="director"
+    ?[{id:"dashboard",l:"Home"},{id:"dir-rfq",l:"RFQ Management"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
   const isMob=mob();
   const iconBtn=(onClick,title,children)=>(
@@ -202,7 +211,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
             <button key={n.id} onClick={()=>{setSection(n.id);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",background:section===n.id?"rgba(255,255,255,0.1)":"transparent",color:"#fff",border:"none",borderLeft:`3px solid ${section===n.id?"rgba(255,255,255,0.9)":"transparent"}`,cursor:"pointer",padding:"12px 20px",fontFamily:"inherit",fontSize:14,fontWeight:section===n.id?600:400}}>{n.l}</button>
           ))}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",borderTop:"1px solid rgba(255,255,255,0.12)",marginTop:4}}>
-            <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":user.role==="approver"?"Approver":"BRM"}</span>
+            <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":user.role==="approver"?"Approver":user.role==="director"?"Director":"BRM"}</span>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{onOpenSettings();setMenuOpen(false);}} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>
               <button onClick={onLogout} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>
@@ -298,9 +307,9 @@ const Login = ({onLogin}) => {
           <div style={{marginBottom:20,padding:"12px 0",borderTop:"1px solid #e5e5e5"}}>
             <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:8,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"]].map(([u,name,roleLabel])=>(
+              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"],["director1","Arief Budiman","Director"]].map(([u,name,roleLabel])=>(
                 <button key={u} onClick={()=>quickLogin(u)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"7px 10px",borderRadius:3,border:"1px solid #e5e5e5",background:"#fafafa",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:"#1d2d3e"}}>
-                  <SapIcon name={roleLabel==="Vendor"?"factory":roleLabel==="Approver"?"approvals":"employee"} size={12} color="#6a6d70"/>
+                  <SapIcon name={roleLabel==="Vendor"?"factory":roleLabel==="Approver"?"approvals":roleLabel==="Director"?"manager":"employee"} size={12} color="#6a6d70"/>
                   <span style={{fontWeight:600}}>{name}</span>
                   <span style={{color:"#8c8c8c",marginLeft:"auto",fontSize:11}}>{roleLabel}</span>
                 </button>
@@ -556,6 +565,10 @@ export default function App() {
       case "apr-rfq":       return <ApproverRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
       case "apr-quotation": return <ApproverQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} user={user}/>;
       default:              return <ApproverHome user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} setRfqs={setRfqs} setSection={setSection}/>;
+    }
+    if(user.role==="director") switch(section){
+      case "dir-rfq": return <DirectorRfq rfqs={rfqs} quotations={quotations} user={user} setRfqs={setRfqs}/>;
+      default:        return <DirectorHome user={user} rfqs={rfqs} quotations={quotations} setSection={setSection}/>;
     }
     switch(section){
       case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
