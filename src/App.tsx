@@ -540,15 +540,17 @@ export default function App() {
   const [rfqs,setRfqs]=useState(INIT_RFQS);
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
   const login=u=>{setUser(u);setSection("dashboard");};
   const logout=()=>{setUser(null);setSection("dashboard");};
+  const drillInvoice=(no:string,sec:string)=>{setDrillInvoiceNo(no);setSection(sec);};
   if(!user) return <ErrorBoundary><Login onLogin={login}/></ErrorBoundary>;
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
-      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices}/>;
+      case "invoice":   return <VendorInvoice user={user} invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
       case "quotation": return <VendorQuotation user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
-      default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
+      default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no:string)=>drillInvoice(no,"invoice")}/>;
     }
     if(user.role==="approver") switch(section){
       case "apr-rfq":       return <ApproverRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
@@ -556,10 +558,10 @@ export default function App() {
       default:              return <ApproverHome user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} setRfqs={setRfqs} setSection={setSection}/>;
     }
     switch(section){
-      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices}/>;
+      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
       case "brm-quotation": return <BrmQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
       case "brm-rfq":       return <BrmRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} user={user}/>;
-      default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection}/>;
+      default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no:string)=>drillInvoice(no,"brm-invoice")}/>;
     }
   };
   return (

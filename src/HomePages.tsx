@@ -231,7 +231,7 @@ export const BrmHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvoice
                 {pending.length===0
                   ?<div style={{padding:"20px",color:C.t2,fontSize:14}}>No invoices pending review.</div>
                   :pending.slice(0,5).map((inv,idx)=>(
-                  <div key={inv.id} onClick={()=>onDrillInvoice(inv.invoiceNo)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:idx<Math.min(pending.length,5)-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}
+                  <div key={inv.id} onClick={()=>{onDrillInvoice(inv.invoiceNo);setSection("brm-invoice");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:idx<Math.min(pending.length,5)-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}
                     onMouseEnter={e=>(e.currentTarget.style.background=C.hover)} onMouseLeave={e=>(e.currentTarget.style.background="")}>
                     <div style={{display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:34,height:34,borderRadius:"50%",background:C.warnBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
