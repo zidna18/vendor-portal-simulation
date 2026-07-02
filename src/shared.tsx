@@ -1046,7 +1046,7 @@ export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFilte
             <span style={{fontWeight:600,color:C.t2,marginRight:3,flexShrink:0}}>{t.label}:</span>
             <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{t.val}</span>
             <button onClick={t.onClear} title={`Remove ${t.label} filter`}
-              style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:16,padding:"0 0.375rem",lineHeight:1,display:"flex",alignItems:"center",flexShrink:0,height:"100%"}}>Ã—</button>
+              style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:16,padding:"0 0.375rem",lineHeight:1,display:"flex",alignItems:"center",flexShrink:0,height:"100%"}}>{"×"}</button>
           </span>
         ))}
       </div>
@@ -1188,9 +1188,9 @@ export const DateRangePicker = ({from,to,onChange}) => {
     if(k==="month")return(
       <div style={subInpSt}>
         <div style={{display:"flex",gap:4,alignItems:"center"}}>
-          <button onClick={()=>setMonSel(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>â€¹</button>
+          <button onClick={()=>setMonSel(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{"‹"}</button>
           <span style={{flex:1,textAlign:"center" as const,fontSize:12,fontWeight:700,color:C.t1}}>{MNAMES[monSel.m]} {monSel.y}</span>
-          <button onClick={()=>setMonSel(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>â€º</button>
+          <button onClick={()=>setMonSel(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:3,width:24,height:24,cursor:"pointer",color:C.t1,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{"›"}</button>
         </div>
         <Btn v="primary" sm onClick={()=>{const f=`${monSel.y}-${String(monSel.m+1).padStart(2,"0")}-01`;const l=new Date(monSel.y,monSel.m+1,0);apply(f,iso(l));}}>Select Month</Btn>
       </div>
@@ -1201,7 +1201,7 @@ export const DateRangePicker = ({from,to,onChange}) => {
     <div ref={ref} style={{position:"relative"}}>
       <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",minHeight:36,padding:"0 10px",gap:8,boxSizing:"border-box" as const}}>
         <span style={{flex:1,fontSize:14,color:disp?C.t1:C.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{disp||"Select date range…"}</span>
-        {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>Ã—</button>}
+        {(from||to)&&<button onClick={e=>{e.stopPropagation();clr();}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:18,padding:"0",lineHeight:1,flexShrink:0}}>{"×"}</button>}
         <SapIcon name="calendar" size={14} color={C.t2} style={{flexShrink:0}}/>
       </div>
       {open&&(
@@ -1291,7 +1291,7 @@ export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChang
           return(
             <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:"#e8f1fb",border:"1px solid #91b9e3",borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
               {opt?.text||k}
-              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>Ã—</button>
+              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>{"×"}</button>
             </span>
           );
         })}
@@ -1434,7 +1434,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                     <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:i<conds.length-1?`1px solid ${C.border}`:"none",background:i%2===0?C.card:C.subtle,gap:8}}>
                       <span style={{fontSize:12,color:C.t2,minWidth:120}}>{c.op}</span>
                       <span style={{fontSize:13,color:C.t1,flex:1}}>{c.val||<em style={{color:C.t2}}>any</em>}</span>
-                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>Ã—</button>
+                      <button onClick={()=>setConds(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>{"×"}</button>
                     </div>
                   ))}
                 </div>
@@ -1452,10 +1452,10 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
             {localSel.map(key=>(
               <span key={key} style={{display:"inline-flex",alignItems:"center",gap:3,background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 8px 1px 8px",fontSize:12,color:C.info,whiteSpace:"nowrap"}}>
                 {getLabel(key)}
-                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:C.info,padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>Ã—</button>
+                <button onClick={()=>setLocalSel(p=>p.filter(k=>k!==key))} style={{background:"none",border:"none",cursor:"pointer",color:C.info,padding:"0 0 0 2px",fontSize:14,lineHeight:1}}>{"×"}</button>
               </span>
             ))}
-            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">Ã—</button>}
+            {localSel.length>0&&<button onClick={()=>{setLocalSel([]);setConds([]);}} style={{marginLeft:"auto",background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:18,padding:"0 2px",lineHeight:1}} title="Clear all">{"×"}</button>}
           </div>
         </div>
         {/* Footer */}
