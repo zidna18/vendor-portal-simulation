@@ -1,0 +1,514 @@
+================================================================================
+  BRM VENDOR PORTAL — SCOPE DEFINITION
+  In-Scope Feature List & Out-of-Scope / Future Development Backlog
+  Prepared by: Accenture — SAP BTP Advisory & Implementation
+  Document Type: Internal Reference / Project Scoping
+  Date: July 2026
+================================================================================
+
+
+OVERVIEW
+--------
+This document defines the functional boundary of the BRM Vendor Portal V.1.00
+as currently simulated on SAP BTP (Cloud Foundry). It distinguishes between
+features that are within the current project scope (built and demonstrated) and
+items that are explicitly deferred, out of scope, or candidates for a future
+release / Phase 2 development.
+
+User roles covered by this portal:
+  - Vendor       : Registered supplier (PT Maju Bersama, CV Sukses Mandiri)
+  - BRM          : Procurement/Finance staff (Ahmad Rizki, Siti Rahma)
+  - Approver     : Senior approver with read + approve authority
+  (All roles managed via SAP IAS single sign-on in the target architecture)
+
+
+================================================================================
+SECTION 1 — IN-SCOPE FEATURES (Current Build V.1.00)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+1.1  AUTHENTICATION & SESSION MANAGEMENT
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  SAP ID Service-styled login page with username / password authentication
+  [IN]  Role-based access control: Vendor, BRM, Approver — each sees a
+        different shell, navigation, and feature set upon login
+  [IN]  Quick-access demo login buttons (prototype convenience)
+  [IN]  Session logout from the shell navigation bar
+  [IN]  Theme selector (SAP Quartz Light / Dark / High Contrast) via Settings
+  [IN]  Number format and date format preferences (Settings modal)
+  [IN]  Responsive layout — navigation collapses to hamburger menu on mobile
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.2  VENDOR DASHBOARD (Home Page — Vendor View)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  Personalized greeting with vendor name, ID, category, and status
+  [IN]  KPI summary tiles: Total Invoices, Pending Review, Open RFQs,
+        My Quotations (with sub-labels: Confirmed, Awaiting BRM, Pending, Accepted)
+  [IN]  Quick-action buttons: "+ New Invoice", "My Quotations"
+  [IN]  Page shortcut cards: Vendor Profile, Invoice Submission, Quotation & RFQ
+  [IN]  Recent Invoice Activity list (last 5 invoices with status badges)
+  [IN]  Clickable invoice rows — navigate directly to Invoice Management with
+        the selected invoice pre-filtered (drill-through navigation)
+  [IN]  Collapsible dashboard sections (Overview, Pages, Recent Activity)
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.3  BRM DASHBOARD (Home Page — BRM View)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  Role-aware greeting with BRM user name, title, and entity
+  [IN]  KPI summary tiles: Total Invoices, Pending Review, Open RFQs,
+        Active Quotations
+  [IN]  Quick-action navigation cards: Invoice Management, RFQ Management,
+        Quotation Management
+  [IN]  Pending Invoice Review list (invoices in Submitted / Under Review status)
+  [IN]  Clickable pending invoice rows — navigate to BRM Invoice Management
+        with the selected invoice pre-filtered
+  [IN]  Pending Quotation Review list
+  [IN]  Collapsible dashboard sections
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.4  VENDOR PROFILE
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  OData endpoint display (SAP API_BUSINESS_PARTNER cosmetic reference)
+  [IN]  Vendor header card: name, ID, category, registration date, rep name,
+        status badge, bank account count, tax status
+  [IN]  Tab 1 — General Information:
+          · Company Information (BP ID, legal name, tax ID, category, since, rep,
+            PKP status, website)
+          · Contact & Address: SAP BP-style address table with multiple address
+            records (HQ/Registered, Billing, Warehouse/Delivery, NPWP/Tax Office)
+            — each with No., Address Type, Street, City, Postal, Country, Phone,
+            Fax, Email, and DEFAULT indicator; contact summary strip below
+  [IN]  Tab 2 — Bank Accounts: full SAP-style table (no., bank name, branch,
+        account number, account name, currency, SWIFT code, primary flag)
+  [IN]  Tab 3 — Tax & Compliance: NPWP number, NPWP address, PKP status,
+        tax status, certificate expiry; WHT registration table per company code
+  [IN]  Tab 4 — Company Code Assignment: LFB1-style table per company code
+        (reconciliation account, payment terms, payment method, business area,
+        FD group, recon account description)
+  [IN]  Read-only notice: "Vendor master data is managed directly in
+        SAP S/4HANA Public Cloud. Changes must be submitted through the
+        official vendor data change process."
+  [IN]  Simulated loading state (SAP Business Partner API fetch animation)
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.5  INVOICE SUBMISSION (Vendor — Invoice Management)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  Invoice list table with full column set: Status, Invoice No., Invoice
+        Type, Vendor, Company Code, Payment Terms, Payment Terms Status, Invoice
+        Date, Submitted Date, Approved Date, Total Amount, VAT Amount, WHT
+        Amount, Other Fee Amount, SAP Document No., Attachments
+  [IN]  SAP Fiori compact filter bar: Invoice No. (multi-condition), Company
+        Code (F4 value help), Status (F4), Currency (F4), Invoice Date Range
+        (date picker with presets), Invoice Type (multi-combobox)
+  [IN]  Adapt Filters panel — show/hide individual filter fields
+  [IN]  Column settings popup per column: Sort By, Group By, Resize width
+  [IN]  Group By functionality — rows grouped with collapsible section headers
+  [IN]  Checkbox multi-select + bulk CSV export
+  [IN]  Expand All / Collapse All for PO line sub-rows
+  [IN]  "+ Create" new invoice button
+
+  [IN]  Invoice Form Modal — Create / Edit:
+          · Full-screen expand / restore toggle
+          · Document Type dropdown: Invoice / Down Payment Request
+          · Company Code (F4 value help with SAP entity names)
+          · Currency (all major currencies incl. IDR, USD, AUD, EUR, JPY…)
+          · Invoice Date (SAP UI5-style date picker)
+          · Invoice Number (free text, duplicate check enforced)
+          · Terms of Payment (auto-populated from company code LFB1 config)
+          · Due Date (auto-calculated from invoice date + payment terms)
+          · Invoice Amount
+          · Purchasing Document — SAP UI5 MultiComboBox style:
+              - Inline chip tokens (SAP neutral style, ×-removable)
+              - Inline type-to-search dropdown auto-filtered by company code
+              - ⊞ F4 button opens PoValueHelp dialog (Search & Select tab +
+                Define Conditions tab)
+              - Changing Company Code / Currency clears selected POs
+          · PO Items table (per selected PO): PO line items with checkboxes,
+            Material Code, Description, Qty, UOM, Unit Amount, PO Amount,
+            GR Amount, DP Amount, Invoiceable Amount, Invoice Amount input;
+            "Remove Unchecked" button; select-all checkbox in header
+          · VAT: Base Amount, Rate (11% default), Amount (auto-calculated)
+          · WHT: Type, Code, Rate (auto), Base Amount, Amount (auto-calculated)
+          · Faktur Pajak (Tax Document No.)
+          · Other Fee: add fee lines with category and amount
+          · Attachment section: file name + reference input per file (no
+            "+ Add More" — attachments derived from PO document references)
+          · Notes / description field
+          · Invoice Balance indicator (top bar showing amount consistency check)
+          · Validation: duplicate invoice no., PO reuse across non-rejected
+            invoices, mandatory field checks
+          · Save as Draft / Submit actions
+
+  [IN]  Invoice status lifecycle (Vendor side):
+          Draft → Submitted → Under Review → Confirmed → Posted
+          Submitted → Withdrawn (back to Draft)
+          Any active → Rejected (with rejection reason visible to vendor)
+
+  [IN]  Invoice Detail Side Panel (read-only view on row click):
+          · Header: title, Pre-Invoice ID, action buttons (Edit, Withdraw,
+            Full-screen, Close)
+          · Key info strip: Gross Amount, Invoicing Party, Invoice Status
+            (sq-border badge), Document Type
+          · Tab: General Information — Basic Data, Status & Workflow,
+            Rejection Reason (if applicable), Notes, SAP Document banner,
+            Converted/Clearing Doc banner
+          · Tab: Purch. Doc. References — PO number chips + items table
+            (#, Short Text/PO Item, Amount, Quantity, Tax Code, Tax Rate)
+          · Tab: Tax — VAT summary, WHT details, Financial Summary
+          · Tab: Attachments — file list with reference fields
+          · Tab: Document Flow — full SAP procurement chain visualization
+            (Purchasing → Receiving → Invoicing → Accounting → Clearing)
+            with phase step circles, document cards, posting dates, quantities
+          · PDF Viewer: SAP-style invoice document + Faktur Pajak document
+
+  [IN]  Supplier DPR (Down Payment Request) specific flow:
+          · Document type = "Supplier DPR" routes to SAP BPA Down Payment
+            workflow (cosmetic API reference)
+          · DPR invoices show separate DP Amount column in PO items table
+          · Status continues: Posted → Converted to Invoice → Cleared
+            (Cleared generates clearingDocNo)
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.6  INVOICE MANAGEMENT (BRM View — BrmInvoice)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  All features from 1.5 (filter bar, column settings, group by, export)
+  [IN]  Additional filter: Vendor (F4 value help)
+  [IN]  Additional columns: Submitted Date, Approved Date, SAP Document No.
+  [IN]  BRM action buttons (context-sensitive by status):
+          · Review     — mark invoice as Under Review
+          · Accept     — confirm invoice (Submitted/Under Review → Confirmed)
+          · Reject     — reject with mandatory reason input
+          · Convert to Invoice — DPR only: Confirmed → Converted to Invoice
+          · Post to SAP — Confirmed → Posted (generates SAP document number)
+            · Invoice type → SAP Flexible Workflow
+              (API_SUPPLIERINVOICE_PROCESS_SRV, cosmetic)
+            · Supplier DPR → SAP BPA Down Payment workflow (cosmetic)
+          · Clear      — Posted DPR: Converted to Invoice → Cleared
+            (generates clearing document number)
+  [IN]  "1 selected" indicator and bulk action enable/disable logic
+  [IN]  Payment Terms Status column: Compliant / Differs (with actual vs.
+        expected terms display)
+  [IN]  SAP Document No. column: clickable link-style with SAP MIRO / SAP FI
+        (DPR) sub-label
+  [IN]  BRM Invoice Detail Panel — same tabs as Vendor panel plus:
+          · Convert / Clear action buttons in panel header
+          · Full-screen panel mode
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.7  RFQ MANAGEMENT (BRM View — BrmRfq)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  RFQ list with: ID, Title, Category, Company Code, Purchasing Org,
+        Posted Date, Closing Date, Status, Estimated Value, Targeted Vendors
+  [IN]  Create new RFQ with full line-item entry (material/service type,
+        account assignment, material number, material group, plant, qty, UOM,
+        estimated price, requirement/start/end dates)
+  [IN]  RFQ status: Open / Closed
+  [IN]  Close RFQ action
+  [IN]  RFQ Detail side panel: header info + item table + targeted vendor list
+  [IN]  Vendor targeting: RFQs are only visible to vendors listed in targets[]
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.8  QUOTATION MANAGEMENT (Vendor View — VendorQuotation)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  Two-tab view: "My Quotations" and "Open RFQs"
+  [IN]  Open RFQs tab: only RFQs where vendor is in targets[] and status=Open
+  [IN]  RFQ detail view: title, category, company code, closing date, estimated
+        value, full line-item table, "Submit Quotation" action
+  [IN]  Quotation submission form: price per line item, notes
+  [IN]  Quotation status lifecycle: Draft → Submitted → Accepted / Rejected /
+        Withdrawn
+  [IN]  Withdraw submitted quotation (self-service, before BRM acts)
+  [IN]  My Quotations list: ID, RFQ reference, submitted date, total amount,
+        status, line count
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.9  QUOTATION MANAGEMENT (BRM View — BrmQuotation)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  All submitted quotations visible across all vendors
+  [IN]  Filter by RFQ, vendor, status
+  [IN]  Quotation detail: vendor info, line-item breakdown with quoted prices,
+        notes
+  [IN]  Accept / Reject quotation actions (with rejection reason)
+  [IN]  Quotation comparison across vendors for same RFQ
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.10  APPROVER ROLE (ApproverRfq / ApproverQuotation / ApproverHome)
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  Separate Approver login (approver1 / Budi Santoso — Finance Approver)
+  [IN]  Approver dashboard: pending RFQs and quotations summary
+  [IN]  ApproverRfq: view all RFQs, see quotations submitted per RFQ
+  [IN]  ApproverQuotation: review and approve/reject quotations with authority
+        separate from BRM buyer
+  [IN]  Read-only access to full quotation and RFQ detail
+
+
+────────────────────────────────────────────────────────────────────────────────
+1.11  SHARED UI INFRASTRUCTURE
+────────────────────────────────────────────────────────────────────────────────
+  [IN]  SAP Fiori Quartz Light design language — shell bar (#354a5f),
+        primary blue (#0a6ed1), 48px shell bar, 14px body, borderRadius 2px inputs
+  [IN]  SAP UI5 Web Component icons (CDN-loaded, text fallback if unavailable)
+  [IN]  Notification bell with unread count badge and notification panel
+  [IN]  In-app notification generation on key events (invoice submitted/posted,
+        quotation accepted/rejected)
+  [IN]  ValueHelpDialog — F4-style modal with "Search and Select" tab (search,
+        multi-select, token display) and "Define Conditions" tab (filter builder)
+  [IN]  MultiValueInp — token chip input with condition builder (equal to,
+        contains, between, starts with, ends with, etc.)
+  [IN]  DateRangePicker — calendar-based picker with presets (Today, This Week,
+        This Month, Last X Days, specific Quarter, Year, custom range)
+  [IN]  Modal component with expand-to-full-screen toggle
+  [IN]  All status badges (Badge with sq prop for square-corner variant)
+  [IN]  StatusTag (icon + colored text, no background)
+  [IN]  CSV export (Blob download) from invoice list
+  [IN]  Responsive grid layout — 4/3/2/1 columns adapting to viewport
+
+
+================================================================================
+SECTION 2 — OUT-OF-SCOPE / FUTURE DEVELOPMENT BACKLOG
+================================================================================
+
+The items below are NOT included in V.1.00. They represent logical next phases
+for a production deployment, organized by development priority tier.
+
+────────────────────────────────────────────────────────────────────────────────
+2.1  TIER 1 — HIGH PRIORITY (Prerequisite for Production Go-Live)
+────────────────────────────────────────────────────────────────────────────────
+
+  [OUT]  REAL SAP S/4HANA INTEGRATION
+         Live OData/API calls replacing all mock data:
+         · API_SUPPLIERINVOICE_PROCESS_SRV — actual invoice posting to SAP
+         · API_BUSINESS_PARTNER — live vendor master data read
+         · A_PurchaseOrder — live PO retrieval for invoice form
+         · I_CompanyCode, I_Currency, I_PaymentTerms — live master data
+         · SAP BPA Down Payment workflow API — actual DPR processing
+         · SAP Flexible Workflow API — actual invoice approval routing
+         Currently all data is in-memory mock; no actual SAP system is called.
+
+  [OUT]  REAL AUTHENTICATION & AUTHORIZATION
+         · SAP Identity Authentication Service (IAS) / Identity Provisioning
+           Service (IPS) integration for SSO
+         · OAuth 2.0 / SAML 2.0 token-based session management
+         · Role assignment managed via SAP BTP subaccount authorizations
+         · Password reset, MFA enforcement, session timeout
+         Currently: static username/password comparison with no token.
+
+  [OUT]  PERSISTENT DATA LAYER
+         · SAP HANA Cloud or SAP BTP PostgreSQL for portal-specific data
+           (pre-invoices, quotations, RFQ submissions not stored in SAP MM)
+         · CAP (Cloud Application Programming model) service layer
+         · Real-time data sync with SAP S/4HANA via event mesh or direct OData
+         Currently: all state is in-memory React useState, lost on page refresh.
+
+  [OUT]  EMAIL NOTIFICATION SERVICE
+         · Automated email to vendor on: invoice status change, quotation
+           award/rejection, new RFQ published
+         · Email to BRM on: new invoice submitted, quotation received, RFQ
+           closing date approaching
+         · SAP BTP Alert Notification Service or SAP Business Network messaging
+         Currently: in-app notifications only, no email.
+
+  [OUT]  FILE UPLOAD & DOCUMENT MANAGEMENT
+         · Actual binary file upload for invoice attachments (PDF, images)
+         · SAP Document Management Service (DMS) or BTP Object Store integration
+         · Virus scan, file type validation, size limits
+         Currently: attachment section only stores file name strings, no actual
+         file upload capability.
+
+  [OUT]  AUDIT LOG & CHANGE HISTORY
+         · Immutable audit trail stored in database (who changed what, when)
+         · Change log visible in invoice/quotation detail panel
+         · SAP Audit Log Service on BTP
+         Currently: no persistence; status history is not recorded.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.2  TIER 2 — MEDIUM PRIORITY (Phase 2 Enhancements)
+────────────────────────────────────────────────────────────────────────────────
+
+  [OUT]  VENDOR SELF-ONBOARDING
+         · New vendor registration form (company name, tax ID, bank details,
+           category, certifications)
+         · Document upload for KYC/KYB (NPWP certificate, SIUP, TDP, PKP cert)
+         · BRM review and approval workflow for new vendor activation
+         · SAP Business Partner creation via API_BUSINESS_PARTNER on approval
+         · Duplicate vendor detection (same NPWP / bank account)
+
+  [OUT]  VENDOR PROFILE SELF-SERVICE CHANGE REQUEST
+         · Vendor-initiated change requests for: address, bank account, contact,
+           tax certificate, NPWP number
+         · Four-eyes approval (BRM review + Finance approval) before SAP BP update
+         · Change request status tracking (Pending / Approved / Rejected)
+         · SAP S/4HANA BP change document written on approval
+         Currently: profile is read-only with a static "contact BRM" notice.
+
+  [OUT]  VENDOR RATING & PERFORMANCE SCORECARD
+         · KPI-based vendor scoring per delivery: on-time delivery %, invoice
+           accuracy rate, response time to RFQs, rejection rate
+         · Scorecard visible to both vendor and BRM
+         · Historical trend charts (quarterly performance)
+         · Integration with SAP QM / Supplier Evaluation (ME61/ME63)
+         · Automatic disqualification trigger if score falls below threshold
+
+  [OUT]  MULTI-ROUND RFQ / SEALED BID / REVERSE AUCTION
+         · RFQ with multiple submission rounds (initial bid + best-and-final)
+         · Sealed-bid mode: vendors cannot see competitors' quotes until closing
+         · Reverse auction: real-time competitive bidding with countdown timer
+         · Automatic best-quote ranking and award recommendation
+         Currently: single-round open RFQ only.
+
+  [OUT]  CONTRACT MANAGEMENT
+         · Framework agreements and blanket purchase orders linked to vendor
+         · Contract expiry notification and renewal workflow
+         · Contract-based invoice validation (price vs. contract tolerance check)
+         · Integration with SAP MM Outline Agreement (ME31K / ME32K)
+
+  [OUT]  PURCHASE ORDER ACKNOWLEDGEMENT
+         · Vendor acknowledges receipt of PO and confirms delivery date
+         · Delivery date change request with BRM approval
+         · PO line-level partial acknowledgement
+         · Integration with SAP MM PO confirmation (ME22N / EDI 855)
+
+  [OUT]  GOODS RECEIPT / DELIVERY NOTE SUBMISSION
+         · Vendor submits delivery note / ASN (Advance Shipment Notice) before
+           BRM creates Goods Receipt in SAP
+         · Discrepancy flagging: vendor-declared qty vs. BRM-received qty
+         · Integration with SAP MM Goods Receipt (MIGO / MFBF)
+
+  [OUT]  PAYMENT STATUS VISIBILITY
+         · Vendor can see payment run dates, payment amounts, and bank transfer
+           references for cleared invoices
+         · Outstanding payables aging view per company code
+         · Integration with SAP FI Payment Program (F110) output
+         Currently: invoice lifecycle ends at "Cleared" with a clearing doc no.
+         but no payment confirmation detail.
+
+  [OUT]  CREDIT NOTE / DEBIT NOTE PROCESSING
+         · Vendor submits credit note against a previously posted invoice
+         · BRM reviews and posts credit note to SAP (MM credit memo, MR8M)
+         · Linked to original invoice in Document Flow
+
+  [OUT]  WITHHOLDING TAX CERTIFICATE (BUKTI POTONG) DISTRIBUTION
+         · BRM uploads WHT certificates (Bukti Potong PPh) per vendor per period
+         · Vendor downloads certificates from portal
+         · DJP e-Bupot integration for direct digital certificate delivery
+
+
+────────────────────────────────────────────────────────────────────────────────
+2.3  TIER 3 — STRATEGIC / LONG-TERM
+────────────────────────────────────────────────────────────────────────────────
+
+  [OUT]  E-FAKTUR (DJP) INTEGRATION
+         · Direct API integration with Direktorat Jenderal Pajak (DJP) e-Faktur
+           system for real-time VAT invoice validation and submission
+         · NSFP (Nomor Seri Faktur Pajak) validation against DJP database
+         · Automatic e-Faktur status check (valid / cancelled / replaced)
+
+  [OUT]  SAP ARIBA NETWORK INTEGRATION
+         · Vendor onboarding via Ariba Network supplier portal
+         · PO-to-invoice flip: vendor creates invoice directly from PO in Ariba
+         · cXML / EDI transaction support for automated document exchange
+         · Ariba Discovery for new vendor sourcing
+
+  [OUT]  MOBILE APPLICATION (iOS / Android)
+         · Native mobile app for vendor invoice submission and status tracking
+         · Push notifications for invoice events
+         · Offline draft capability with sync on reconnect
+         Currently: responsive web layout only, no native mobile app.
+
+  [OUT]  AI-ASSISTED INVOICE PROCESSING
+         · OCR / AI extraction of invoice data from uploaded PDF to auto-fill
+           form fields (SAP AI Core / Document Information Extraction service)
+         · Anomaly detection: flag invoices where amount deviates significantly
+           from historical PO amounts or GR values
+         · Duplicate invoice detection using fuzzy matching across vendors
+         · Smart payment terms recommendation based on vendor history
+
+  [OUT]  SUPPLIER SUSTAINABILITY / ESG MODULE
+         · Vendor self-declaration of ESG metrics (carbon footprint, local
+           content / TKDN percentage, SME certification, ISO 14001)
+         · BRM ESG procurement reporting dashboard
+         · Integration with BRM Group sustainability reporting framework
+
+  [OUT]  MULTI-LANGUAGE SUPPORT (BAHASA INDONESIA)
+         · Full Bahasa Indonesia translation for vendor-facing UI
+         · Language toggle per user preference
+         · Localized number/date formats per locale
+         Currently: English-only UI.
+
+  [OUT]  VENDOR PORTAL ANALYTICS DASHBOARD
+         · Vendor-facing spend analytics: invoiced amounts by period, company
+           code, category; payment cycle time trends
+         · BRM-facing procurement analytics: sourcing pipeline value, quotation
+           competitiveness index, vendor response rates, invoice processing KPIs
+         · Export to SAP Analytics Cloud (SAC)
+
+  [OUT]  INTER-COMPANY INVOICE SUPPORT
+         · Cross-entity invoicing between BRM group companies (BRMS ↔ CPMS etc.)
+         · Automatic inter-company posting in both sending and receiving company
+           codes in SAP
+         · Consolidation elimination support
+
+  [OUT]  PEPPOL / UNIVERSAL BUSINESS LANGUAGE (UBL) SUPPORT
+         · Structured electronic invoice exchange conforming to PEPPOL BIS
+           Billing 3.0 / UBL 2.1 standards
+         · Export invoice as machine-readable XML for ERP-to-ERP exchange
+         · Indonesia PEPPOL access point connectivity (post-METS/DJP readiness)
+
+
+================================================================================
+SCOPE SUMMARY TABLE
+================================================================================
+
+  Category                          V.1.00 Status   Next Phase
+  ─────────────────────────────────────────────────────────────────────────
+  Login & Role-Based Access         IN SCOPE         Prod: Real IAS/SSO
+  Vendor Dashboard                  IN SCOPE         —
+  BRM Dashboard                     IN SCOPE         —
+  Approver Dashboard & Actions      IN SCOPE         —
+  Vendor Profile (Read-Only)        IN SCOPE         Ph2: Self-Service Changes
+  Invoice Submission (Vendor)       IN SCOPE         Prod: Real SAP API
+  Invoice Lifecycle (Full)          IN SCOPE         Prod: Persist to DB
+  Down Payment Request Flow         IN SCOPE         Prod: Real BPA API
+  Invoice Review / Post (BRM)       IN SCOPE         Prod: Real SAP posting
+  Document Flow Visualization       IN SCOPE         Prod: Real SAP data
+  RFQ Issuance & Management         IN SCOPE         Ph2: Multi-round bidding
+  Quotation Submission (Vendor)     IN SCOPE         Ph2: Contract linkage
+  Quotation Review (BRM/Approver)   IN SCOPE         —
+  File Upload (Actual Binary)       OUT OF SCOPE     Tier 1 / Prod Prereq
+  Real SAP API Integration          OUT OF SCOPE     Tier 1 / Prod Prereq
+  Persistent Database               OUT OF SCOPE     Tier 1 / Prod Prereq
+  Email Notifications               OUT OF SCOPE     Tier 1 / Prod Prereq
+  Audit Log / Change History        OUT OF SCOPE     Tier 1 / Prod Prereq
+  Vendor Self-Onboarding            OUT OF SCOPE     Tier 2 / Phase 2
+  Vendor Profile Change Request     OUT OF SCOPE     Tier 2 / Phase 2
+  Vendor Performance Scorecard      OUT OF SCOPE     Tier 2 / Phase 2
+  Payment Status / FI Visibility    OUT OF SCOPE     Tier 2 / Phase 2
+  PO Acknowledgement                OUT OF SCOPE     Tier 2 / Phase 2
+  Goods Receipt / ASN               OUT OF SCOPE     Tier 2 / Phase 2
+  Credit / Debit Notes              OUT OF SCOPE     Tier 2 / Phase 2
+  WHT Certificate Distribution      OUT OF SCOPE     Tier 2 / Phase 2
+  e-Faktur DJP Integration          OUT OF SCOPE     Tier 3 / Strategic
+  SAP Ariba Network                 OUT OF SCOPE     Tier 3 / Strategic
+  Native Mobile App                 OUT OF SCOPE     Tier 3 / Strategic
+  AI Invoice Processing (OCR)       OUT OF SCOPE     Tier 3 / Strategic
+  Vendor Sustainability / ESG       OUT OF SCOPE     Tier 3 / Strategic
+  Multi-Language (Bahasa)           OUT OF SCOPE     Tier 3 / Strategic
+  PEPPOL / UBL Support              OUT OF SCOPE     Tier 3 / Strategic
+  ─────────────────────────────────────────────────────────────────────────
+
+
+================================================================================
+DOCUMENT END
+Accenture — SAP BTP & Finance Transformation Practice
+For internal use only. Not for external distribution without review.
+================================================================================
