@@ -8,42 +8,112 @@ import {
   ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox,
 } from "./shared";
 
-// ── PO Value Help ──────────────────────────────────────────────
-export const PoValueHelp = ({values,onConfirm,onClose}) => {
-  const [items,setItems]=useState([...values]);
-  const [raw,setRaw]=useState("");
-  const parse=txt=>txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
-  const applyRaw=()=>{const p=parse(raw);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");};
-  const pasteClip=async()=>{
-    try{const t=await navigator.clipboard.readText();const p=parse(t);if(p.length)setItems(prev=>[...new Set([...prev,...p])]);setRaw("");}
-    catch{alert("Clipboard access denied. Please paste manually into the field.");}
+// ── PO Mock Master Data ────────────────────────────────────────
+export const MOCK_POS = [
+  {v:"4500001234",companyCode:"BRMS",currency:"IDR",amount:25000000,desc:"Office Supplies & Stationery Q2 2025"},
+  {v:"4500001235",companyCode:"BRMS",currency:"IDR",amount:87500000,desc:"IT Equipment & Peripherals Procurement"},
+  {v:"4500001236",companyCode:"CPMS",currency:"IDR",amount:45000000,desc:"Facility Maintenance Services"},
+  {v:"4500001237",companyCode:"BRMS",currency:"USD",amount:8500,desc:"Enterprise Software License Renewal"},
+  {v:"4500001238",companyCode:"GMIN",currency:"IDR",amount:125000000,desc:"Mining Equipment Spare Parts"},
+  {v:"4500001239",companyCode:"SHSI",currency:"IDR",amount:56000000,desc:"Logistics & Transportation Services"},
+  {v:"4500001240",companyCode:"LMRS",currency:"IDR",amount:18500000,desc:"Technical Consulting Services"},
+  {v:"4500001241",companyCode:"BRMS",currency:"IDR",amount:92000000,desc:"Construction & Civil Works Materials"},
+  {v:"4500001242",companyCode:"CPMS",currency:"IDR",amount:35000000,desc:"Environmental Management Services"},
+  {v:"4500001243",companyCode:"BRMS",currency:"IDR",amount:150000000,desc:"Heavy Equipment Rental"},
+  {v:"4500001244",companyCode:"GMIN",currency:"IDR",amount:68000000,desc:"Chemical Reagents & Lab Supplies"},
+  {v:"4500001245",companyCode:"SHSI",currency:"SGD",amount:12500,desc:"Safety Equipment & PPE Procurement"},
+  {v:"4500001246",companyCode:"BRMS",currency:"IDR",amount:210000000,desc:"Drilling Services & Equipment"},
+  {v:"4500001247",companyCode:"LMRS",currency:"IDR",amount:44000000,desc:"Surveying & Mapping Services"},
+  {v:"4500001248",companyCode:"CPMS",currency:"IDR",amount:78000000,desc:"Water Treatment Plant Maintenance"},
+];
+
+// ── PO Value Help Dialog ───────────────────────────────────────
+export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
+  const [tab,setTab]=useState<"search"|"define">("search");
+  const [search,setSearch]=useState("");
+  const [sel,setSel]=useState<Set<string>>(new Set(values));
+  const [conditions,setConditions]=useState([{field:"poNo",op:"contains",val:""}]);
+  const allPos = companyCode ? MOCK_POS.filter(p=>p.companyCode===companyCode) : MOCK_POS;
+  const filtered = allPos.filter(po=>!search||po.v.includes(search)||po.desc.toLowerCase().includes(search.toLowerCase())||po.companyCode.toLowerCase().includes(search.toLowerCase()));
+  const toggle=(v:string)=>{const n=new Set(sel);n.has(v)?n.delete(v):n.add(v);setSel(n);};
+  const toggleAll=(checked:boolean)=>{const n=new Set(sel);filtered.forEach(p=>checked?n.add(p.v):n.delete(p.v));setSel(n);};
+  const applyConditions=()=>{
+    const matching=MOCK_POS.filter(po=>conditions.every(c=>{
+      const fv=c.field==="poNo"?po.v:c.field==="companyCode"?po.companyCode:po.desc;
+      if(!c.val)return true;
+      if(c.op==="contains")return fv.toLowerCase().includes(c.val.toLowerCase());
+      if(c.op==="equals")return fv===c.val;
+      if(c.op==="startsWith")return fv.toLowerCase().startsWith(c.val.toLowerCase());
+      return true;
+    }));
+    const n=new Set(sel);matching.forEach(p=>n.add(p.v));setSel(n);setTab("search");setSearch("");
   };
+  const TabBtn=({id,label}:any)=>(
+    <button onClick={()=>setTab(id)} style={{background:"none",border:"none",borderBottom:`2px solid ${tab===id?C.primary:"transparent"}`,cursor:"pointer",padding:"8px 16px 10px",fontSize:14,color:tab===id?C.primary:C.t2,fontFamily:"inherit",fontWeight:tab===id?600:400,marginBottom:-1}}>{label}</button>
+  );
   return (
-    <Modal title="PO Number – Value Help" onClose={onClose} width={500}>
-      <div style={{fontSize:10,color:C.t2,marginBottom:12}}>📡 SAP API: A_PurchaseOrder (OData v4) · Separate entries by newline, comma, or semicolon</div>
-      <Lbl>Paste or type PO numbers</Lbl>
-      <div style={{display:"flex",gap:8,marginBottom:6}}>
-        <textarea value={raw} onChange={e=>setRaw(e.target.value)} placeholder={"4500001234\n4500001235\n4500001236"} rows={4}
-          style={{flex:1,padding:"7px 10px",background:C.field,border:`1px solid ${C.border}`,borderRadius:4,color:C.t1,fontSize:12,fontFamily:"monospace",resize:"vertical",outline:"none"}}/>
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          <Btn v="neutral" sm onClick={pasteClip}>Paste</Btn>
-          <Btn v="primary" sm onClick={applyRaw}>Add →</Btn>
-        </div>
+    <Modal title="Purchasing Document" onClose={onClose} width={740}>
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:16,marginTop:-4}}>
+        <TabBtn id="search" label="Search and Select"/>
+        <TabBtn id="define" label="Define Conditions"/>
       </div>
-      <div style={{marginBottom:14,fontSize:11,color:C.t2}}>Click <strong>Paste</strong> to read from clipboard automatically, or type and click <strong>Add</strong>.</div>
-      <Lbl>Selected PO Numbers ({items.length})</Lbl>
-      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",marginBottom:16,minHeight:40}}>
-        {items.length===0&&<div style={{padding:"12px 16px",color:C.t2,fontSize:12,textAlign:"center"}}>No PO numbers selected yet.</div>}
-        {items.map((po,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 12px",background:i%2===0?C.subtle:C.card,borderBottom:i<items.length-1?`1px solid ${C.border}`:"none"}}>
-            <span style={{fontFamily:"monospace",fontSize:12}}>{po}</span>
-            <button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12,padding:"0 4px"}}>✕</button>
+      {tab==="search"&&<>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",border:`1px solid ${C.border}`,borderRadius:2,background:C.field,padding:"0 10px",gap:6}}>
+            <SapIcon name="search" size={14} color={C.t2}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&setSearch(search)} placeholder="Search by PO number, description, or company code..."
+              style={{flex:1,border:"none",background:"none",outline:"none",fontSize:13,color:C.t1,padding:"8px 0",fontFamily:"inherit"}}/>
+          </div>
+          <Btn v="primary" onClick={()=>setSearch(search)}>Go</Btn>
+        </div>
+        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Items ({filtered.length}) <span style={{fontSize:10}}>📡 SAP API: A_PurchaseOrder (OData v4)</span></div>
+        <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"auto",maxHeight:300}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead>
+              <tr style={{background:C.subtle}}>
+                <th style={{width:36,padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><input type="checkbox" checked={filtered.length>0&&filtered.every(p=>sel.has(p.v))} onChange={e=>toggleAll(e.target.checked)}/></th>
+                {["PO Number","Company Code","Description","Currency","Total Amount"].map(h=>(
+                  <th key={h} style={{padding:"7px 10px",fontWeight:700,fontSize:12,color:C.t2,textAlign:"left",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap" as const}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((po,i)=>(
+                <tr key={po.v} onClick={()=>toggle(po.v)} style={{background:sel.has(po.v)?"#e8f1fb":i%2===0?C.card:C.subtle,cursor:"pointer"}}>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><input type="checkbox" checked={sel.has(po.v)} onChange={()=>toggle(po.v)} onClick={e=>e.stopPropagation()}/></td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,fontFamily:"monospace",fontWeight:600,color:C.primary}}>{po.v}</td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><span style={{background:C.infoBg,color:C.primary,border:`1px solid ${C.info}`,borderRadius:3,padding:"1px 7px",fontSize:12,fontWeight:600}}>{po.companyCode}</span></td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t1}}>{po.desc}</td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t2}}>{po.currency}</td>
+                  <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,textAlign:"right",fontVariantNumeric:"tabular-nums" as const,fontWeight:600}}>{fmtAmt(po.amount,po.currency)}</td>
+                </tr>
+              ))}
+              {filtered.length===0&&<tr><td colSpan={6} style={{padding:"20px",textAlign:"center",color:C.t2,fontStyle:"italic",fontSize:13}}>No POs found. Try a different search term.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </>}
+      {tab==="define"&&<>
+        <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Add conditions to filter POs. Click "Apply" to select matching POs and switch to Search &amp; Select view.</div>
+        {conditions.map((c,i)=>(
+          <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+            <Sel value={c.field} onChange={v=>setConditions(p=>{const n=[...p];n[i]={...n[i],field:v};return n;})} opts={[{v:"poNo",l:"PO Number"},{v:"companyCode",l:"Company Code"},{v:"desc",l:"Description"}]}/>
+            <Sel value={c.op} onChange={v=>setConditions(p=>{const n=[...p];n[i]={...n[i],op:v};return n;})} opts={[{v:"contains",l:"contains"},{v:"equals",l:"equals"},{v:"startsWith",l:"starts with"}]}/>
+            <Inp value={c.val} onChange={v=>setConditions(p=>{const n=[...p];n[i]={...n[i],val:v};return n;})} placeholder="Value..."/>
+            {i>0&&<button onClick={()=>setConditions(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:16,padding:"0 4px"}}>✕</button>}
           </div>
         ))}
-      </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
-        <Btn v="primary" onClick={()=>onConfirm(items)}>Confirm ({items.length} PO{items.length!==1?"s":""})</Btn>
+        <div style={{display:"flex",gap:8,marginTop:4}}>
+          <Btn v="neutral" sm onClick={()=>setConditions(p=>[...p,{field:"poNo",op:"contains",val:""}])}>+ Add Condition</Btn>
+          <Btn v="primary" onClick={applyConditions}>Apply & Select Matching POs</Btn>
+        </div>
+      </>}
+      <div style={{display:"flex",gap:8,justifyContent:"space-between",marginTop:16,paddingTop:12,borderTop:`1px solid ${C.border}`,alignItems:"center"}}>
+        <span style={{fontSize:13,color:C.t2}}>{sel.size} PO{sel.size!==1?"s":""} selected</span>
+        <div style={{display:"flex",gap:8}}>
+          <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+          <Btn v="primary" onClick={()=>onConfirm([...sel])}>Confirm ({sel.size} PO{sel.size!==1?"s":""})</Btn>
+        </div>
       </div>
     </Modal>
   );
@@ -97,6 +167,13 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
      otherFees:[],additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
+  const [poDropOpen,setPoDropOpen]=useState(false);
+  const [poSearch,setPoSearch]=useState("");
+  const poRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{if(poRef.current&&!poRef.current.contains(e.target as Node))setPoDropOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[]);
   const [expanded,setExpanded]=useState(false);
   const [attRefs,setAttRefs]=useState<Record<string,string>>(inv?.attRefs||{"invoice.pdf":"","faktur_pajak.pdf":"","gr_document.pdf":""});
   const updateAttRef=(key:string,v:string)=>setAttRefs(p=>({...p,[key]:v}));
@@ -183,29 +260,50 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
 
       {/* PURCHASING DOCUMENT REFERENCE */}
       <SHdr>Purchasing Document Reference</SHdr>
-      <div style={{marginBottom:8}}>
+      <div style={{marginBottom:8}} ref={poRef}>
         <Lbl>Purchasing Document *</Lbl>
-        <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",background:C.field,minHeight:38}}>
-          <div onClick={()=>setShowPoHelp(true)} style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"5px 8px",alignContent:"flex-start",cursor:"pointer",minHeight:36}}>
-            {!(f.poNumbers||[]).length&&<span style={{color:C.t2,fontSize:12,alignSelf:"center",pointerEvents:"none"}}>— click or press value help to add PO numbers —</span>}
-            {(f.poNumbers||[]).map((po,i)=>(
-              <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,gap:6,lineHeight:"20px"}}>
-                <span style={{fontFamily:"monospace"}}>{po}</span>
-                <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>
-              </span>
-            ))}
+        <div>
+          <div style={{display:"flex",border:`1px solid ${poDropOpen?C.primary:C.border}`,borderRadius:2,background:C.field,minHeight:38}}>
+            <div style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"4px 8px",alignContent:"flex-start",minHeight:34}}>
+              {(f.poNumbers||[]).map((po,i)=>(
+                <span key={i} style={{display:"inline-flex",alignItems:"center",background:"#e8f1fb",border:`1px solid #c0d4ed`,borderRadius:12,padding:"2px 10px",fontSize:13,gap:5,lineHeight:"20px",color:"#0854a0"}}>
+                  <span style={{fontFamily:"monospace",fontWeight:600}}>{po}</span>
+                  <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:"#0854a0",cursor:"pointer",fontSize:12,padding:0,lineHeight:1,opacity:0.7}}>✕</button>
+                </span>
+              ))}
+              <input value={poSearch} onChange={e=>setPoSearch(e.target.value)} onFocus={()=>setPoDropOpen(true)}
+                placeholder={(f.poNumbers||[]).length===0?"Search or select PO numbers...":""}
+                style={{border:"none",background:"none",outline:"none",fontSize:13,color:C.t1,padding:"4px 0",minWidth:160,flex:1,fontFamily:"inherit"}}/>
+            </div>
+            <button onClick={()=>{setShowPoHelp(true);setPoDropOpen(false);}} title="Value Help (F4)" style={{padding:"0 12px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:11,color:C.t1,fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap" as const}}>⊞ F4</button>
           </div>
-          <button onClick={()=>setShowPoHelp(true)} title="Open Value Help" style={{padding:"0 14px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:12,color:C.t1,fontWeight:700,letterSpacing:1}}>...</button>
+          {poDropOpen&&(()=>{
+            const avail=MOCK_POS.filter(p=>!(f.poNumbers||[]).includes(p.v)&&(!poSearch||p.v.includes(poSearch)||p.desc.toLowerCase().includes(poSearch.toLowerCase())||p.companyCode.toLowerCase().includes(poSearch.toLowerCase())));
+            return(
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 4px 4px",boxShadow:"0 4px 12px rgba(0,0,0,0.12)",maxHeight:220,overflowY:"auto",marginBottom:4}}>
+                {avail.length===0?<div style={{padding:"12px 14px",color:C.t2,fontSize:13,fontStyle:"italic"}}>No available POs{poSearch?` matching "${poSearch}"`:""}.</div>:
+                avail.map((po,idx)=>(
+                  <div key={po.v} onMouseDown={e=>{e.preventDefault();s("poNumbers",[...(f.poNumbers||[]),po.v]);setPoSearch("");}}
+                    style={{padding:"8px 14px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,display:"flex",gap:12,alignItems:"center",background:idx%2===0?C.card:C.subtle}}>
+                    <span style={{fontFamily:"monospace",fontWeight:700,color:C.primary,fontSize:13,minWidth:90}}>{po.v}</span>
+                    <span style={{fontSize:13,color:C.t1,flex:1}}>{po.desc}</span>
+                    <span style={{fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"1px 6px"}}>{po.companyCode}</span>
+                    <span style={{fontSize:12,color:C.t2,minWidth:80,textAlign:"right" as const,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(po.amount,po.currency)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
-        <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
+        <div style={{fontSize:11,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Type to search, or press <strong>⊞ F4</strong> for full value help dialog</div>
       </div>
       {(f.poNumbers||[]).length>0&&(
         <div style={{marginBottom:4,overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:780}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:900}}>
             <thead>
               <tr style={{background:"#e8f1fb"}}>
                 {["Purchasing Document","PO Item","Material Code","Material Desc","PO Quant","UOM","Unit Amount","PO Amount","GR Amount","DP Amount","Invoicable Amount","Invoice Amount"].map(h=>(
-                  <th key={h} style={{padding:"5px 7px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:10}}>{h}</th>
+                  <th key={h} style={{padding:"7px 9px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:12}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -214,18 +312,18 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                 const m=getMockPoItem(po);
                 return(
                 <tr key={pi} style={{background:pi%2===0?C.card:C.subtle}}>
-                  <td style={{padding:"5px 7px",fontFamily:"monospace",fontSize:10,color:C.primary}}>{po}</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>{m.item}</td>
-                  <td style={{padding:"5px 7px",color:C.t2,fontFamily:"monospace",fontSize:10}}>{m.matCode}</td>
-                  <td style={{padding:"5px 7px",color:C.t1}}>{m.matDesc}</td>
-                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
-                  <td style={{padding:"5px 7px",color:C.t2}}>{m.uom}</td>
-                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{(m.unitAmt/1000).toFixed(0)}K</td>
-                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"5px 7px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"5px 7px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"5px 7px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
-                  <td style={{padding:"5px 7px",minWidth:100}}><AmtInp value="" onChange={()=>{}}/></td>
+                  <td style={{padding:"7px 9px",fontFamily:"monospace",fontSize:13,color:C.primary,fontWeight:600}}>{po}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"center"}}>{m.item}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,fontFamily:"monospace",fontSize:12}}>{m.matCode}</td>
+                  <td style={{padding:"7px 9px",color:C.t1}}>{m.matDesc}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
+                  <td style={{padding:"7px 9px",color:C.t2}}>{m.uom}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.unitAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
+                  <td style={{padding:"5px 7px",minWidth:110}}><AmtInp value="" onChange={()=>{}}/></td>
                 </tr>
                 );
               })}
@@ -356,7 +454,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
       </div>
-      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
+      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} companyCode={f.companyCode||""} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
     </Modal>
   );
 };
