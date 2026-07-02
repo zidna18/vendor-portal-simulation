@@ -115,13 +115,72 @@ export const VendorProfile = ({user}) => {
           </div>
           {/* Contact & Address */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-            <Section title="Contact & Address" icon="map">
-              <Row label="Registered Address" value={v.addr}/>
-              <Row label="Phone"              value={v.phone}/>
-              {v.fax&&<Row label="Fax"        value={v.fax}/>}
-              <Row label="Email"              value={v.email}/>
-              {v.npwpAddress&&<Row label="NPWP Address" value={v.npwpAddress}/>}
-            </Section>
+            {(()=>{
+              // Build address table rows from vendor data + mock additional addresses
+              const mainCity=v.addr?.split(",")[1]?.trim()||"Jakarta";
+              const addrRows=[
+                {no:"0001",type:"HQ / Registered",default:true, street:v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:v.fax||"—", email:v.email},
+                {no:"0002",type:"Billing Address",default:false, street:v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:v.fax||"—", email:"billing@"+v.email?.split("@")[1]},
+                {no:"0003",type:"Warehouse / Delivery",default:false, street:"Jl. Industri Raya No. 88, Kawasan Industri Pulogadung", city:"Jakarta Timur", postal:"13920", country:"Indonesia", phone:v.phone?.replace("1234","9900"), fax:"—", email:"warehouse@"+v.email?.split("@")[1]},
+                {no:"0004",type:"NPWP / Tax Office",default:false, street:v.npwpAddress||v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:"—", email:"tax@"+v.email?.split("@")[1]},
+              ];
+              const addrCols=["No.","Address Type","Street / Address","City","Postal","Country","Phone","Fax","Email","Default"];
+              const colW=["48px","150px","auto","120px","70px","100px","130px","130px","200px","70px"];
+              return(
+                <div style={{marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:10,borderBottom:`2px solid ${C.border}`}}>
+                    <SapIcon name="map" size={16} color={C.primary}/>
+                    <span style={{fontSize:14,fontWeight:700,color:C.primary,letterSpacing:0.2,textTransform:"uppercase"}}>Contact & Address</span>
+                    <span style={{marginLeft:"auto",fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px"}}>{addrRows.length} addresses</span>
+                  </div>
+                  <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,tableLayout:"fixed" as const}}>
+                      <colgroup>{colW.map((w,i)=><col key={i} style={{width:w}}/>)}</colgroup>
+                      <thead>
+                        <tr style={{background:TK.hdrBg}}>
+                          {addrCols.map(h=>(
+                            <th key={h} style={{padding:"7px 10px",fontSize:11,fontWeight:700,color:TK.hdrText,textTransform:"uppercase" as const,letterSpacing:0.6,borderBottom:`1px solid ${TK.hdrBorder}`,textAlign:"left" as const,whiteSpace:"nowrap" as const}}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {addrRows.map((a,i)=>(
+                          <tr key={a.no} style={{background:i%2===0?TK.rowBg:C.subtle,borderBottom:`1px solid ${TK.rowBorder}`}}>
+                            <td style={{padding:"8px 10px",fontFamily:"monospace",fontSize:12,color:C.t2}}>{a.no}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,fontWeight:600,color:C.t1,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{a.type}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.street}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const}}>{a.city}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t2,fontFamily:"monospace"}}>{a.postal}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.country}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:C.t1,fontFamily:"monospace"}}>{a.phone}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:a.fax==="—"?C.t2:C.t1,fontFamily:"monospace"}}>{a.fax}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:"#0854a0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{a.email}</td>
+                            <td style={{padding:"8px 10px",textAlign:"center" as const}}>
+                              {a.default&&<span style={{display:"inline-block",background:"#e8f4e8",color:"#256025",border:"1px solid #9dd89d",borderRadius:3,fontSize:10,fontWeight:700,padding:"1px 7px",letterSpacing:0.4}}>DEFAULT</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{marginTop:12,borderTop:`1px solid ${C.border}`,paddingTop:12,display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"6px 24px"}}>
+                    {[
+                      {label:"Primary Contact",value:v.rep},
+                      {label:"Main Phone",    value:v.phone},
+                      {label:"Main Email",    value:v.email},
+                      {label:"Website",       value:v.website||"—"},
+                      {label:"Fax",           value:v.fax||"—"},
+                      {label:"Language",      value:"Indonesian (ID)"},
+                    ].map(r=>(
+                      <div key={r.label} style={{display:"flex",gap:8,alignItems:"baseline"}}>
+                        <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase" as const,letterSpacing:0.7,minWidth:110,flexShrink:0}}>{r.label}</span>
+                        <span style={{fontSize:13,color:C.t1}}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
