@@ -307,7 +307,7 @@ const Login = ({onLogin}) => {
           <div style={{marginBottom:20,padding:"12px 0",borderTop:"1px solid #e5e5e5"}}>
             <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:8,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"],["director1","Arief Budiman","Director"]].map(([u,name,roleLabel])=>(
+              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["vendor3","PT Solusi Nusantara","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"],["director1","Arief Budiman","Director"]].map(([u,name,roleLabel])=>(
                 <button key={u} onClick={()=>quickLogin(u)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"7px 10px",borderRadius:3,border:"1px solid #e5e5e5",background:"#fafafa",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:"#1d2d3e"}}>
                   <SapIcon name={roleLabel==="Vendor"?"factory":roleLabel==="Approver"?"approvals":roleLabel==="Director"?"manager":"employee"} size={12} color="#6a6d70"/>
                   <span style={{fontWeight:600}}>{name}</span>
