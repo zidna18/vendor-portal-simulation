@@ -1038,6 +1038,9 @@ const INV_STATUS_OPTS=[
 const CURRENCY_OPTS=CURRENCIES.map(c=>({key:c.v,text:c.v}));
 const COMPANY_CODE_OPTS=COMPANY_CODES.map(c=>({key:c.v,text:`${c.v} – ${c.l}`}));
 const VENDOR_OPTS=Object.values(VENDORS).map((v:any)=>({key:v.id,text:v.name}));
+const WHT_TYPE_OPTS=WHT_TYPES.filter(w=>w.v).map(w=>({key:w.v,text:w.l}));
+const PMT_TERMS_OPTS=PAYMENT_TERMS.map(p=>({key:p.v,text:`${p.v} – ${p.l}`}));
+const PMT_TERMS_STATUS_OPTS=[{key:"compliant",text:"Compliant"},{key:"differs",text:"Differs"},{key:"unknown",text:"Unknown"}];
 const COL_DEFS = [
   {key:"status",       label:"Status",        defW:165},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
@@ -1698,10 +1701,10 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
         {visibleFields.has("invoiceType")&&<FField label="Invoice Type"><InvTypeMultiComboBox value={draft.invoiceTypes} onChange={v=>setDraft(d=>({...d,invoiceTypes:v}))}/></FField>}
         {visibleFields.has("dueDate")&&<FField label="Due Date Range"><DateRangePicker from={draft.dueDateFrom} to={draft.dueDateTo} onChange={(f,t)=>{setDraft(d=>({...d,dueDateFrom:f,dueDateTo:t}));}}/></FField>}
         {visibleFields.has("amount")&&<FField label="Amount"><MultiValueInp fieldTitle="Gross Invoice Amount" conditions={draft.amountConds} onChange={v=>setDraft(d=>({...d,amountConds:v}))} numeric/></FField>}
-        {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
+        {visibleFields.has("whtType")&&<FField label="WHT Type"><FilterMultiComboBox opts={WHT_TYPE_OPTS} value={draft.whtTypes} onChange={v=>setDraft(d=>({...d,whtTypes:v}))} placeholder="All WHT Types"/></FField>}
         {visibleFields.has("submittedDate")&&<FField label="Submitted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.submittedFrom} onChange={v=>setDraft(d=>({...d,submittedFrom:v}))}/><DateInp value={draft.submittedTo} onChange={v=>setDraft(d=>({...d,submittedTo:v}))}/></div></FField>}
-        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
-        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><Sel value={draft.pmtTermsStatus[0]||""} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v?[v]:[]}))} opts={[{v:"",l:"All Statuses"},{v:"compliant",l:"Compliant"},{v:"differs",l:"Differs"},{v:"unknown",l:"Unknown"}]}/></FField>}
+        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><FilterMultiComboBox opts={PMT_TERMS_OPTS} value={draft.pmtTerms} onChange={v=>setDraft(d=>({...d,pmtTerms:v}))} placeholder="All Payment Terms"/></FField>}
+        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><FilterMultiComboBox opts={PMT_TERMS_STATUS_OPTS} value={draft.pmtTermsStatus} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v}))} placeholder="All Statuses"/></FField>}
       </FioriBar>
 
       {vhOpen==="companyCode"&&(
@@ -2670,9 +2673,9 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
         {visibleFields.has("postedDate")&&<FField label="Posted Date"><div style={{display:"flex",gap:4}}><DateInp value={draft.postedFrom} onChange={v=>setDraft(d=>({...d,postedFrom:v}))} /><DateInp value={draft.postedTo} onChange={v=>setDraft(d=>({...d,postedTo:v}))} /></div></FField>}
         {visibleFields.has("amount")&&<FField label="Amount"><MultiValueInp fieldTitle="Gross Invoice Amount" conditions={draft.amountConds} onChange={v=>setDraft(d=>({...d,amountConds:v}))} numeric/></FField>}
         {visibleFields.has("sapDocNo")&&<FField label="SAP Doc No."><MultiValueInp fieldTitle="SAP Doc No." conditions={draft.sapDocNoConds} onChange={v=>setDraft(d=>({...d,sapDocNoConds:v}))}/></FField>}
-        {visibleFields.has("whtType")&&<FField label="WHT Type"><ValueHelpInp selected={draft.whtTypes} getLabel={k=>WHT_TYPES.find(w=>w.v===k)?.l||k} onOpen={()=>setVhOpen("whtType")} placeholder="All WHT Types"/></FField>}
-        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><Sel value={draft.pmtTerms[0]||""} onChange={v=>setDraft(d=>({...d,pmtTerms:v?[v]:[]}))} opts={[{v:"",l:"All Payment Terms"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></FField>}
-        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><Sel value={draft.pmtTermsStatus[0]||""} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v?[v]:[]}))} opts={[{v:"",l:"All Statuses"},{v:"compliant",l:"Compliant"},{v:"differs",l:"Differs"},{v:"unknown",l:"Unknown"}]}/></FField>}
+        {visibleFields.has("whtType")&&<FField label="WHT Type"><FilterMultiComboBox opts={WHT_TYPE_OPTS} value={draft.whtTypes} onChange={v=>setDraft(d=>({...d,whtTypes:v}))} placeholder="All WHT Types"/></FField>}
+        {visibleFields.has("pmtTerms")&&<FField label="Payment Terms"><FilterMultiComboBox opts={PMT_TERMS_OPTS} value={draft.pmtTerms} onChange={v=>setDraft(d=>({...d,pmtTerms:v}))} placeholder="All Payment Terms"/></FField>}
+        {visibleFields.has("pmtTermsStatus")&&<FField label="Pmt Terms Status"><FilterMultiComboBox opts={PMT_TERMS_STATUS_OPTS} value={draft.pmtTermsStatus} onChange={v=>setDraft(d=>({...d,pmtTermsStatus:v}))} placeholder="All Statuses"/></FField>}
       </FioriBar>
 
       {vhOpen==="vendor"&&(
