@@ -2069,6 +2069,8 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const aprTab=(rfqId)=>aprRfqTabs[rfqId]||"overview";
   const setAprTab=(rfqId,tab)=>setAprRfqTabs(p=>({...p,[rfqId]:tab}));
   const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
+  const [detailAprRfq,setDetailAprRfq]=useState<any>(null);
+  const [aprDetailTab,setAprDetailTab]=useState("general");
 
   // Approve/Reject modal state
   const [actionModal,setActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
@@ -2379,8 +2381,9 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         </div>
       </div>
 
-      <div style={{overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`}}>
-      <div style={{minWidth:rfqMinW,background:C.card}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:0,position:"relative"}}>
+        <div style={{flex:detailAprRfq?"0 0 52%":"1 1 100%",overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`,transition:"flex .2s"}}>
+        <div style={{minWidth:rfqMinW,background:C.card}}>
         <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
           <div style={{padding:"8px 10px",display:"flex",alignItems:"center",justifyContent:"center"}}>
             <input type="checkbox" checked={list.length>0&&list.every(r=>selIds.has(r.id))}
@@ -2423,9 +2426,12 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                 <div style={cell({fontSize:13,color:C.t2})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.postedBy}</span></div>
                 <div style={cell({fontSize:13,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
                 <div style={cell({fontSize:13,color:C.t2})}>{rfq.companyCode||"—"}</div>
-                <div style={cell({fontSize:13,color:C.t2})}>
-                  {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700}}>{qts.length}</span>}
-                  {qts.length===0&&<span style={{color:C.t2}}>0</span>}
+                <div onClick={e=>{e.stopPropagation();setDetailAprRfq(rfq);setAprDetailTab("general");}} style={{...cell({cursor:"pointer",justifyContent:"space-between"})}}>
+                  <span>
+                    {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700}}>{qts.length}</span>}
+                    {qts.length===0&&<span style={{color:C.t2}}>0</span>}
+                  </span>
+                  <span style={{fontSize:16,color:detailAprRfq?.id===rfq.id?C.primary:"#32363a",fontWeight:detailAprRfq?.id===rfq.id?700:300}}>›</span>
                 </div>
               </div>
 
@@ -2527,6 +2533,181 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           );
         })}
       </div>
+        </div>
+
+        {/* Detail panel — same as BrmRfq */}
+        {detailAprRfq&&(()=>{
+          const r=detailAprRfq;
+          const qts=getQts(r.id);
+          const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+          const TABS=["general","items","quotations","notes","discussion"];
+          const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`};
+          const field=(label,val)=>(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
+              <div style={{fontSize:13,color:C.t1,fontWeight:500}}>{val||"—"}</div>
+            </div>
+          );
+          const sectionHdr=(title)=><div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>{title}</div>;
+          return(
+          <div style={{flex:"0 0 48%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",boxShadow:"-2px 0 10px rgba(0,0,0,0.08)"}}>
+            {/* Panel Header */}
+            <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.border}`,background:C.subtle,flexShrink:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.3}}>{r.title}</div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:3,fontFamily:"monospace"}}>{sapNo}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                  <Badge s={r.status}/>
+                  <button onClick={()=>setDetailAprRfq(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 2px",marginLeft:4}}>×</button>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:11}}>
+                <div><span style={{color:C.t2}}>Created By: </span><span style={{color:C.t1,fontWeight:600}}>{r.postedBy}</span></div>
+                <div><span style={{color:C.t2}}>Status: </span><span style={{color:C.t1,fontWeight:600}}>{r.status}</span></div>
+                <div><span style={{color:C.t2}}>Created On: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+                <div><span style={{color:C.t2}}>Target Value: </span><span style={{color:C.t1,fontWeight:600}}>{idr(r.estVal)}</span></div>
+                <div><span style={{color:C.t2}}>Publishing Date: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+                <div><span style={{color:C.t2}}>Quotation Deadline: </span><span style={{color:C.t1,fontWeight:600}}>{fmtDate(r.closingDate)}</span></div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0,overflowX:"auto"}}>
+              {TABS.map(t=>(
+                <button key={t} onClick={()=>setAprDetailTab(t)} style={{background:"none",border:"none",borderBottom:aprDetailTab===t?`2px solid ${C.primary}`:"2px solid transparent",color:aprDetailTab===t?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:aprDetailTab===t?700:400,cursor:"pointer",padding:"10px 14px",whiteSpace:"nowrap",transition:"color .15s",marginBottom:-1}}>
+                  {TAB_LABELS[t]}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
+
+              {aprDetailTab==="general"&&(
+                <div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                    <div>
+                      {sectionHdr("Basic Data")}
+                      {field("RFQ Number",r.id)}
+                      {field("RFQ Type","Int. Sourcing Req. (RQ)")}
+                      {field("RFQ Description",r.title)}
+                      {field("Category",r.cat)}
+                      {field("Language Key","English (EN)")}
+                    </div>
+                    <div>
+                      {sectionHdr("Organization")}
+                      {field("Purchasing Organization",r.purchOrg)}
+                      {field("Company Code",r.companyCode)}
+                      {field("Plant",r.plant)}
+                      {field("Tender Admin",r.postedBy)}
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                    <div>
+                      {sectionHdr("Important Dates")}
+                      {field("Apply By",fmtDate(r.closingDate))}
+                      {field("Quotation Deadline",fmtDate(r.closingDate))}
+                      {field("Binding Period",fmtDate(r.closingDate))}
+                      {field("Publishing Date",fmtDate(r.postedDate))}
+                    </div>
+                    <div>
+                      {sectionHdr("Delivery & Payment")}
+                      {field("Payment Terms","Due within 14 Days (Z014)")}
+                      {field("Currency","Indonesian Rupiah (IDR)")}
+                      {field("Incoterms","Ex Works (EXW)")}
+                      {field("Target Value",idr(r.estVal))}
+                    </div>
+                  </div>
+                  <div>
+                    {sectionHdr("Scope")}
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{r.desc||"—"}</div>
+                  </div>
+                </div>
+              )}
+
+              {aprDetailTab==="items"&&(
+                <div>
+                  {(r.items||[]).length===0&&<div style={{color:C.t2,fontSize:13}}>No items.</div>}
+                  {(r.items||[]).map((it,i)=>(
+                    <div key={i} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:10,background:C.subtle}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                        <span style={{fontSize:12,fontWeight:700,color:C.t2,minWidth:28}}>#{String(it.no).padStart(3,"0")}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>{it.desc}</span>
+                        <span style={{marginLeft:"auto",background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 7px",fontSize:11,fontWeight:700}}>{it.type}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px 16px",fontSize:12}}>
+                        {it.materialNo&&<div><span style={{color:C.t2}}>Mat. No: </span><span style={{fontFamily:"monospace",color:C.t1}}>{it.materialNo}</span></div>}
+                        {it.materialGroup&&<div><span style={{color:C.t2}}>Mat. Group: </span><span style={{color:C.t1}}>{it.materialGroup}</span></div>}
+                        <div><span style={{color:C.t2}}>Plant: </span><span style={{color:C.t1}}>{it.plant||r.plant||"—"}</span></div>
+                        <div><span style={{color:C.t2}}>Qty: </span><span style={{fontWeight:600,color:C.t1}}>{it.qty} {it.uom}</span></div>
+                        {it.acctAssign&&<div><span style={{color:C.t2}}>Acct: </span><span style={{color:C.t1}}>{it.acctAssign}</span></div>}
+                        {it.type==="Material"
+                          ?<div><span style={{color:C.t2}}>Req. Date: </span><span style={{color:C.t1}}>{fmtDate(it.requirementDate)||"—"}</span></div>
+                          :<div><span style={{color:C.t2}}>Period: </span><span style={{color:C.t1}}>{fmtDate(it.startDate)||"—"} – {fmtDate(it.endDate)||"—"}</span></div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {aprDetailTab==="quotations"&&(
+                <div>
+                  {qts.length===0&&<div style={{color:C.t2,fontSize:13}}>No quotations received yet.</div>}
+                  {qts.map(qt=>{
+                    const sapQtNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+                    return(
+                    <div key={qt.id} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:8,background:C.card}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{qt.vendorName}</div>
+                          <div style={{fontSize:11,color:C.t2,fontFamily:"monospace",marginTop:1}}>{qt.id} · SAP {sapQtNo}</div>
+                        </div>
+                        <Badge s={qt.status}/>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 12px",fontSize:12}}>
+                        <div><span style={{color:C.t2}}>Total: </span><span style={{fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span></div>
+                        <div><span style={{color:C.t2}}>Submitted: </span><span style={{color:C.t1}}>{fmtDate(qt.submittedDate)||"—"}</span></div>
+                        <div><span style={{color:C.t2}}>Valid Until: </span><span style={{color:C.t1}}>{fmtDate(qt.validUntil)||"—"}</span></div>
+                        {qt.deliveryTerms&&<div style={{gridColumn:"1/-1"}}><span style={{color:C.t2}}>Delivery: </span><span style={{color:C.t1}}>{qt.deliveryTerms}</span></div>}
+                        {qt.paymentTerms&&<div style={{gridColumn:"1/-1"}}><span style={{color:C.t2}}>Payment: </span><span style={{color:C.t1}}>{qt.paymentTerms}</span></div>}
+                        {qt.scores&&<div style={{gridColumn:"1/-1",marginTop:4,padding:"6px 10px",background:C.infoBg,borderRadius:4,fontSize:11}}>
+                          <span style={{fontWeight:700,color:C.t1}}>Score: </span>
+                          <span style={{color:C.t2}}>Tech {qt.scores.technical} · Com {qt.scores.commercial} · HSE {qt.scores.hse} · </span>
+                          <span style={{fontWeight:700,color:C.primary}}>Weighted {qt.scores.weighted}</span>
+                        </div>}
+                      </div>
+                      {qt.notes&&<div style={{marginTop:6,fontSize:11,color:C.t2,fontStyle:"italic"}}>{qt.notes}</div>}
+                    </div>
+                  );})}
+                </div>
+              )}
+
+              {aprDetailTab==="notes"&&(
+                <div>
+                  <div style={{fontSize:13,color:C.t1,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.desc||"No notes."}</div>
+                  {r.targets&&r.targets.length>0&&(
+                    <div style={{marginTop:16}}>
+                      {sectionHdr("Invited Vendors")}
+                      {r.targets.map(vid=>(
+                        <div key={vid} style={{fontSize:13,color:C.t1,padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                          {VENDORS[vid]?.name||vid} <span style={{color:C.t2,fontSize:11}}>· {vid}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {aprDetailTab==="discussion"&&(
+                <DiscussionBox rfqId={r.id} discussions={r.discussions||[]} onPost={postDiscussion} user={user}/>
+              )}
+
+            </div>
+          </div>
+          );
+        })()}
       </div>
       {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
     </div>
