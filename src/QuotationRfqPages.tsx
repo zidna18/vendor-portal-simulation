@@ -2346,7 +2346,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                             <tbody>
                               {[
                                 {label:"Total Amount",render:(qt)=><strong style={{color:C.t1}}>{idr(qt.totalAmt)}</strong>},
-                                {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validityDate)||"—"}</span>},
+                                {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validUntil)||"—"}</span>},
                                 {label:"Delivery Terms",render:(qt)=><span style={{color:C.t2}}>{qt.deliveryTerms||"—"}</span>},
                                 {label:"Payment Terms",render:(qt)=><span style={{color:C.t2}}>{qt.paymentTerms||"—"}</span>},
                                 {label:"Notes",render:(qt)=><span style={{color:C.t2}}>{qt.notes||"—"}</span>},
