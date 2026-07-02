@@ -1231,7 +1231,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   const Lbl = ({children}:any) => <div style={{fontSize:11,color:C.t2,marginBottom:2,lineHeight:1.3}}>{children}</div>;
   const Val = ({children,bold,blue}:any) => <div style={{fontSize:13,color:blue?C.primary:C.t1,fontWeight:bold?700:400,lineHeight:1.5,wordBreak:"break-word"}}>{children||"—"}</div>;
   const Sep = () => <div style={{height:1,background:C.border,margin:"10px 0"}}/>;
-  const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:12,color:C.t1,borderBottom:`1px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:4}}>{children}</div>;
+  const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:15,color:C.primary,borderBottom:`2px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:8}}>{children}</div>;
 
   const btnStyle = (active:boolean) => ({
     background:"transparent",border:"none",
@@ -2180,7 +2180,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
 
   const Lbl = ({children}:any) => <div style={{fontSize:11,color:C.t2,marginBottom:2,lineHeight:1.3}}>{children}</div>;
   const Val = ({children,bold,blue}:any) => <div style={{fontSize:13,color:blue?C.primary:C.t1,fontWeight:bold?700:400,lineHeight:1.5,wordBreak:"break-word"}}>{children||"—"}</div>;
-  const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:12,color:C.t1,borderBottom:`1px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:4}}>{children}</div>;
+  const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:15,color:C.primary,borderBottom:`2px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:8}}>{children}</div>;
   const btnStyle = (active:boolean) => ({
     background:"transparent",border:"none",
     color:active?C.t1:"#bfbfbf",
