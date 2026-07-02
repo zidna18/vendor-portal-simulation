@@ -1394,7 +1394,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
                       </th>
                       {cols.map(c=>(
                         <th key={c.key} style={{padding:"7px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,color:C.t2,fontSize:12,fontWeight:700,whiteSpace:"nowrap",width:c.width,maxWidth:c.width}}>
-                          {c.label} <span style={{color:C.t2,fontSize:9}}>â–²</span>
+                          {c.label} <span style={{color:C.t2,fontSize:9}}>{"▲"}</span>
                         </th>
                       ))}
                     </tr>
