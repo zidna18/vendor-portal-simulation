@@ -1229,6 +1229,28 @@ const ALL_VENDOR_FILTER_FIELDS = [
 // ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
 const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScreen,onToggleFullScreen,panelFlex}) => {
   const [activeTab,setActiveTab]=useState("general");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const secRefs   = useRef<Record<string,HTMLDivElement|null>>({});
+
+  // reset scroll + active tab when a different invoice is opened
+  useEffect(()=>{setActiveTab("general");if(scrollRef.current)scrollRef.current.scrollTop=0;},[view?.id]);
+
+  // scroll-spy: update active tab as user scrolls
+  const onScroll = ()=>{
+    const c=scrollRef.current; if(!c)return;
+    const cTop=c.getBoundingClientRect().top;
+    let cur="general";
+    VTABS.forEach(tab=>{const el=secRefs.current[tab.id];if(!el)return;if(el.getBoundingClientRect().top-cTop<=32)cur=tab.id;});
+    setActiveTab(cur);
+  };
+  // tab click → smooth scroll to section
+  const scrollToSection=(id:string)=>{
+    const c=scrollRef.current; const el=secRefs.current[id]; if(!c||!el)return;
+    const top=el.getBoundingClientRect().top-c.getBoundingClientRect().top+c.scrollTop;
+    c.scrollTo({top:top-8,behavior:"smooth"});
+    setActiveTab(id);
+  };
+
   const canEdit     = ["Draft","Rejected"].includes(view.status);
   const canWithdraw = view.status==="Submitted";
   const pos         = (view.poNumbers||[view.poNumber]).filter(Boolean);
@@ -1256,7 +1278,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   const getFileMeta = (f:string) => FILE_META[f]||{size:"—"};
   const uploadDate = view.submittedAt||view.invoiceDate||"";
 
-  const TABS = [
+  const VTABS = [
     {id:"general",    label:"General Information"},
     {id:"purch",      label:"Purch. Doc. References"},
     {id:"tax",        label:"Tax"},
@@ -1314,8 +1336,8 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
         {/* ── Tab bar ── */}
         <div style={{display:"flex",gap:0,marginTop:10,borderBottom:`1px solid ${C.border}`}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+          {VTABS.map(t=>(
+            <button key={t.id} onClick={()=>scrollToSection(t.id)} style={{
               background:"none",border:"none",cursor:"pointer",
               padding:"6px 12px",fontSize:12,fontFamily:"inherit",
               color:activeTab===t.id?C.primary:C.t2,
@@ -1327,11 +1349,11 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
         </div>
       </div>
 
-      {/* ── Tab content ── */}
-      <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+      {/* ── Scrollable content — all sections always rendered ── */}
+      <div ref={scrollRef} onScroll={onScroll} style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
 
         {/* ── GENERAL INFORMATION ── */}
-        {activeTab==="general"&&<>
+        <div ref={el=>secRefs.current["general"]=el}>
           <SecHdr>Basic Data</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>Transaction</Lbl><Val>{view.invoiceType||"Invoice"}</Val></div>
@@ -1366,26 +1388,26 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
           <div style={{fontSize:13,color:C.t1,lineHeight:1.5,marginBottom:16}}>{view.desc||"—"}</div>
 
           {view.sapDocNo&&(
-            <div style={{padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-              <SapIcon name="connected" size={14} color="#107e3e"/>
+            <div style={{padding:"10px 12px",background:C.okBg,border:`1px solid ${C.ok}44`,borderRadius:4,display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <SapIcon name="connected" size={14} color={C.ok}/>
               <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
-                <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
-                {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+                <div style={{fontSize:11,fontWeight:700,color:C.ok}}>SAP Document Created</div>
+                <div style={{fontSize:13,color:C.t1,fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
+                {view.postedAt&&<div style={{fontSize:11,color:C.t2}}>Posted: {fmtDate(view.postedAt)}</div>}
               </div>
             </div>
           )}
           {(view.convertedDocNo||view.clearingDocNo)&&(
-            <div style={{padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4,marginBottom:12}}>
+            <div style={{padding:"10px 12px",background:C.infoBg,border:`1px solid ${C.info}44`,borderRadius:4,marginBottom:12}}>
               {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
               {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
             </div>
           )}
-        </>}
+        </div>{/* /general */}
 
         {/* ── PURCHASING DOCUMENT REFERENCES ── */}
-        {activeTab==="purch"&&<>
-          <SecHdr>PO Numbers</SecHdr>
+        <div ref={el=>secRefs.current["purch"]=el}>
+          <SecHdr>Purch. Doc. References</SecHdr>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
             {pos.length?pos.map((po:any,i:number)=>(
               <span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"3px 10px",fontSize:13,fontFamily:"monospace",color:C.t1}}>{po}</span>
@@ -1400,9 +1422,9 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
                   <col style={{width:30}}/><col style={{width:"auto"}}/><col style={{width:110}}/><col style={{width:80}}/><col style={{width:70}}/><col style={{width:90}}/>
                 </colgroup>
                 <thead>
-                  <tr style={{background:"#e8f1fb"}}>
+                  <tr style={{background:C.selection}}>
                     {["#","Short Text / PO Item","Amount","Quantity","Tax Code","Tax Rate"].map(h=>(
-                      <th key={h} style={{padding:"6px 8px",fontWeight:700,color:"#0854a0",textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right" as const:"left" as const,whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:11}}>{h}</th>
+                      <th key={h} style={{padding:"6px 8px",fontWeight:700,color:C.primaryDk,textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right" as const:"left" as const,whiteSpace:"nowrap" as const,borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1424,10 +1446,10 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
               </table>
             </div>
           </>}
-        </>}
+        </div>{/* /purch */}
 
         {/* ── TAX ── */}
-        {activeTab==="tax"&&<>
+        <div ref={el=>secRefs.current["tax"]=el}>
           <SecHdr>Tax Information</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
@@ -1461,10 +1483,11 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
               ?<>Routes to <code>SAP Build Process Automation</code> for Down Payment workflow.</>
               :<>Calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → SAP Flexible Workflow for posting approval.</>}
           </div>
-        </>}
+        </div>{/* /tax */}
 
         {/* ── ATTACHMENTS ── */}
-        {activeTab==="attachments"&&<>
+        <div ref={el=>secRefs.current["attachments"]=el}>
+          <SecHdr>Attachments</SecHdr>
           <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",background:C.subtle,borderBottom:files.length?`1px solid ${C.border}`:"none"}}>
               <span style={{fontWeight:600,fontSize:12,color:C.t1}}>Uploaded ({files.length})</span>
@@ -1497,12 +1520,13 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
               );
             })}
           </div>
-        </>}
+        </div>{/* /attachments */}
 
         {/* ── DOCUMENT FLOW ── */}
-        {activeTab==="docflow"&&<>
+        <div ref={el=>secRefs.current["docflow"]=el}>
+          <SecHdr>Document Flow</SecHdr>
           <DocFlow inv={view}/>
-        </>}
+        </div>{/* /docflow */}
 
       </div>
     </div>
@@ -2174,6 +2198,32 @@ const BRM_STATUS_LABEL:Record<string,string> = {
 // ── BRM Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ───────────
 const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen,panelFlex,onReview,onAccept,onReject,onPost,onConvert,onClear}) => {
   const [activeTab,setActiveTab]=useState("general");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const secRefs   = useRef<Record<string,HTMLDivElement|null>>({});
+
+  useEffect(()=>{setActiveTab("general");if(scrollRef.current)scrollRef.current.scrollTop=0;},[view?.id]);
+
+  const BTABS = [
+    {id:"general",     label:"General Information"},
+    {id:"purch",       label:"Purch. Doc. References"},
+    {id:"tax",         label:"Tax"},
+    {id:"attachments", label:"Attachments"},
+    {id:"docflow",     label:"Document Flow"},
+  ];
+  const onScroll = ()=>{
+    const c=scrollRef.current; if(!c)return;
+    const cTop=c.getBoundingClientRect().top;
+    let cur="general";
+    BTABS.forEach(tab=>{const el=secRefs.current[tab.id];if(!el)return;if(el.getBoundingClientRect().top-cTop<=32)cur=tab.id;});
+    setActiveTab(cur);
+  };
+  const scrollToSection=(id:string)=>{
+    const c=scrollRef.current; const el=secRefs.current[id]; if(!c||!el)return;
+    const top=el.getBoundingClientRect().top-c.getBoundingClientRect().top+c.scrollTop;
+    c.scrollTo({top:top-8,behavior:"smooth"});
+    setActiveTab(id);
+  };
+
   const pos = (view.poNumbers||[view.poNumber]).filter(Boolean);
   const totalAmt = Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0);
 
@@ -2200,14 +2250,6 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   const FILE_META:Record<string,{size:string}> = {"invoice.pdf":{size:"124 KB"},"faktur_pajak.pdf":{size:"87 KB"}};
   const getFileMeta = (f:string) => FILE_META[f]||{size:"—"};
   const uploadDate = view.submittedAt||view.invoiceDate||"";
-
-  const TABS = [
-    {id:"general",     label:"General Information"},
-    {id:"purch",       label:"Purch. Doc. References"},
-    {id:"tax",         label:"Tax"},
-    {id:"attachments", label:"Attachments"},
-    {id:"docflow",     label:"Document Flow"},
-  ];
 
   return (
     <div style={{flex:panelFlex,position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",borderLeft:`1px solid ${C.border}`,boxShadow:"-2px 0 8px rgba(0,0,0,0.06)"}}>
@@ -2259,8 +2301,8 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
 
         {/* ── Tab bar ── */}
         <div style={{display:"flex",gap:0,marginTop:10,borderBottom:`1px solid ${C.border}`}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+          {BTABS.map(t=>(
+            <button key={t.id} onClick={()=>scrollToSection(t.id)} style={{
               background:"none",border:"none",cursor:"pointer",
               padding:"6px 12px",fontSize:12,fontFamily:"inherit",
               color:activeTab===t.id?C.primary:C.t2,
@@ -2272,11 +2314,11 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
         </div>
       </div>
 
-      {/* ── Tab content ── */}
-      <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+      {/* ── Scrollable content — all sections always rendered ── */}
+      <div ref={scrollRef} onScroll={onScroll} style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
 
         {/* GENERAL INFORMATION */}
-        {activeTab==="general"&&<>
+        <div ref={el=>secRefs.current["general"]=el}>
           <SecHdr>Basic Data</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>Transaction</Lbl><Val>{view.invoiceType||"Invoice"}</Val></div>
@@ -2311,26 +2353,26 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
           <div style={{fontSize:13,color:C.t1,lineHeight:1.5,marginBottom:16}}>{view.desc||"—"}</div>
 
           {view.sapDocNo&&(
-            <div style={{padding:"10px 12px",background:"#ecf8f0",border:"1px solid #b7dfcc",borderRadius:4,display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-              <SapIcon name="connected" size={14} color="#107e3e"/>
+            <div style={{padding:"10px 12px",background:C.okBg,border:`1px solid ${C.ok}44`,borderRadius:4,display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <SapIcon name="connected" size={14} color={C.ok}/>
               <div>
-                <div style={{fontSize:11,fontWeight:700,color:"#107e3e"}}>SAP Document Created</div>
-                <div style={{fontSize:13,color:"#1d2d3e",fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
-                {view.postedAt&&<div style={{fontSize:11,color:"#6a6d70"}}>Posted: {fmtDate(view.postedAt)}</div>}
+                <div style={{fontSize:11,fontWeight:700,color:C.ok}}>SAP Document Created</div>
+                <div style={{fontSize:13,color:C.t1,fontWeight:600,fontFamily:"monospace"}}>{view.sapDocNo}</div>
+                {view.postedAt&&<div style={{fontSize:11,color:C.t2}}>Posted: {fmtDate(view.postedAt)}</div>}
               </div>
             </div>
           )}
           {(view.convertedDocNo||view.clearingDocNo)&&(
-            <div style={{padding:"10px 12px",background:"#dff0fd",border:"1px solid #b3d7f5",borderRadius:4,marginBottom:12}}>
+            <div style={{padding:"10px 12px",background:C.infoBg,border:`1px solid ${C.info}44`,borderRadius:4,marginBottom:12}}>
               {view.convertedDocNo&&<div style={{fontSize:12,marginBottom:4}}><strong>Invoice Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.convertedDocNo}</span></div>}
               {view.clearingDocNo&&<div style={{fontSize:12}}><strong>Clearing Doc:</strong> <span style={{fontFamily:"monospace"}}>{view.clearingDocNo}</span></div>}
             </div>
           )}
-        </>}
+        </div>{/* /general */}
 
         {/* PURCHASING DOCUMENT REFERENCES */}
-        {activeTab==="purch"&&<>
-          <SecHdr>PO Numbers</SecHdr>
+        <div ref={el=>secRefs.current["purch"]=el}>
+          <SecHdr>Purch. Doc. References</SecHdr>
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
             {pos.length?pos.map((po:any,i:number)=>(
               <span key={i} style={{background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"3px 10px",fontSize:13,fontFamily:"monospace",color:C.t1}}>{po}</span>
@@ -2338,37 +2380,38 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
           </div>
           {view.items&&view.items.length>0&&<>
             <SecHdr>Items ({view.items.length})</SecHdr>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:3}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:480}}>
+                <colgroup><col style={{width:30}}/><col style={{width:"auto"}}/><col style={{width:110}}/><col style={{width:80}}/><col style={{width:70}}/><col style={{width:90}}/></colgroup>
                 <thead>
-                  <tr style={{background:"#e8f1fb"}}>
+                  <tr style={{background:C.selection}}>
                     {["#","Short Text / PO Item","Amount","Quantity","Tax Code","Tax Rate"].map(h=>(
-                      <th key={h} style={{padding:"5px 8px",fontWeight:700,color:"#0854a0",textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:11}}>{h}</th>
+                      <th key={h} style={{padding:"5px 8px",fontWeight:700,color:C.primaryDk,textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right" as const:"left" as const,whiteSpace:"nowrap" as const,borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {view.items.map((item:any,idx:number)=>(
-                    <tr key={idx} style={{background:idx%2===0?C.card:C.subtle}}>
+                    <tr key={idx} style={{background:idx%2===0?C.card:C.subtle,borderBottom:`1px solid ${C.border}`}}>
                       <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{idx+1}</td>
                       <td style={{padding:"4px 8px",color:C.t1,fontSize:11}}>
                         <div style={{fontFamily:"monospace",fontSize:10,color:C.primary}}>{item.poNo||"—"} / {item.poItem||"—"}</div>
                         <div>{item.materialDesc||"—"}</div>
                       </td>
-                      <td style={{padding:"4px 8px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600,color:C.t1,fontSize:11}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),view.currency)}</td>
-                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t1,fontSize:11}}>{item.qty??""} {item.uom||""}</td>
+                      <td style={{padding:"4px 8px",textAlign:"right" as const,fontVariantNumeric:"tabular-nums" as const,fontWeight:600,color:C.t1,fontSize:11}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),view.currency)}</td>
+                      <td style={{padding:"4px 8px",textAlign:"right" as const,color:C.t1,fontSize:11}}>{item.qty??""} {item.uom||""}</td>
                       <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{item.vatCode||"—"}</td>
-                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t2,fontSize:11}}>11.000%(VST)</td>
+                      <td style={{padding:"4px 8px",textAlign:"right" as const,color:C.t2,fontSize:11}}>11.000%</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </>}
-        </>}
+        </div>{/* /purch */}
 
         {/* TAX */}
-        {activeTab==="tax"&&<>
+        <div ref={el=>secRefs.current["tax"]=el}>
           <SecHdr>Tax Information</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
@@ -2402,10 +2445,11 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
               ?<>Routes to <code>SAP Build Process Automation</code> for Down Payment workflow.</>
               :<>Calls <code>API_SUPPLIERINVOICE_PROCESS_SRV</code> → SAP Flexible Workflow for posting approval.</>}
           </div>
-        </>}
+        </div>{/* /tax */}
 
         {/* ATTACHMENTS */}
-        {activeTab==="attachments"&&<>
+        <div ref={el=>secRefs.current["attachments"]=el}>
+          <SecHdr>Attachments</SecHdr>
           <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",background:C.subtle,borderBottom:files.length?`1px solid ${C.border}`:"none"}}>
               <span style={{fontWeight:600,fontSize:12,color:C.t1}}>Uploaded ({files.length})</span>
@@ -2433,10 +2477,13 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
               );
             })}
           </div>
-        </>}
+        </div>{/* /attachments */}
 
         {/* DOCUMENT FLOW */}
-        {activeTab==="docflow"&&<DocFlow inv={view}/>}
+        <div ref={el=>secRefs.current["docflow"]=el}>
+          <SecHdr>Document Flow</SecHdr>
+          <DocFlow inv={view}/>
+        </div>{/* /docflow */}
 
       </div>
     </div>
