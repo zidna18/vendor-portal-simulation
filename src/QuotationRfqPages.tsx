@@ -995,6 +995,104 @@ const QuotationCompareModal = ({rfq, quotations, onClose}) => {
   );
 };
 
+// ── Discussion Box ─────────────────────────────────────────────
+const ROLE_COLOR_MAP = {
+  "Procurement Manager": "#0a6ed1",
+  "Senior Buyer":        "#107e3e",
+  "Finance Approver":    "#6f2da8",
+};
+const userRoleLabel = (user) => {
+  if(!user) return "BRM";
+  if(user.role==="approver") return "Finance Approver";
+  if(user.name==="Siti Rahma") return "Senior Buyer";
+  return "Procurement Manager";
+};
+const avatarInitials = (name="") => name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+
+const DiscussionBox = ({rfqId, discussions=[], onPost, user}) => {
+  const [msg, setMsg] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const submit = () => {
+    const t = msg.trim();
+    if(!t) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2,"0");
+    const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    onPost(rfqId, {
+      id: `D-${uid()}`,
+      userId:   user.username,
+      userName: user.name,
+      role:     userRoleLabel(user),
+      postedAt: ts,
+      message:  t,
+    });
+    setMsg("");
+    setTimeout(() => endRef.current?.scrollIntoView({behavior:"smooth"}), 50);
+  };
+
+  const myRole = userRoleLabel(user);
+
+  return (
+    <div style={{borderTop:`1px solid ${C.border}`, padding:"14px 16px"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
+        <SapIcon name="discussion" size={14} color={C.t2}/>
+        <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>
+          Discussion ({discussions.length})
+        </span>
+      </div>
+
+      {/* Messages */}
+      <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:300,overflowY:"auto",marginBottom:14,paddingRight:4}}>
+        {discussions.length===0&&(
+          <div style={{padding:"10px 0",color:C.t2,fontSize:13,fontStyle:"italic"}}>
+            No discussion yet. Be the first to comment.
+          </div>
+        )}
+        {discussions.map((d,i)=>{
+          const isMe = d.userId===user?.username;
+          const roleColor = ROLE_COLOR_MAP[d.role] || C.t2;
+          return (
+            <div key={d.id||i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:roleColor,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}}>
+                {avatarInitials(d.userName)}
+              </div>
+              <div style={{flex:1,background:isMe?C.infoBg:C.subtle,borderRadius:8,padding:"8px 12px",border:`1px solid ${isMe?C.primary+"44":C.border}`}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap" as const,marginBottom:4}}>
+                  <span style={{fontWeight:700,fontSize:12,color:roleColor}}>{d.userName}</span>
+                  <span style={{fontSize:11,color:C.t2,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"0 6px"}}>{d.role}</span>
+                  <span style={{fontSize:11,color:C.t2,marginLeft:"auto"}}>{d.postedAt}</span>
+                </div>
+                <div style={{fontSize:13,color:C.t1,lineHeight:1.55,whiteSpace:"pre-wrap" as const}}>{d.message}</div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef}/>
+      </div>
+
+      {/* Input */}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <div style={{width:32,height:32,borderRadius:"50%",background:ROLE_COLOR_MAP[myRole]||C.primary,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}}>
+          {avatarInitials(user?.name||"U")}
+        </div>
+        <div style={{flex:1,border:`1px solid ${C.fieldBorder}`,borderRadius:6,background:C.field,overflow:"hidden"}}>
+          <textarea value={msg} onChange={e=>setMsg(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit();}}}
+            placeholder="Write your suggestion, note, or question… (Enter to send, Shift+Enter for newline)"
+            rows={2}
+            style={{width:"100%",border:"none",outline:"none",resize:"none" as const,padding:"8px 10px",fontSize:13,fontFamily:"inherit",background:"transparent",color:C.t1,boxSizing:"border-box" as const}}/>
+        </div>
+        <Btn v="primary" sm onClick={submit}>
+          <SapIcon name="paper-plane" size={13} color="#fff"/> Send
+        </Btn>
+      </div>
+      <div style={{fontSize:11,color:C.t2,marginTop:4,marginLeft:40}}>Enter to send · Shift+Enter for new line</div>
+    </div>
+  );
+};
+
 // ── BRM RFQ Mgmt ───────────────────────────────────────────────
 // Status indicator — all 4 shapes in a row; active = filled color, inactive = grey fill + dark outline
 const RfqStatusIcon = ({s}) => {
@@ -1040,13 +1138,14 @@ const RfqStatusIcon = ({s}) => {
   );
 };
 
-export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
+export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
   const [compareData,setCompareData]=useState<any>(null);
   const [allExpanded,setAllExpanded]=useState(false);
   const [detailRfq,setDetailRfq]=useState<any>(null);
+  const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
   const [rfqTab,setRfqTab]=useState("general");
   const [split,setSplit]=useState(52);
   const containerRef=useRef<HTMLDivElement>(null);
@@ -1440,6 +1539,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                     <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
                     <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
                   </div>
+                  <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
                 </div>
               )}
             </div>
@@ -1962,6 +2062,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
   const [selIds,setSelIds]=useState(new Set<string>());
   const [compareData,setCompareData]=useState<any>(null);
+  const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
 
   // Approve/Reject modal state
   const [actionModal,setActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
@@ -2267,6 +2368,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                       <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
                     </div>
                   )}
+                  <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
                 </div>
               )}
             </div>
