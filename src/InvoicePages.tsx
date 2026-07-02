@@ -50,120 +50,285 @@ export const PoValueHelp = ({values,onConfirm,onClose}) => {
 };
 
 // ── Invoice Form Modal ─────────────────────────────────────────
+const VAT_RATES = [
+  {v:"0",l:"0%",r:0},{v:"1.1",l:"1.1% (PPN PMSE)",r:0.011},
+  {v:"10",l:"10%",r:0.10},{v:"11",l:"11% (Standard PPN)",r:0.11},{v:"12",l:"12%",r:0.12},
+];
+const WHT_CODES:Record<string,{v:string,l:string,rate:number}[]> = {
+  PPh21:  [{v:"21-100-99",l:"21-100-99 – Pegawai Tetap (5%)",rate:5}],
+  PPh22:  [{v:"22-100-01",l:"22-100-01 – Industri (1.5%)",rate:1.5}],
+  PPh23:  [{v:"23-100-04",l:"23-100-04 – Jasa Lain (2%)",rate:2},{v:"23-100-01",l:"23-100-01 – Sewa (2%)",rate:2}],
+  PPh26:  [{v:"26-100-01",l:"26-100-01 – Non-Resident (20%)",rate:20}],
+  PPh4a2: [{v:"04-100-01",l:"04-100-01 – Sewa Tanah/Bangunan (10%)",rate:10},{v:"04-200-01",l:"04-200-01 – Jasa Konstruksi (2%)",rate:2}],
+};
 export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[],addNotif}:any) => {
   const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
   const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
   const defaultPmtTerm = ((VENDORS[vendorId]?.lfb1||[]) as any[])[0]?.zterm || "Z030";
   const isNew=!inv;
   const todayISO=new Date().toISOString().split("T")[0];
-  const [f,setF]=useState(inv?{...inv,paymentTerms:inv.paymentTerms||"Z030"}:{invoiceType:"Invoice",invoiceNo:"",invoiceDate:todayISO,dueDate:calcDueDate(todayISO,defaultPmtTerm),paymentTerms:defaultPmtTerm,poNumbers:[],companyCode:"",currency:"IDR",amount:"",vatBase:0,vatAmt:0,whtType:"",whtBase:0,whtAmt:0,additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
+  const initOtherFees = inv?.otherFees || (inv?.additionalFee>0?[{category:inv.feeCategory||"",amount:Number(inv.additionalFee)}]:[]);
+  const [f,setF]=useState(inv?
+    {...inv,paymentTerms:inv.paymentTerms||"Z030",vatRate:inv.vatRate||"11",whtCode:inv.whtCode||"",otherFees:initOtherFees}:
+    {invoiceType:"Invoice",invoiceNo:"",invoiceDate:todayISO,dueDate:calcDueDate(todayISO,defaultPmtTerm),
+     paymentTerms:defaultPmtTerm,poNumbers:[],companyCode:"",currency:"IDR",amount:"",
+     vatRate:"11",vatBase:0,vatAmt:0,whtType:"",whtCode:"",whtBase:0,whtAmt:0,
+     otherFees:[],additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
-  const addFile=name=>{if(!f.files.includes(name))s("files",[...(f.files||[]),name]);};
-  const rmFile=i=>s("files",f.files.filter((_,j)=>j!==i));
+  const autoCalcVat=(base:any,rate:string)=>Math.round(Number(base||0)*(VAT_RATES.find(r=>r.v===rate)?.r||0.11));
+  const getWhtRate=(whtType:string,whtCode:string)=>(WHT_CODES[whtType]||[]).find(c=>c.v===whtCode)?.rate||0;
+  const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
+  const netBalance=Number(f.amount||0)+Number(f.vatAmt||0)+totalOtherFee-Number(f.whtAmt||0);
+  const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",ref:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",ref:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",ref:"50002103"}];
+  const addFile=(name:string)=>{if(!(f.files||[]).includes(name))s("files",[...(f.files||[]),name]);};
+  const rmFile=(name:string)=>s("files",(f.files||[]).filter((x:string)=>x!==name));
+  const addFeeRow=()=>s("otherFees",[...(f.otherFees||[]),{category:"",amount:0}]);
+  const updateFee=(i:number,k:string,v:any)=>{const fees=[...(f.otherFees||[])];fees[i]={...fees[i],[k]:v};s("otherFees",fees);};
+  const removeFee=(i:number)=>s("otherFees",(f.otherFees||[]).filter((_:any,j:number)=>j!==i));
   const save=draft=>{
     if(!draft&&!(f.poNumbers||[]).length){alert("Please add at least one PO Number before submitting.");return;}
     if(!draft&&!f.companyCode){alert("Please select a Company Code before submitting.");return;}
     if(!draft&&!f.taxDoc&&f.invoiceType==="Invoice"){alert("Please enter Faktur Pajak number before submitting.");return;}
     if(!draft&&(f.files||[]).length<2){alert("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.");return;}
-    // Duplicate invoice number check
     const dupNo=allInvoices.find(i=>i.id!==f.id&&i.invoiceNo.trim().toLowerCase()===f.invoiceNo.trim().toLowerCase());
     if(dupNo){alert(`Invoice number "${f.invoiceNo}" already exists (${dupNo.id}). Please use a unique invoice number.`);return;}
-    // PO reuse check
     const usedPOs=(f.poNumbers||[]).filter(po=>allInvoices.some(i=>i.id!==f.id&&(i.poNumbers||[]).includes(po)&&i.status!=="Rejected"));
     if(usedPOs.length>0){alert(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`);return;}
-    const obj={...f,status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,submittedAt:draft?null:new Date().toISOString().split("T")[0]};
+    const fees=f.otherFees||[];
+    const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
+    const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
+    const obj={...f,vatRate:f.vatRate,whtCode:f.whtCode,otherFees:fees,additionalFee,feeCategory,
+      status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,
+      submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
-    if(!draft) addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
+    if(!draft)addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
   };
+  const SHdr=({children}:any)=>(
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 10px",borderTop:`1px solid ${C.border}`,paddingTop:14}}>
+      <span style={{fontSize:12,fontWeight:700,color:C.t1,whiteSpace:"nowrap" as const}}>{children}</span>
+      <div style={{flex:1,height:1,background:C.border}}/>
+    </div>
+  );
+  const fixedKeys=FIXED_ATT.map(a=>a.key);
   return (
-    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={740}>
-      <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
-        <div style={{gridColumn:"1/-1",padding:"10px 12px",background:"#fef6ee",borderRadius:4,border:"1px solid #f5c98a",display:"flex",alignItems:"center",gap:16,marginBottom:4}}>
-          <SapIcon name="information" size={14} color="#c87941"/>
-          <span style={{fontSize:12,color:"#6a6d70",fontWeight:700}}>Document Type:</span>
-          {[["Invoice","Standard supplier invoice (PO-based, Indonesian vendor)"],["Supplier DPR","Supplier Down Payment Request (non-PO GR or foreign vendor)"]].map(([t,hint])=>(
-            <label key={t} title={hint} style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:13,color:f.invoiceType===t?"#0a6ed1":"#32363a",fontWeight:f.invoiceType===t?700:400}}>
-              <input type="radio" checked={f.invoiceType===t} onChange={()=>s("invoiceType",t)} style={{accentColor:"#0a6ed1",cursor:"pointer"}}/>
-              {t}
-            </label>
-          ))}
-          <span style={{fontSize:11,color:"#c87941",marginLeft:"auto"}}>
-            {f.invoiceType==="Supplier DPR"?"Non-Indonesian vendor or pre-payment without GR · Routes to SAP BPA Down Payment workflow":"Indonesian vendor · Routes to SAP Flexible Workflow (Supplier Invoice)"}
-          </span>
-        </div>
+    <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={860}>
+      {/* Invoice balance strip */}
+      <div style={{display:"flex",alignItems:"center",gap:16,padding:"8px 12px",background:C.subtle,borderRadius:4,marginBottom:4,border:`1px solid ${C.border}`}}>
+        <div style={{fontSize:12,fontWeight:600,color:C.t2}}>Invoice Balance:</div>
+        <div style={{fontSize:15,fontWeight:700,color:netBalance>=0?C.ok:C.err,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(netBalance,f.currency||"IDR")}</div>
+        <div style={{flex:1,fontSize:11,color:C.t2}}>Check: invoice amount consistent with Item (PO Invoice amount + VAT Amount + Other Fee)</div>
+      </div>
+
+      {/* GENERAL INFORMATION */}
+      <SHdr>General Information</SHdr>
+      <div style={{padding:"8px 12px",background:"#fef6ee",borderRadius:4,border:"1px solid #f5c98a",display:"flex",alignItems:"center",gap:16,marginBottom:10}}>
+        <SapIcon name="information" size={14} color="#c87941"/>
+        <span style={{fontSize:12,color:"#6a6d70",fontWeight:700}}>Document Type:</span>
+        {[["Invoice","Standard supplier invoice (PO-based, Indonesian vendor)"],["Supplier DPR","Supplier Down Payment Request (non-PO GR or foreign vendor)"]].map(([t,hint])=>(
+          <label key={t} title={hint} style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:13,color:f.invoiceType===t?"#0a6ed1":"#32363a",fontWeight:f.invoiceType===t?700:400}}>
+            <input type="radio" checked={f.invoiceType===t} onChange={()=>s("invoiceType",t)} style={{accentColor:"#0a6ed1",cursor:"pointer"}}/>
+            {t}
+          </label>
+        ))}
+        <span style={{fontSize:11,color:"#c87941",marginLeft:"auto"}}>{f.invoiceType==="Supplier DPR"?"Routes to SAP BPA Down Payment workflow":"Indonesian vendor · Routes to SAP Flexible Workflow (Supplier Invoice)"}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px"}}>
         <div style={{gridColumn:"1/-1"}}>
           <Lbl>Company Code *</Lbl>
           <Sel value={f.companyCode} onChange={v=>{const term=(VENDORS[vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===v)?.zterm||f.paymentTerms;setF(p=>({...p,companyCode:v,paymentTerms:term,dueDate:calcDueDate(p.invoiceDate,term)}));}} opts={[{v:"",l:"— Select Company Code —"},...allowedCCs.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
-          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_CompanyCode</div>
+          <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP CDS: I_CompanyCode</div>
         </div>
-        <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
-        <div style={{gridColumn:"1/-1"}}>
-          <Lbl>PO Number *</Lbl>
-          <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",background:C.field,minHeight:38}}>
-            <div onClick={()=>setShowPoHelp(true)} style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"5px 8px",alignContent:"flex-start",cursor:"pointer",minHeight:36}}>
-              {!(f.poNumbers||[]).length&&<span style={{color:C.t2,fontSize:12,alignSelf:"center",pointerEvents:"none"}}>— click or press value help to add PO numbers —</span>}
-              {(f.poNumbers||[]).map((po,i)=>(
-                <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,gap:6,lineHeight:"20px"}}>
-                  <span style={{fontFamily:"monospace"}}>{po}</span>
-                  <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>
-                </span>
-              ))}
-            </div>
-            <button onClick={()=>setShowPoHelp(true)} title="Open Value Help" style={{padding:"0 14px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:12,color:C.t1,fontWeight:700,letterSpacing:1}}>...</button>
-          </div>
-          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
+        <div>
+          <Lbl>Currency *</Lbl>
+          <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: I_Currency</div>
         </div>
         <div><Lbl>Invoice Date *</Lbl><Ui5DatePicker value={f.invoiceDate} onChange={v=>{if(v&&f.paymentTerms)setF(p=>({...p,invoiceDate:v,dueDate:calcDueDate(v,p.paymentTerms)}));else s("invoiceDate",v);}}/></div>
+        <div><Lbl>Invoice Number *</Lbl><Inp value={f.invoiceNo} onChange={v=>s("invoiceNo",v)} placeholder="INV/XXX/2025/001"/></div>
         <div>
           <Lbl>Terms of Payment *</Lbl>
           <Sel value={f.paymentTerms||""} onChange={v=>setF(p=>({...p,paymentTerms:v,dueDate:calcDueDate(p.invoiceDate,v)}))} opts={[{v:"",l:"— Select Payment Terms —"},...PAYMENT_TERMS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
-          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP CDS: I_PaymentTerms</div>
+          <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP CDS: I_PaymentTerms</div>
         </div>
-        <div style={{gridColumn:"1/-1"}}>
+        <div>
           <Lbl>Due Date (auto-calculated)</Lbl>
           <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:f.dueDate?C.t1:C.t2,display:"flex",alignItems:"center"}}>
             {f.dueDate?fmtDate(f.dueDate):<span style={{fontStyle:"italic"}}>Select Invoice Date and Terms of Payment</span>}
           </div>
         </div>
-        <div>
-          <Lbl>Transaction Currency *</Lbl>
-          <Sel value={f.currency} onChange={v=>s("currency",v)} opts={CURRENCIES.map(c=>({v:c.v,l:c.l}))}/>
-          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: I_Currency</div>
-        </div>
-        <div><Lbl>Amount *</Lbl><AmtInp value={f.amount} onChange={v=>s("amount",v)}/></div>
-        <div><Lbl>VAT Base Amount</Lbl><AmtInp value={f.vatBase} onChange={v=>s("vatBase",v)}/></div>
-        <div><Lbl>VAT Amount</Lbl><AmtInp value={f.vatAmt} onChange={v=>s("vatAmt",v)}/></div>
         <div style={{gridColumn:"1/-1"}}>
-          <Lbl>WHT Type</Lbl>
-          <Sel value={f.whtType} onChange={v=>s("whtType",v)} opts={WHT_TYPES}/>
-          <div style={{fontSize:10,color:C.t2,marginTop:3}}>📡 SAP API: WithholdingTaxType / WithholdingTaxCode</div>
+          <Lbl>Invoice Amount *</Lbl>
+          <AmtInp value={f.amount} onChange={v=>{const base=Number(v||0);const vat=autoCalcVat(base,f.vatRate);setF(p=>({...p,amount:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:p.whtType?Math.round(base*(getWhtRate(p.whtType,p.whtCode)/100)):0}));}}/>
         </div>
-        <div><Lbl>WHT Base Amount</Lbl><AmtInp value={f.whtBase} onChange={v=>s("whtBase",v)}/></div>
-        <div><Lbl>WHT Amount</Lbl><AmtInp value={f.whtAmt} onChange={v=>s("whtAmt",v)}/></div>
-        <div><Lbl>Additional Fee</Lbl><AmtInp value={f.additionalFee||0} onChange={v=>s("additionalFee",v)}/></div>
-        <div>
-          <Lbl>Fee Category</Lbl>
-          <Sel value={f.feeCategory||""} onChange={v=>s("feeCategory",v)} opts={[{v:"",l:"— Select Fee Category —"},{v:"Stamp Duty Fee",l:"Stamp Duty Fee"},{v:"Interest / Penalty Fee",l:"Interest / Penalty Fee"}]}/>
-        </div>
-        <div style={{gridColumn:"1/-1"}}><Lbl>Faktur Pajak (Tax Doc No.) {f.invoiceType==="Invoice"?"*":""}</Lbl><Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/></div>
       </div>
-      <div style={{marginBottom:14}}><Lbl>Description *</Lbl><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services"/></div>
-      <div style={{padding:14,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
-        <div style={{fontWeight:700,fontSize:12,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><SapIcon name="attachment" size={13} color={C.t1}/> Mandatory Attachments</div>
-        <div style={{fontSize:11,color:C.t2,marginBottom:10}}>Both Invoice PDF and Faktur Pajak PDF are required before submission.</div>
-        {(f.files||[]).map((a,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:C.card,borderRadius:4,marginBottom:6,border:`1px solid ${C.border}`,fontSize:12}}>
-            <span style={{display:"flex",alignItems:"center",gap:5}}><SapIcon name="document" size={13} color={C.t2}/>{a}</span>
-            <button onClick={()=>rmFile(i)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:11}}>Remove</button>
+
+      {/* PURCHASING DOCUMENT REFERENCE */}
+      <SHdr>Purchasing Document Reference</SHdr>
+      <div style={{marginBottom:8}}>
+        <Lbl>Purchasing Document *</Lbl>
+        <div style={{display:"flex",border:`1px solid ${C.border}`,borderRadius:4,overflow:"hidden",background:C.field,minHeight:38}}>
+          <div onClick={()=>setShowPoHelp(true)} style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"5px 8px",alignContent:"flex-start",cursor:"pointer",minHeight:36}}>
+            {!(f.poNumbers||[]).length&&<span style={{color:C.t2,fontSize:12,alignSelf:"center",pointerEvents:"none"}}>— click or press value help to add PO numbers —</span>}
+            {(f.poNumbers||[]).map((po,i)=>(
+              <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.card,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px",fontSize:12,gap:6,lineHeight:"20px"}}>
+                <span style={{fontFamily:"monospace"}}>{po}</span>
+                <button onClick={e=>{e.stopPropagation();s("poNumbers",(f.poNumbers||[]).filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1}}>✕</button>
+              </span>
+            ))}
           </div>
-        ))}
-        <div style={{display:"flex",gap:8,marginTop:8}}>
-          {!f.files?.includes("invoice.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("invoice.pdf")}>+ Upload Invoice PDF</Btn>}
-          {!f.files?.includes("faktur_pajak.pdf")&&<Btn v="neutral" sm onClick={()=>addFile("faktur_pajak.pdf")}>+ Upload Faktur Pajak PDF</Btn>}
+          <button onClick={()=>setShowPoHelp(true)} title="Open Value Help" style={{padding:"0 14px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:12,color:C.t1,fontWeight:700,letterSpacing:1}}>...</button>
+        </div>
+        <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: A_PurchaseOrder · Click field or <strong>...</strong> for Value Help (F4)</div>
+      </div>
+      {(f.poNumbers||[]).length>0&&(
+        <div style={{marginBottom:4,overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:780}}>
+            <thead>
+              <tr style={{background:"#e8f1fb"}}>
+                {["Purchasing Document","PO Item","Material Code","Material Desc","PO Quant","UOM","Unit Amount","PO Amount","GR Amount","DP Amount","Invoicable Amount","Invoice Amount"].map(h=>(
+                  <th key={h} style={{padding:"5px 7px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:10}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(f.poNumbers||[]).map((po:string,pi:number)=>(
+                <tr key={pi} style={{background:pi%2===0?C.card:C.subtle}}>
+                  <td style={{padding:"5px 7px",fontFamily:"monospace",fontSize:10,color:C.primary}}>{po}</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>10</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2,fontStyle:"italic",fontSize:10}}>Auto-populate on SAP integration</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",color:C.t2}}>—</td>
+                  <td style={{padding:"5px 7px",minWidth:100}}><AmtInp value="" onChange={()=>{}}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{padding:"4px 8px",background:C.subtle,fontSize:10,color:C.t2,borderTop:`1px solid ${C.border}`}}>Invoicable Amount = GR Amount – DP Amount</div>
+        </div>
+      )}
+
+      {/* TAX INFORMATION */}
+      <SHdr>Tax Information</SHdr>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px"}}>
+        <div>
+          <Lbl>VAT Base Amount</Lbl>
+          <AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>
+        </div>
+        <div>
+          <Lbl>VAT Rate</Lbl>
+          <Sel value={f.vatRate||"11"} onChange={v=>{const vat=autoCalcVat(f.vatBase,v);s("vatRate",v);s("vatAmt",vat);}} opts={VAT_RATES.map(r=>({v:r.v,l:r.l}))}/>
+        </div>
+        <div>
+          <Lbl>VAT Amount (auto)</Lbl>
+          <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(f.vatAmt||0,f.currency||"IDR")}</div>
+        </div>
+        <div>
+          <Lbl>WHT Type</Lbl>
+          <Sel value={f.whtType||""} onChange={v=>{const first=(WHT_CODES[v]||[])[0];const rate=first?.rate||0;const whtAmt=Math.round(Number(f.whtBase||0)*(rate/100));setF(p=>({...p,whtType:v,whtCode:first?.v||"",whtAmt}));}} opts={WHT_TYPES}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: WithholdingTaxType</div>
+        </div>
+        <div>
+          <Lbl>WHT Code</Lbl>
+          <Sel value={f.whtCode||""} onChange={v=>{const rate=(WHT_CODES[f.whtType]||[]).find((c:any)=>c.v===v)?.rate||0;const whtAmt=Math.round(Number(f.whtBase||0)*(rate/100));setF(p=>({...p,whtCode:v,whtAmt}));}} opts={[{v:"",l:"— None —"},...(WHT_CODES[f.whtType]||[]).map(c=>({v:c.v,l:c.l}))]}/>
+          <div style={{fontSize:10,color:C.t2,marginTop:2}}>📡 SAP API: WithholdingTaxCode</div>
+        </div>
+        <div>
+          <Lbl>WHT Rate (auto)</Lbl>
+          <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center"}}>{f.whtType?(getWhtRate(f.whtType,f.whtCode)||0)+"%":"—"}</div>
+        </div>
+        <div>
+          <Lbl>WHT Base Amount</Lbl>
+          <AmtInp value={f.whtBase} onChange={v=>{const rate=getWhtRate(f.whtType,f.whtCode);const whtAmt=Math.round(Number(v||0)*(rate/100));setF(p=>({...p,whtBase:v,whtAmt}));}}/>
+        </div>
+        <div>
+          <Lbl>WHT Amount (auto)</Lbl>
+          <div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(f.whtAmt||0,f.currency||"IDR")}</div>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Lbl>Faktur Pajak (Tax Doc No.) {f.invoiceType==="Invoice"?"*":""}</Lbl>
+          <Inp value={f.taxDoc} onChange={v=>s("taxDoc",v)} placeholder="FP-010.000-25.00000001"/>
         </div>
       </div>
-      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18}}>
+
+      {/* OTHER FEE */}
+      <SHdr>Other Fee</SHdr>
+      {(f.otherFees||[]).length===0&&<div style={{fontSize:12,color:C.t2,marginBottom:8}}>No other fees added.</div>}
+      {(f.otherFees||[]).length>0&&(
+        <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8,fontSize:13,border:`1px solid ${C.border}`,borderRadius:4}}>
+          <thead>
+            <tr style={{background:C.subtle}}>
+              <th style={{padding:"5px 10px",fontWeight:700,fontSize:11,color:C.t2,textAlign:"left",borderBottom:`1px solid ${C.border}`}}>Fee Category</th>
+              <th style={{padding:"5px 10px",fontWeight:700,fontSize:11,color:C.t2,textAlign:"right",borderBottom:`1px solid ${C.border}`}}>Fee Amount</th>
+              <th style={{width:40,borderBottom:`1px solid ${C.border}`}}/>
+            </tr>
+          </thead>
+          <tbody>
+            {(f.otherFees||[]).map((row:any,i:number)=>(
+              <tr key={i} style={{borderBottom:`1px solid ${C.border}`}}>
+                <td style={{padding:"4px 6px"}}>
+                  <Sel value={row.category||""} onChange={v=>updateFee(i,"category",v)} opts={[{v:"",l:"— Select Category —"},{v:"Stamp Duty Fee",l:"Stamp Duty Fee"},{v:"Admin Fee",l:"Admin Fee"},{v:"Interest / Penalty Fee",l:"Interest / Penalty Fee"}]}/>
+                </td>
+                <td style={{padding:"4px 6px"}}><AmtInp value={row.amount||0} onChange={v=>updateFee(i,"amount",v)}/></td>
+                <td style={{padding:"4px 6px",textAlign:"center"}}><button onClick={()=>removeFee(i)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:13,padding:"0 4px"}}>✕</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <Btn v="neutral" sm onClick={addFeeRow}>+ Add Fee</Btn>
+
+      {/* ATTACHMENT */}
+      <SHdr>Attachment</SHdr>
+      <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8,border:`1px solid ${C.border}`,borderRadius:4,fontSize:13}}>
+        <thead>
+          <tr style={{background:C.subtle}}>
+            <th style={{padding:"5px 10px",fontWeight:700,fontSize:11,color:C.t2,textAlign:"left",borderBottom:`1px solid ${C.border}`}}>Document</th>
+            <th style={{padding:"5px 10px",fontWeight:700,fontSize:11,color:C.t2,textAlign:"left",borderBottom:`1px solid ${C.border}`}}>Reference No.</th>
+            <th style={{padding:"5px 10px",fontWeight:700,fontSize:11,color:C.t2,textAlign:"center",borderBottom:`1px solid ${C.border}`}}>Upload</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FIXED_ATT.map(att=>{
+            const uploaded=(f.files||[]).includes(att.key);
+            return(
+              <tr key={att.key} style={{borderBottom:`1px solid ${C.border}`}}>
+                <td style={{padding:"6px 10px",fontWeight:600,color:C.t1}}>{att.label}</td>
+                <td style={{padding:"6px 10px",color:C.t2,fontSize:12,fontFamily:"monospace"}}>{att.ref}</td>
+                <td style={{padding:"6px 10px",textAlign:"center"}}>
+                  {uploaded
+                    ?<span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:C.ok}}>
+                        <SapIcon name="accept" size={12} color={C.ok}/>{att.key}
+                        <button onClick={()=>rmFile(att.key)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0}}>✕</button>
+                      </span>
+                    :<Btn v="neutral" sm onClick={()=>addFile(att.key)}>Upload</Btn>}
+                </td>
+              </tr>
+            );
+          })}
+          {(f.files||[]).filter((fn:string)=>!fixedKeys.includes(fn)).map((fn:string,i:number)=>(
+            <tr key={fn} style={{borderBottom:`1px solid ${C.border}`}}>
+              <td style={{padding:"6px 10px",color:C.t2,fontStyle:"italic"}}>Additional</td>
+              <td style={{padding:"6px 10px",color:C.t1,fontSize:12,fontFamily:"monospace"}}>{fn}</td>
+              <td style={{padding:"6px 10px",textAlign:"center"}}><button onClick={()=>rmFile(fn)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12}}>Remove</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Btn v="neutral" sm onClick={()=>{const name=window.prompt("Enter file name:");if(name&&name.trim())addFile(name.trim());}}>+ Add More</Btn>
+
+      {/* NOTES */}
+      <SHdr>Notes</SHdr>
+      <div style={{marginBottom:14}}><TA value={f.desc} onChange={v=>s("desc",v)} placeholder="Description of goods / services" rows={3}/></div>
+
+      {/* BUTTONS */}
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:18,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
         <Btn v="neutral" onClick={onClose}>Cancel</Btn>
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
@@ -1049,7 +1214,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
             </div>
           )}
 
-          <SecHdr>Description</SecHdr>
+          <SecHdr>Notes</SecHdr>
           <div style={{fontSize:13,color:C.t1,lineHeight:1.5,marginBottom:16}}>{view.desc||"—"}</div>
 
           {view.sapDocNo&&(
@@ -1112,25 +1277,33 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
         {/* ── TAX ── */}
         {activeTab==="tax"&&<>
-          <SecHdr>Financial Breakdown</SecHdr>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount (PPN 11%)</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-            {(view.additionalFee||0)>0&&<>
-              <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
-              <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
-            </>}
+          <SecHdr>Tax Information</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-            <div><Lbl>Total Amount</Lbl><Val bold blue>{fmtAmt(totalAmt,view.currency)}</Val></div>
+            <div><Lbl>VAT Rate</Lbl><Val>{view.vatRate?view.vatRate+"%":"11%"}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
           </div>
           {view.whtType&&<>
             <SecHdr>Withholding Tax</SecHdr>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-              <div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+              <div><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
+              <div><Lbl>WHT Code</Lbl><Val>{view.whtCode||"—"}</Val></div>
+              <div><Lbl>WHT Rate</Lbl><Val>{view.whtCode?((WHT_CODES[view.whtType]||[]).find((c:any)=>c.v===view.whtCode)?.rate||0)+"%":"—"}</Val></div>
               <div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div>
               <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
             </div>
           </>}
+          <SecHdr>Financial Summary</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {(view.additionalFee||0)>0&&<>
+              <div><Lbl>Other Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
+              <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
+            </>}
+            <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
+            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(totalAmt-Number(view.whtAmt||0),view.currency)}</Val></div>
+          </div>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:4}}>
             <strong>SAP Integration:</strong>{" "}
             {view.invoiceType==="Supplier DPR"
@@ -1983,7 +2156,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
             </div>
           )}
 
-          <SecHdr>Description</SecHdr>
+          <SecHdr>Notes</SecHdr>
           <div style={{fontSize:13,color:C.t1,lineHeight:1.5,marginBottom:16}}>{view.desc||"—"}</div>
 
           {view.sapDocNo&&(
@@ -2045,25 +2218,33 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
 
         {/* TAX */}
         {activeTab==="tax"&&<>
-          <SecHdr>Financial Breakdown</SecHdr>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount (PPN 11%)</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
-            {(view.additionalFee||0)>0&&<>
-              <div><Lbl>Additional Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
-              <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
-            </>}
+          <SecHdr>Tax Information</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
             <div><Lbl>VAT Base Amount</Lbl><Val>{fmtAmt(view.vatBase||0,view.currency)}</Val></div>
-            <div><Lbl>Total Amount</Lbl><Val bold blue>{fmtAmt(totalAmt,view.currency)}</Val></div>
+            <div><Lbl>VAT Rate</Lbl><Val>{view.vatRate?view.vatRate+"%":"11%"}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
           </div>
           {view.whtType&&<>
             <SecHdr>Withholding Tax</SecHdr>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-              <div style={{gridColumn:"1/-1"}}><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+              <div><Lbl>WHT Type</Lbl><Val>{WHT_TYPES.find((w:any)=>w.v===view.whtType)?.l||view.whtType}</Val></div>
+              <div><Lbl>WHT Code</Lbl><Val>{view.whtCode||"—"}</Val></div>
+              <div><Lbl>WHT Rate</Lbl><Val>{view.whtCode?((WHT_CODES[view.whtType]||[]).find((c:any)=>c.v===view.whtCode)?.rate||0)+"%":"—"}</Val></div>
               <div><Lbl>WHT Base Amount</Lbl><Val>{fmtAmt(view.whtBase||0,view.currency)}</Val></div>
               <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
             </div>
           </>}
+          <SecHdr>Financial Summary</SecHdr>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
+            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            {(view.additionalFee||0)>0&&<>
+              <div><Lbl>Other Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
+              <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
+            </>}
+            <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
+            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(totalAmt-Number(view.whtAmt||0),view.currency)}</Val></div>
+          </div>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:4}}>
             <strong>SAP Integration:</strong>{" "}
             {view.invoiceType==="Supplier DPR"
