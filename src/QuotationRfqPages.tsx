@@ -625,23 +625,34 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
         })}
       </div>
 
-      {/* Status Legend */}
+      {/* Quotation Status Legend */}
       <div style={{margin:"20px 0 4px",padding:"14px 18px",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:8}}>
         <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:.6}}>Quotation Status Legend</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:"10px 24px"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:"10px 24px",marginBottom:14}}>
           {[
-            {s:"Draft",      desc:"Quotation saved by supplier – not yet sent to client"},
-            {s:"Submitted",  desc:"Quotation formally sent by supplier to client"},
-            {s:"Accepted",   desc:"Quotation confirmed/acknowledged by client"},
-            {s:"Win",        desc:"Quotation awarded – approval workflow in progress"},
-            {s:"PO Ready",   desc:"Approval finalized – ready for PO creation in SAP"},
-            {s:"Completed",  desc:"Quotation did not win – RFQ has been closed"},
+            {s:"Draft",      desc:"Quotation created by vendor but not yet sent to buyer"},
+            {s:"Submitted",  desc:"Quotation sent to Buyer, waiting for Acceptance"},
+            {s:"Accepted",   desc:"Quotation accepted and qualified by buyer"},
+            {s:"Win",        desc:"Set as winner by buyer based on RFQ evaluation & score by PIC"},
+            {s:"PO Ready",   desc:"PO already created in SAP (confirmed via SAP outbound)"},
+            {s:"Completed",  desc:"Quotation lost the RFQ/Tender (auto-set when winner is determined)"},
           ].map(({s,desc})=>(
-            <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:280}}>
+            <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:300}}>
               <Badge s={s}/>
               <span style={{fontSize:12,color:C.t2}}>{desc}</span>
             </div>
           ))}
+        </div>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,display:"flex",alignItems:"center",flexWrap:"wrap",gap:6}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginRight:4}}>Status Flow:</span>
+          {["Draft","Submitted","Accepted","Win","PO Ready"].map((s,i,arr)=>(
+            <span key={s} style={{display:"flex",alignItems:"center",gap:6}}>
+              <Badge s={s}/>
+              {i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
+            </span>
+          ))}
+          <span style={{color:C.t2,fontSize:12,marginLeft:4}}>· Lost →</span>
+          <Badge s="Completed"/>
         </div>
       </div>
 
@@ -2115,7 +2126,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
     const winnerId=ranked[0]?.vendorId||"";
     // Approve & close RFQ with winner = highest scorer
     setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",approvalNotes:scoreNotes,winnerVendorId:winnerId,scored:true}:r));
-    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerId?"Win":"Accepted"}:q));
+    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerId?"Win":"Completed"}:q));
     setScoreModal(null);setScores({});setScoreNotes("");
   };
 
@@ -2755,9 +2766,9 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   );
 };
 
-// ── Approver Quotation (Approve/Reject) ────────────────────────
+// ── Approver Quotation (PO Confirmation) ────────────────────────
 export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
-  const [flt,setFlt]=useState("All");
+  const [flt,setFlt]=useState("Win");
   const [aprModal,setAprModal]=useState<{qt:any,action:"approve"|"reject"}|null>(null);
   const [notes,setNotes]=useState("");
 
@@ -2804,31 +2815,25 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
   const openReject=(qt)=>{setNotes("");setAprModal({qt,action:"reject"});};
   const confirmAction=()=>{
     if(!aprModal)return;
-    if(aprModal.action==="reject"&&!notes.trim()){alert("Please provide rejection notes.");return;}
-    const action=aprModal.action;
     setQuotations(prev=>prev.map(q=>
       q.id===aprModal.qt.id
-        ?{...q,approvalStatus:action==="approve"?"PO Ready":"Rejected",
-               approvalNotes:notes,
-               approvedBy:user.name,
-               approvedAt:new Date().toISOString().split("T")[0]}
+        ?{...q,status:"PO Ready",approvalNotes:notes,approvedBy:user.name,approvedAt:new Date().toISOString().split("T")[0]}
         :q
     ));
     setAprModal(null);setNotes("");
   };
 
   const approvalBadge=(qt)=>{
-    if(qt.approvalStatus==="PO Ready") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dcfce7",color:"#107e3e",whiteSpace:"nowrap"}}>✓ PO Ready</span>;
-    if(qt.approvalStatus==="Rejected") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#fff1f0",color:"#bb0000",whiteSpace:"nowrap"}}>✗ Rejected by You</span>;
-    return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.subtle,color:C.t2,whiteSpace:"nowrap"}}>Pending</span>;
+    if(qt.status==="PO Ready") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dbeeff",color:"#0a6ed1",whiteSpace:"nowrap"}}>✓ PO Ready</span>;
+    return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.subtle,color:C.t2,whiteSpace:"nowrap"}}>Pending SAP</span>;
   };
 
   return (
     <div style={{padding:pg()}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
         <div>
-          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>Quotation Approval</div>
-          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📋 Review vendor quotations and submit your approval decision</div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>PO Confirmation</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>📦 Confirm PO creation from SAP for winning quotations — triggers "PO Ready" status</div>
         </div>
       </div>
 
@@ -2860,7 +2865,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
           selected={draft.statuses} onConfirm={s=>{sd("statuses",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
       )}
 
-      <FilterBar opts={["All","Submitted","Accepted","Rejected"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Win","PO Ready"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -2885,7 +2890,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
             )}
             {list.map(qt=>{
               const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
-              const canAct=qt.status==="Submitted"&&!qt.approvalStatus;
+              const canAct=qt.status==="Win";
               return (
                 <tr key={qt.id} style={{borderBottom:`1px solid ${C.border}`}}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
@@ -2907,10 +2912,9 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
                   <Td>{approvalBadge(qt)}</Td>
                   <Td>
                     {canAct&&(
-                      <div style={{display:"flex",gap:5}}>
-                        <Btn v="success" sm onClick={()=>openApprove(qt)}>Approve</Btn>
-                        <Btn v="danger" sm onClick={()=>openReject(qt)}>Reject</Btn>
-                      </div>
+                      <Btn v="primary" sm onClick={()=>openApprove(qt)}>
+                        <SapIcon name="po-create" size={12} color="#fff"/> Confirm PO from SAP
+                      </Btn>
                     )}
                   </Td>
                 </tr>
@@ -2922,7 +2926,10 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
 
       {/* Approval Modal */}
       {aprModal&&(
-        <Modal title={aprModal.action==="approve"?"Approve Quotation":"Reject Quotation"} onClose={()=>setAprModal(null)} width={540}>
+        <Modal title="Confirm PO Creation from SAP" onClose={()=>setAprModal(null)} width={540}>
+          <div style={{marginBottom:14,padding:"10px 14px",background:C.infoBg,border:`1px solid ${C.info}`,borderRadius:6,fontSize:12,color:C.info}}>
+            <strong>SAP Outbound Confirmation</strong> — This action simulates SAP sending a PO creation notification. The quotation status will be updated to <strong>PO Ready</strong>.
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
             <div><Lbl>Quotation ID</Lbl><Val>{aprModal.qt.id}</Val></div>
             <div><Lbl>RFQ</Lbl><Val>{aprModal.qt.rfqTitle}</Val></div>
@@ -2930,15 +2937,12 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
             <div><Lbl>Total Amount</Lbl><Val style={{fontWeight:700,color:C.t1}}>{idr(aprModal.qt.totalAmt)}</Val></div>
           </div>
           <div style={{marginBottom:16}}>
-            <Lbl>Approval Notes {aprModal.action==="reject"&&<span style={{color:C.err}}>*</span>}</Lbl>
-            <TA value={notes} onChange={setNotes} placeholder={aprModal.action==="approve"?"Optional notes for this approval…":"Please provide rejection reason…"} rows={3}/>
+            <Lbl>SAP PO Reference / Notes (optional)</Lbl>
+            <TA value={notes} onChange={setNotes} placeholder="e.g. SAP PO No: 4500012345 created on 2025-07-02…" rows={2}/>
           </div>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end",paddingTop:12,borderTop:`1px solid ${C.border}`}}>
             <Btn v="ghost" onClick={()=>setAprModal(null)}>Cancel</Btn>
-            {aprModal.action==="approve"
-              ?<Btn v="success" onClick={confirmAction}>Confirm Approve</Btn>
-              :<Btn v="danger"  onClick={confirmAction}>Confirm Reject</Btn>
-            }
+            <Btn v="primary" onClick={confirmAction}><SapIcon name="sales-order" size={13} color="#fff"/> Confirm – Set PO Ready</Btn>
           </div>
         </Modal>
       )}

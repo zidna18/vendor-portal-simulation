@@ -73,7 +73,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   const nav=user.role==="vendor"
     ?[{id:"dashboard",l:"Home"},{id:"profile",l:"Profile"},{id:"invoice",l:"Invoice"},{id:"quotation",l:"Quotation"}]
     :user.role==="approver"
-    ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Approval"}]
+    ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Approval"},{id:"apr-quotation",l:"PO Confirmation"}]
     :user.role==="director"
     ?[{id:"dashboard",l:"Home"},{id:"dir-rfq",l:"RFQ Management"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
