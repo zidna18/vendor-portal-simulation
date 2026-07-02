@@ -1659,13 +1659,13 @@ export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChang
   return (
     <div ref={ref} style={{position:"relative" as const,fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
       <div onClick={()=>setOpen(p=>!p)} style={{display:"flex",flexWrap:"wrap" as const,alignItems:"center",gap:4,minHeight:"2.25rem",padding:"3px 28px 3px 6px",border:`1px solid ${open?C.primary:C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",position:"relative" as const,boxSizing:"border-box" as const,boxShadow:open?`0 0 0 2px ${C.primary}22`:"none",transition:"border-color .1s"}}>
-        {value.length===0&&<span style={{color:"#bfbfbf",fontSize:14,padding:"2px 2px"}}>All Types</span>}
+        {value.length===0&&<span style={{color:C.t2,fontSize:14,padding:"2px 2px"}}>All Types</span>}
         {value.map(k=>{
           const opt=INV_TYPE_OPTS.find(o=>o.key===k);
           return(
-            <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:"#e8f1fb",border:"1px solid #91b9e3",borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
+            <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:C.selection,border:`1px solid ${C.primary}55`,borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
               {opt?.text||k}
-              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:"#6a6d70",fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>{"×"}</button>
+              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>{"×"}</button>
             </span>
           );
         })}

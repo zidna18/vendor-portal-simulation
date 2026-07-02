@@ -79,7 +79,7 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
             </thead>
             <tbody>
               {filtered.map((po,i)=>(
-                <tr key={po.v} onClick={()=>toggle(po.v)} style={{background:sel.has(po.v)?"#e8f1fb":i%2===0?C.card:C.subtle,cursor:"pointer"}}>
+                <tr key={po.v} onClick={()=>toggle(po.v)} style={{background:sel.has(po.v)?C.selection:i%2===0?C.card:C.subtle,cursor:"pointer"}}>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`}}><input type="checkbox" checked={sel.has(po.v)} onChange={()=>toggle(po.v)} onClick={e=>e.stopPropagation()}/></td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,fontFamily:"monospace",fontWeight:600,color:C.primary}}>{po.v}</td>
                   <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,color:C.t1,fontWeight:600}}>{po.companyCode}</td>
@@ -231,7 +231,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         <div>
           <Lbl>Document Type *</Lbl>
           <Sel value={f.invoiceType} onChange={v=>{s("invoiceType",v);if(v!==f.invoiceType){s("poNumbers",[]);setPoItemChecked({});}}} opts={[{v:"Invoice",l:"Invoice"},{v:"Supplier DPR",l:"Down Payment Request"}]}/>
-          <div style={{fontSize:10,color:"#c87941",marginTop:2}}>{f.invoiceType==="Supplier DPR"?"📡 Routes to SAP BPA Down Payment workflow":"📡 Indonesian vendor · SAP Flexible Workflow"}</div>
+          <div style={{fontSize:10,color:C.gold,marginTop:2}}>{f.invoiceType==="Supplier DPR"?"📡 Routes to SAP BPA Down Payment workflow":"📡 Indonesian vendor · SAP Flexible Workflow"}</div>
         </div>
         <div>
           <Lbl>Company Code *</Lbl>
@@ -270,7 +270,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           <div style={{display:"flex",border:`1px solid ${poDropOpen?C.primary:C.border}`,borderRadius:2,background:C.field,minHeight:38}}>
             <div style={{flex:1,display:"flex",flexWrap:"wrap",gap:4,padding:"4px 8px",alignContent:"flex-start",minHeight:34}}>
               {(f.poNumbers||[]).map((po,i)=>(
-                <span key={i} style={{display:"inline-flex",alignItems:"center",background:"#f2f4f5",border:"1px solid #8a9bb0",borderRadius:4,padding:"2px 6px",fontSize:12,gap:4,lineHeight:"18px",color:C.t1,maxWidth:200}}>
+                <span key={i} style={{display:"inline-flex",alignItems:"center",background:C.subtle,border:`1px solid ${C.border}`,borderRadius:4,padding:"2px 6px",fontSize:12,gap:4,lineHeight:"18px",color:C.t1,maxWidth:200}}>
                   <span style={{fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{po}</span>
                   <button onClick={e=>{e.stopPropagation();removePo(po);}} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0,lineHeight:1,flexShrink:0}}>✕</button>
                 </span>
@@ -286,7 +286,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
             const avail=byCC.filter(p=>!(f.poNumbers||[]).includes(p.v)&&(!poSearch||p.v.includes(poSearch)||p.desc.toLowerCase().includes(poSearch.toLowerCase())));
             return(
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 4px 4px",boxShadow:"0 4px 12px rgba(0,0,0,0.12)",maxHeight:220,overflowY:"auto",marginBottom:4}}>
-                {!f.companyCode&&<div style={{padding:"8px 14px",background:"#fef6ee",borderBottom:`1px solid ${C.border}`,fontSize:12,color:"#c87941"}}>Select a Company Code to filter available POs.</div>}
+                {!f.companyCode&&<div style={{padding:"8px 14px",background:`${C.gold}18`,borderBottom:`1px solid ${C.border}`,fontSize:12,color:C.gold}}>Select a Company Code to filter available POs.</div>}
                 {avail.length===0?<div style={{padding:"12px 14px",color:C.t2,fontSize:13,fontStyle:"italic"}}>No available POs{poSearch?` matching "${poSearch}"`:f.companyCode?` for ${f.companyCode}`:""}.</div>:
                 avail.map((po,idx)=>(
                   <div key={po.v} onMouseDown={e=>{e.preventDefault();addPo(po.v);setPoSearch("");}}
@@ -310,15 +310,15 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:900}}>
               <thead>
-                <tr style={{background:"#e8f1fb"}}>
-                  <th style={{padding:"7px 9px",width:36,borderBottom:"1px solid #c0d4ed"}}>
+                <tr style={{background:C.selection}}>
+                  <th style={{padding:"7px 9px",width:36,borderBottom:`1px solid ${C.border}`}}>
                     <input type="checkbox" title="Select all"
                       checked={(f.poNumbers||[]).every((po:string)=>poItemChecked[po]!==false)}
                       onChange={e=>{const v=e.target.checked;setPoItemChecked(p=>{const n={...p};(f.poNumbers||[]).forEach((po:string)=>{n[po]=v;});return n;});}}
                       style={{cursor:"pointer"}}/>
                   </th>
                   {["Purchasing Document","PO Item","Material Code","Material Desc","PO Quant","UOM","Unit Amount","PO Amount","GR Amount","DP Amount","Invoicable Amount","Invoice Amount"].map(h=>(
-                    <th key={h} style={{padding:"7px 9px",fontWeight:700,color:"#0854a0",textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:12}}>{h}</th>
+                    <th key={h} style={{padding:"7px 9px",fontWeight:700,color:C.primaryDk,textAlign:"left",whiteSpace:"nowrap" as const,borderBottom:`1px solid ${C.border}`,fontSize:12}}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -327,7 +327,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                   const m=getMockPoItem(po);
                   const checked=poItemChecked[po]!==false;
                   return(
-                  <tr key={pi} style={{background:checked?(pi%2===0?C.card:C.subtle):"#fff8f8",opacity:checked?1:0.65}}>
+                  <tr key={pi} style={{background:checked?(pi%2===0?C.card:C.subtle):`${C.err}12`,opacity:checked?1:0.65}}>
                     <td style={{padding:"7px 9px",textAlign:"center"}}>
                       <input type="checkbox" checked={checked}
                         onChange={e=>setPoItemChecked(p=>({...p,[po]:e.target.checked}))}
@@ -626,17 +626,17 @@ export const DocFlow = ({inv}) => {
   ];
 
   // status styling — matches SAP Fiori: green=Posted/Completed, blue=Active/InProcess, red=Rejected, orange=warn
-  const stColor = (s:string) => s==="Posted"||s==="Completed"?"#107e3e":s==="Active"||s==="In Process"?"#0070f2":s==="Rejected"?"#bb0000":"#e9730c";
-  const stBgCol = (s:string) => s==="Posted"||s==="Completed"?"#f1fdf6":s==="Active"||s==="In Process"?"#e8f4fd":s==="Rejected"?"#fdf3f3":"#fef6ee";
+  const stColor = (s:string) => s==="Posted"||s==="Completed"?C.ok:s==="Active"||s==="In Process"?C.primary:s==="Rejected"?C.err:C.gold;
+  const stBgCol = (s:string) => s==="Posted"||s==="Completed"?C.okBg:s==="Active"||s==="In Process"?`${C.primary}18`:s==="Rejected"?C.errBg:`${C.gold}18`;
   const stIcon  = (s:string) => s==="Posted"||s==="Completed"?"✓":s==="Rejected"?"✕":"●";
   const stLabel = (s:string) => s==="In Process"?"In Process":s;
 
   // Phase circle: gray if no docs yet (future), green if all done, blue if active
   const phaseColor = (ph:any) => {
-    if(ph.docs.length===0)return"#899898";
+    if(ph.docs.length===0)return C.t2;
     const done = ph.docs.every((d:any)=>d.status==="Posted"||d.status==="Completed");
     const active = ph.docs.some((d:any)=>d.status==="Active"||d.status==="In Process");
-    return done?"#107e3e":active?"#0070f2":"#899898";
+    return done?C.ok:active?C.primary:C.t2;
   };
 
   return (
@@ -661,7 +661,7 @@ export const DocFlow = ({inv}) => {
                   <div style={{fontSize:11,fontWeight:600,color:C.t1,marginTop:6,textAlign:"center" as const}}>{ph.label}</div>
                 </div>
                 {i<PHASES.length-1&&(
-                  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",paddingBottom:20,color:"#899898",fontSize:14,fontWeight:700,letterSpacing:2,minWidth:32}}>›&thinsp;›&thinsp;›</div>
+                  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",paddingBottom:20,color:C.t2,fontSize:14,fontWeight:700,letterSpacing:2,minWidth:32}}>›&thinsp;›&thinsp;›</div>
                 )}
               </React.Fragment>
             ))}
@@ -699,8 +699,8 @@ export const DocFlow = ({inv}) => {
                 </div>
                 {pi<PHASES.length-1&&(
                   <div style={{minWidth:32,flex:1,display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:14}}>
-                    <div style={{display:"flex",alignItems:"center",gap:1,color:"#c0c0c0",fontSize:9,fontWeight:700,letterSpacing:1}}>
-                      <div style={{width:0,height:0,borderTop:"4px solid transparent",borderBottom:"4px solid transparent",borderLeft:"6px solid #c0c0c0"}}/>
+                    <div style={{display:"flex",alignItems:"center",gap:1,color:C.t2,fontSize:9,fontWeight:700,letterSpacing:1}}>
+                      <div style={{width:0,height:0,borderTop:"4px solid transparent",borderBottom:"4px solid transparent",borderLeft:`6px solid ${C.t2}`}}/>
                     </div>
                   </div>
                 )}
@@ -990,7 +990,7 @@ export const MultiValueInp = ({fieldTitle,conditions,onChange,numeric}:{fieldTit
             color:C.t2,padding:"2px 3px",lineHeight:1,
             display:"flex",alignItems:"center",justifyContent:"center",
           }}>
-          <SapIcon name="value-help" size={16} color="#6a6d70"/>
+          <SapIcon name="value-help" size={16} color={C.t2}/>
         </button>
       </div>
 
@@ -1104,7 +1104,7 @@ const ColumnSettingsPopup = ({col,x,y,sort,onSort,groupBy,onGroupBy,width,onWidt
         </div>
         {/* Gear icon row */}
         <div style={{padding:"4px 14px 10px",display:"flex",justifyContent:"flex-end"}}>
-          <SapIcon name="action-settings" size={16} color="#6a6d70"/>
+          <SapIcon name="action-settings" size={16} color={C.t2}/>
         </div>
       </div>
     </>
@@ -1235,7 +1235,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
   const btnStyle = (active:boolean) => ({
     background:"transparent",border:"none",
-    color:active?C.t1:"#bfbfbf",
+    color:active?C.t1:C.t2,
     fontFamily:"'72','72full',Arial,Helvetica,sans-serif",
     fontSize:13,fontWeight:400 as const,cursor:active?"pointer":"default",
     height:36,padding:"0 10px",display:"inline-flex" as const,alignItems:"center" as const,
@@ -2183,7 +2183,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   const SecHdr = ({children}:any) => <div style={{fontWeight:700,fontSize:15,color:C.primary,borderBottom:`2px solid ${C.border}`,paddingBottom:6,marginBottom:12,marginTop:8}}>{children}</div>;
   const btnStyle = (active:boolean) => ({
     background:"transparent",border:"none",
-    color:active?C.t1:"#bfbfbf",
+    color:active?C.t1:C.t2,
     fontFamily:"'72','72full',Arial,Helvetica,sans-serif",
     fontSize:13,fontWeight:400 as const,cursor:active?"pointer":"default",
     height:36,padding:"0 8px",display:"inline-flex" as const,alignItems:"center" as const,
