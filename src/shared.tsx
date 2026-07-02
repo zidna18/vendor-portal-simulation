@@ -766,9 +766,9 @@ const AVT_ACCENTS = [
 export const avtColor = id => AVT_ACCENTS[(id||"").split("").reduce((a,c)=>a+c.charCodeAt(0),0) % AVT_ACCENTS.length];
 export const avtIni = name => { const p=name.trim().split(/\s+/); return p.length===1?p[0].slice(0,2).toUpperCase():(p[0][0]+p[1][0]).toUpperCase(); };
 
-export const Badge = ({s}) => {
+export const Badge = ({s,sq=false}:{s:string,sq?:boolean}) => {
   const x = STC[s]||{c:C.draft,bg:C.draftBg};
-  return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
+  return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:sq?3:12,fontSize:12,fontWeight:700,color:x.c,background:x.bg,border:`1px solid ${x.c}40`,letterSpacing:0.2}}>{s}</span>;
 };
 
 const STATUS_ICONS:Record<string,string> = {
@@ -1051,7 +1051,7 @@ export const FioriBar = ({activeTokens=[],onGo,onReset,onAdaptFilters,adaptFilte
         ))}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"2rem",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:400}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
+        {onAdaptFilters&&<button onClick={onAdaptFilters} style={{background:"transparent",color:C.primary,border:`1px solid ${C.border}`,borderRadius:4,padding:"0 12px",height:"1.5rem",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Adapt Filters{adaptFiltersCount!=null?` (${adaptFiltersCount})`:""}</button>}
         <Btn v="neutral" sm onClick={onReset}>Reset</Btn>
         <Btn v="primary" sm onClick={onGo}>Go</Btn>
       </div>
@@ -1469,7 +1469,7 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
 };
 
 export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
-  <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:28,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 4px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
+  <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:36,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 6px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
     {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
     {selected.map(k=>(
       <span key={k} style={{display:"inline-flex",alignItems:"center",background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 7px",fontSize:11,color:C.info,whiteSpace:"nowrap"}}>{getLabel(k)}</span>

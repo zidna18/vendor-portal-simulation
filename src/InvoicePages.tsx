@@ -1298,7 +1298,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
           </div>
           <div style={{paddingRight:20,borderRight:`1px solid ${C.border}`,marginRight:20}}>
             <Lbl>Invoice Status</Lbl>
-            <Badge s={view.status}/>
+            <Badge s={view.status} sq/>
           </div>
           <div>
             <Lbl>Document Type</Lbl>
@@ -1341,7 +1341,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
           <SecHdr>Status &amp; Workflow</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Invoice Status</Lbl><Badge s={view.status}/></div>
+            <div><Lbl>Invoice Status</Lbl><Badge s={view.status} sq/></div>
             <div><Lbl>Approval Status</Lbl><Val>{["Confirmed","Posted","Converted to Invoice","Cleared"].includes(view.status)?"Approved":["Submitted","Under Review"].includes(view.status)?"Pending":"—"}</Val></div>
             <div><Lbl>Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
             <div><Lbl>Pre-Invoice ID</Lbl><Val>{view.id}</Val></div>
@@ -1388,27 +1388,30 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
           {view.items&&view.items.length>0&&<>
             <SecHdr>Items ({view.items.length})</SecHdr>
-            <div style={{overflowX:"auto"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:3}}>
+              <table style={{borderCollapse:"collapse",fontSize:12,minWidth:480,width:"100%"}}>
+                <colgroup>
+                  <col style={{width:30}}/><col style={{width:"auto"}}/><col style={{width:110}}/><col style={{width:80}}/><col style={{width:70}}/><col style={{width:90}}/>
+                </colgroup>
                 <thead>
                   <tr style={{background:"#e8f1fb"}}>
                     {["#","Short Text / PO Item","Amount","Quantity","Tax Code","Tax Rate"].map(h=>(
-                      <th key={h} style={{padding:"5px 8px",fontWeight:700,color:"#0854a0",textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right":"left",whiteSpace:"nowrap",borderBottom:"1px solid #c0d4ed",fontSize:11}}>{h}</th>
+                      <th key={h} style={{padding:"6px 8px",fontWeight:700,color:"#0854a0",textAlign:h==="Amount"||h==="Quantity"||h==="Tax Rate"?"right" as const:"left" as const,whiteSpace:"nowrap" as const,borderBottom:"1px solid #c0d4ed",fontSize:11}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {view.items.map((item:any,idx:number)=>(
-                    <tr key={idx} style={{background:idx%2===0?C.card:C.subtle}}>
-                      <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{idx+1}</td>
-                      <td style={{padding:"4px 8px",color:C.t1,fontSize:11}}>
-                        <div style={{fontFamily:"monospace",fontSize:10,color:C.primary}}>{item.poNo||"—"} / {item.poItem||"—"}</div>
-                        <div style={{color:C.t1}}>{item.materialDesc||"—"}</div>
+                    <tr key={idx} style={{background:idx%2===0?C.card:C.subtle,borderBottom:`1px solid ${C.border}`}}>
+                      <td style={{padding:"5px 8px",color:C.t2,fontSize:11,textAlign:"center" as const}}>{idx+1}</td>
+                      <td style={{padding:"5px 8px",color:C.t1,fontSize:11}}>
+                        <div style={{fontFamily:"monospace",fontSize:10,color:C.primary,marginBottom:1}}>{item.poNo||"—"} / {item.poItem||"—"}</div>
+                        <div style={{color:C.t1,fontSize:12}}>{item.materialDesc||"—"}</div>
                       </td>
-                      <td style={{padding:"4px 8px",textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600,color:C.t1,fontSize:11}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),view.currency)}</td>
-                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t1,fontSize:11}}>{item.qty??""} {item.uom||""}</td>
-                      <td style={{padding:"4px 8px",color:C.t2,fontSize:11}}>{item.vatCode||"—"}</td>
-                      <td style={{padding:"4px 8px",textAlign:"right",color:C.t2,fontSize:11}}>11.000%(VST)</td>
+                      <td style={{padding:"5px 8px",textAlign:"right" as const,fontVariantNumeric:"tabular-nums" as const,fontWeight:600,color:C.t1,fontSize:11,whiteSpace:"nowrap" as const}}>{fmtAmt((item.unitPrice||0)*(item.qty||0),view.currency)}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right" as const,color:C.t1,fontSize:11,whiteSpace:"nowrap" as const}}>{item.qty??""} {item.uom||""}</td>
+                      <td style={{padding:"5px 8px",color:C.t2,fontSize:11,fontFamily:"monospace"}}>{item.vatCode||"—"}</td>
+                      <td style={{padding:"5px 8px",textAlign:"right" as const,color:C.t2,fontSize:11,whiteSpace:"nowrap" as const}}>11.000%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2240,7 +2243,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
           </div>
           <div style={{paddingRight:20,borderRight:`1px solid ${C.border}`,marginRight:20}}>
             <Lbl>Invoice Status</Lbl>
-            <Badge s={view.status}/>
+            <Badge s={view.status} sq/>
           </div>
           <div>
             <Lbl>Document Type</Lbl>
@@ -2283,7 +2286,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
 
           <SecHdr>Status &amp; Workflow</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Invoice Status</Lbl><Badge s={view.status}/></div>
+            <div><Lbl>Invoice Status</Lbl><Badge s={view.status} sq/></div>
             <div><Lbl>Approval Status</Lbl><Val>{["Confirmed","Posted","Converted to Invoice","Cleared"].includes(view.status)?"Approved":["Submitted","Under Review"].includes(view.status)?"Pending":"—"}</Val></div>
             <div><Lbl>Submission Date</Lbl><Val>{view.submittedAt?fmtDate(view.submittedAt):"—"}</Val></div>
             <div><Lbl>Pre-Invoice ID</Lbl><Val>{view.id}</Val></div>
