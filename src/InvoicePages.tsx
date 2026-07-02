@@ -1036,6 +1036,8 @@ const INV_STATUS_OPTS=[
   {key:"Converted to Invoice",label:"Converted to Invoice"},{key:"Cleared",label:"Cleared"},{key:"Rejected",label:"Rejected"},
 ].map(o=>({key:o.key,text:o.label}));
 const CURRENCY_OPTS=CURRENCIES.map(c=>({key:c.v,text:c.v}));
+const COMPANY_CODE_OPTS=COMPANY_CODES.map(c=>({key:c.v,text:`${c.v} – ${c.l}`}));
+const VENDOR_OPTS=Object.values(VENDORS).map((v:any)=>({key:v.id,text:v.name}));
 const COL_DEFS = [
   {key:"status",       label:"Status",        defW:165},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
@@ -1683,7 +1685,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset} onAdaptFilters={()=>setAdaptOpen(true)} adaptFiltersCount={visibleFields.size}>
         {visibleFields.has("invoiceNo")&&<FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>}
         {visibleFields.has("companyCode")&&<FField label="Company Code">
-          <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
+          <FilterMultiComboBox opts={COMPANY_CODE_OPTS} value={draft.companyCodes} onChange={v=>setDraft(d=>({...d,companyCodes:v}))} placeholder="All Company Codes"/>
         </FField>}
         {visibleFields.has("status")&&<FField label="Status">
           <FilterMultiComboBox opts={INV_STATUS_OPTS} value={draft.statuses} onChange={v=>setDraft(d=>({...d,statuses:v}))} placeholder="All Statuses"/>
@@ -2649,10 +2651,10 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
       <FioriBar activeTokens={tokens} onGo={go} onReset={reset} onAdaptFilters={()=>setAdaptOpen(true)} adaptFiltersCount={visibleFields.size}>
         {visibleFields.has("invoiceNo")&&<FField label="Invoice No."><MultiValueInp fieldTitle="Invoice No." conditions={draft.invoiceNoConds} onChange={v=>sd("invoiceNoConds",v)}/></FField>}
         {visibleFields.has("vendor")&&<FField label="Vendor">
-          <ValueHelpInp selected={draft.vendorIds} getLabel={k=>VENDORS[k]?.name||k} onOpen={()=>setVhOpen("vendor")} placeholder="All Vendors"/>
+          <FilterMultiComboBox opts={VENDOR_OPTS} value={draft.vendorIds} onChange={v=>setDraft(d=>({...d,vendorIds:v}))} placeholder="All Vendors"/>
         </FField>}
         {visibleFields.has("companyCode")&&<FField label="Company Code">
-          <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
+          <FilterMultiComboBox opts={COMPANY_CODE_OPTS} value={draft.companyCodes} onChange={v=>setDraft(d=>({...d,companyCodes:v}))} placeholder="All Company Codes"/>
         </FField>}
         {visibleFields.has("status")&&<FField label="Status">
           <FilterMultiComboBox opts={INV_STATUS_OPTS} value={draft.statuses} onChange={v=>setDraft(d=>({...d,statuses:v}))} placeholder="All Statuses"/>
