@@ -5,7 +5,7 @@ import {
   mob, g2, g4, pg,
   Badge, StatusTag, Btn, Inp, AmtInp, DateInp, Ui5DatePicker, Sel, TA, Lbl, Val, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
-  ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox,
+  ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox, FilterMultiComboBox,
 } from "./shared";
 
 // ── PO Mock Master Data ────────────────────────────────────────
@@ -1030,6 +1030,12 @@ const InvoiceStatusIcon = ({s}) => {
 
 // ── Column Settings Popup ──────────────────────────────────────
 const fmtInvType=(t:string)=>t==="Supplier DPR"?"Down Payment Req":(t||"Invoice");
+const INV_STATUS_OPTS=[
+  {key:"Draft",label:"Draft"},{key:"Submitted",label:"Submitted"},{key:"Under Review",label:"Under Review"},
+  {key:"Confirmed",label:"Confirmed"},{key:"Posted",label:"Posted"},
+  {key:"Converted to Invoice",label:"Converted to Invoice"},{key:"Cleared",label:"Cleared"},{key:"Rejected",label:"Rejected"},
+].map(o=>({key:o.key,text:o.label}));
+const CURRENCY_OPTS=CURRENCIES.map(c=>({key:c.v,text:c.v}));
 const COL_DEFS = [
   {key:"status",       label:"Status",        defW:165},
   {key:"invoiceNo",    label:"Invoice No.",   defW:200},
@@ -1656,10 +1662,10 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
           <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
         </FField>}
         {visibleFields.has("status")&&<FField label="Status">
-          <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
+          <FilterMultiComboBox opts={INV_STATUS_OPTS} value={draft.statuses} onChange={v=>setDraft(d=>({...d,statuses:v}))} placeholder="All Statuses"/>
         </FField>}
         {visibleFields.has("currency")&&<FField label="Currency">
-          <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
+          <FilterMultiComboBox opts={CURRENCY_OPTS} value={draft.currencies} onChange={v=>setDraft(d=>({...d,currencies:v}))} placeholder="All Currencies"/>
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="e.g. 4500001234"/></FField>}
@@ -2602,10 +2608,10 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
           <ValueHelpInp selected={draft.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen("companyCode")} placeholder="All Company Codes"/>
         </FField>}
         {visibleFields.has("status")&&<FField label="Status">
-          <ValueHelpInp selected={draft.statuses} getLabel={k=>k} onOpen={()=>setVhOpen("status")} placeholder="All Statuses"/>
+          <FilterMultiComboBox opts={INV_STATUS_OPTS} value={draft.statuses} onChange={v=>setDraft(d=>({...d,statuses:v}))} placeholder="All Statuses"/>
         </FField>}
         {visibleFields.has("currency")&&<FField label="Currency">
-          <ValueHelpInp selected={draft.currencies} getLabel={k=>k} onOpen={()=>setVhOpen("currency")} placeholder="All Currencies"/>
+          <FilterMultiComboBox opts={CURRENCY_OPTS} value={draft.currencies} onChange={v=>setDraft(d=>({...d,currencies:v}))} placeholder="All Currencies"/>
         </FField>}
         {visibleFields.has("invoiceDate")&&<FField label="Invoice Date Range"><DateRangePicker from={draft.dateFrom} to={draft.dateTo} onChange={(f,t)=>{sd("dateFrom",f);sd("dateTo",t);}}/></FField>}
         {visibleFields.has("poNumber")&&<FField label="PO Number"><Inp value={draft.poNumbers[0]||""} onChange={e=>setDraft(d=>({...d,poNumbers:e?[e]:[]}))} placeholder="PO Number" /></FField>}

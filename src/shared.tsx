@@ -1639,6 +1639,52 @@ const INV_TYPE_OPTS = [
   {key:"Invoice",      text:"Invoice"},
   {key:"Supplier DPR", text:"Down Payment Req"},
 ];
+
+// Generic inline multi-select combobox — same visual style as InvTypeMultiComboBox
+export const FilterMultiComboBox = ({opts,value=[],onChange,placeholder="All"}:{opts:{key:string,text:string}[],value:string[],onChange:(v:string[])=>void,placeholder?:string}) => {
+  const [open,setOpen]=useState(false);
+  const ref=useRef<any>(null);
+  useEffect(()=>{
+    if(!open)return;
+    const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const toggle=(key:string)=>{const next=value.includes(key)?value.filter(v=>v!==key):[...value,key];onChange(next);};
+  const remove=(key:string,e:React.MouseEvent)=>{e.stopPropagation();onChange(value.filter(v=>v!==key));};
+  return(
+    <div ref={ref} style={{position:"relative" as const,fontFamily:"'72','72full',Arial,Helvetica,sans-serif"}}>
+      <div onClick={()=>setOpen(p=>!p)} style={{display:"flex",flexWrap:"wrap" as const,alignItems:"center",gap:4,minHeight:"2.25rem",padding:"3px 28px 3px 6px",border:`1px solid ${open?C.primary:C.fieldBorder}`,borderRadius:2,background:C.field,cursor:"pointer",position:"relative" as const,boxSizing:"border-box" as const,boxShadow:open?`0 0 0 2px ${C.primary}22`:"none",transition:"border-color .1s"}}>
+        {value.length===0&&<span style={{color:C.t2,fontSize:14,padding:"2px 2px"}}>{placeholder}</span>}
+        {value.map(k=>{
+          const opt=opts.find(o=>o.key===k);
+          return(
+            <span key={k} style={{display:"inline-flex",alignItems:"center",height:22,background:C.selection,border:`1px solid ${C.primary}55`,borderRadius:2,padding:"0 0 0 8px",fontSize:12,color:C.t1,lineHeight:1}}>
+              {opt?.text||k}
+              <button onClick={e=>remove(k,e)} style={{background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:15,padding:"0 5px",lineHeight:1,display:"flex",alignItems:"center"}}>{"×"}</button>
+            </span>
+          );
+        })}
+        <span style={{position:"absolute" as const,right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none" as const}}>
+          <SapIcon name="slim-arrow-down" size={12} color={C.t2}/>
+        </span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute" as const,top:"calc(100% + 2px)",left:0,right:0,zIndex:1000,background:C.card,border:`1px solid ${C.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",overflow:"hidden",maxHeight:220,overflowY:"auto" as const}}>
+          {opts.map(opt=>(
+            <div key={opt.key} onClick={()=>toggle(opt.key)}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",background:value.includes(opt.key)?C.selection:"transparent",fontSize:14,color:C.t1}}
+              onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
+              onMouseLeave={e=>(e.currentTarget.style.background=value.includes(opt.key)?C.selection:"transparent")}>
+              <input type="checkbox" readOnly checked={value.includes(opt.key)} style={{width:16,height:16,cursor:"pointer",accentColor:C.primary,flexShrink:0}}/>
+              <span>{opt.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 export const InvTypeMultiComboBox = ({value=[],onChange}:{value:string[],onChange:(v:string[])=>void}) => {
   const [open,setOpen]=useState(false);
   const ref=useRef<any>(null);
@@ -1844,12 +1890,12 @@ export const ValueHelpDialog = ({title,cols,rows,keyField="v",labelField="l",sel
 
 export const ValueHelpInp = ({selected=[],getLabel,onOpen,placeholder="Select…"}:{selected:string[],getLabel:(k:string)=>string,onOpen:()=>void,placeholder?:string}) => (
   <div onClick={onOpen} style={{position:"relative",display:"flex",alignItems:"center",minHeight:36,border:`1px solid ${C.fieldBorder}`,borderRadius:2,background:C.field,padding:"2px 28px 2px 6px",flexWrap:"wrap",gap:3,cursor:"pointer"}}>
-    {selected.length===0&&<span style={{color:"#bfbfbf",fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
+    {selected.length===0&&<span style={{color:C.t2,fontSize:12,padding:"1px 2px"}}>{placeholder}</span>}
     {selected.map(k=>(
       <span key={k} style={{display:"inline-flex",alignItems:"center",background:C.selection,border:`1px solid ${C.info}44`,borderRadius:10,padding:"1px 7px",fontSize:11,color:C.info,whiteSpace:"nowrap"}}>{getLabel(k)}</span>
     ))}
     <button onClick={e=>{e.stopPropagation();onOpen();}} style={{position:"absolute",right:2,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:2,display:"flex",alignItems:"center"}}>
-      <SapIcon name="value-help" size={14} color="#6a6d70"/>
+      <SapIcon name="value-help" size={14} color={C.t2}/>
     </button>
   </div>
 );
