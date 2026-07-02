@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  C, VENDORS, COMPANY_CODES, CURRENCIES, ccName,
+  C, VENDORS, COMPANY_CODES, CURRENCIES, ccName, PURCHASING_GROUPS,
   fmtDate, idr, uid, pg, mob,
   g2, g3,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
@@ -8,10 +8,27 @@ import {
   ValueHelpInp, ValueHelpDialog, DateRangePicker, DatePickerInp,
 } from "./shared";
 
+const PAYMENT_TERMS = [
+  {v:"Net 14 Days",l:"Net 14 Days"},{v:"Net 30 Days",l:"Net 30 Days"},{v:"Net 45 Days",l:"Net 45 Days"},
+  {v:"Net 60 Days",l:"Net 60 Days"},{v:"Net 90 Days",l:"Net 90 Days"},{v:"30/2 Net 60",l:"30/2 Net 60 (2% Early Pay)"},
+  {v:"COD",l:"Cash on Delivery"},{v:"Advance 50%",l:"50% Advance, 50% on Delivery"},{v:"Advance 100%",l:"100% Advance Payment"},
+];
+const INCOTERMS = [
+  {v:"EXW",l:"EXW – Ex Works"},{v:"FCA",l:"FCA – Free Carrier"},{v:"CPT",l:"CPT – Carriage Paid To"},
+  {v:"CIP",l:"CIP – Carriage & Insurance Paid"},{v:"DAP",l:"DAP – Delivered at Place"},{v:"DPU",l:"DPU – Delivered at Place Unloaded"},
+  {v:"DDP",l:"DDP – Delivered Duty Paid"},{v:"FAS",l:"FAS – Free Alongside Ship"},{v:"FOB",l:"FOB – Free on Board"},
+  {v:"CFR",l:"CFR – Cost & Freight"},{v:"CIF",l:"CIF – Cost, Insurance & Freight"},
+  {v:"N/A – Service Contract",l:"N/A – Service Contract"},{v:"N/A – Rental Contract",l:"N/A – Rental Contract"},{v:"N/A – Professional Service",l:"N/A – Professional Service"},
+];
+const pgLabel = code => { const p = PURCHASING_GROUPS.find(x=>x.v===code); return p ? `${p.v} – ${p.l}` : (code||"—"); };
+const VDR_COLORS = ["#0a6ed1","#107e3e","#8b5cf6","#d97706","#dc2626","#0891b2"];
+
 // ── Quotation Form Modal ───────────────────────────────────────
 export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
   const [f,setF]=useState(qt?{...qt}:{
     rfqId:rfq.id,rfqTitle:rfq.title,vendorId,vendorName,submittedDate:"",validUntil:"",notes:"",status:"Draft",files:[],
+    salesPerson:"",purchGroup:"",termsOfPayment:"",deliveryTerms:"",leadTime:"",warrantyPeriod:"",
+    priceConditions:{discount:0,surcharge:0,freight:0,insurance:0},
     totalAmt:rfq.items.reduce((s,i)=>s+i.estPrice*i.qty,0),
     items:rfq.items.map(i=>({...i,unitPrice:i.estPrice,total:i.estPrice*i.qty})),
   });
@@ -48,7 +65,27 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
           ))}</tbody>
         </table>
       </div>
-      <div style={{marginBottom:14}}><Lbl>Notes / Commercial Terms</Lbl><TA value={f.notes} onChange={v=>s("notes",v)} placeholder="Delivery terms, warranty, payment terms…"/></div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.8,marginBottom:8,paddingBottom:4,borderBottom:`1px solid ${C.border}`}}>Commercial Terms</div>
+        <div style={{display:"grid",gridTemplateColumns:g2(),gap:10,marginBottom:10}}>
+          <div><Lbl>Sales Person / Contact</Lbl><Inp value={f.salesPerson||""} onChange={v=>s("salesPerson",v)} placeholder="Contact name"/></div>
+          <div><Lbl>Purchasing Group</Lbl><Sel value={f.purchGroup||""} onChange={v=>s("purchGroup",v)} opts={[{v:"",l:"— Select —"},...PURCHASING_GROUPS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></div>
+          <div><Lbl>Terms of Payment</Lbl><Sel value={f.termsOfPayment||""} onChange={v=>s("termsOfPayment",v)} opts={[{v:"",l:"— Select —"},...PAYMENT_TERMS]}/></div>
+          <div><Lbl>Delivery Terms (Incoterms)</Lbl><Sel value={f.deliveryTerms||""} onChange={v=>s("deliveryTerms",v)} opts={[{v:"",l:"— Select —"},...INCOTERMS]}/></div>
+          <div><Lbl>Lead Time</Lbl><Inp value={f.leadTime||""} onChange={v=>s("leadTime",v)} placeholder="e.g. 14 days"/></div>
+          <div><Lbl>Warranty Period</Lbl><Inp value={f.warrantyPeriod||""} onChange={v=>s("warrantyPeriod",v)} placeholder="e.g. 1 year"/></div>
+        </div>
+        <div style={{background:C.subtle,borderRadius:5,padding:"10px 12px",marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:8}}>Price Conditions</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10}}>
+            <div><Lbl>Discount (%)</Lbl><AmtInp value={f.priceConditions?.discount||0} onChange={v=>s("priceConditions",{...f.priceConditions,discount:Number(v)})}/></div>
+            <div><Lbl>Surcharge (%)</Lbl><AmtInp value={f.priceConditions?.surcharge||0} onChange={v=>s("priceConditions",{...f.priceConditions,surcharge:Number(v)})}/></div>
+            <div><Lbl>Freight Cost (IDR)</Lbl><AmtInp value={f.priceConditions?.freight||0} onChange={v=>s("priceConditions",{...f.priceConditions,freight:Number(v)})}/></div>
+            <div><Lbl>Insurance (IDR)</Lbl><AmtInp value={f.priceConditions?.insurance||0} onChange={v=>s("priceConditions",{...f.priceConditions,insurance:Number(v)})}/></div>
+          </div>
+        </div>
+      </div>
+      <div style={{marginBottom:14}}><Lbl>Notes</Lbl><TA value={f.notes} onChange={v=>s("notes",v)} placeholder="Additional notes…"/></div>
       <div style={{padding:12,background:C.subtle,borderRadius:6,border:`1px dashed ${C.border}`}}>
         <Lbl>Attachments</Lbl>
         {(f.files||[]).map((a,i)=>(
@@ -830,6 +867,134 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   );
 };
 
+// ── Quotation Compare Modal ────────────────────────────────────
+const QuotationCompareModal = ({rfq, quotations, onClose}) => {
+  const calcNet = qt => {
+    const pc = qt.priceConditions||{};
+    const sub = qt.totalAmt;
+    return sub - sub*(pc.discount||0)/100 + sub*(pc.surcharge||0)/100 + (pc.freight||0) + (pc.insurance||0);
+  };
+  const nets = quotations.map(calcNet);
+  const bestNet = Math.min(...nets);
+  const itemBestPrice = (rfq.items||[]).map((_,ii)=>{
+    const prices = quotations.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));
+    return prices.length ? Math.min(...prices) : null;
+  });
+  const LABEL_W = 220;
+  const COL_W = Math.max(190, Math.floor(880/quotations.length));
+  const SectionHdr = ({title}) => (
+    <tr><td colSpan={quotations.length+1} style={{padding:"7px 14px",background:C.subtle,fontWeight:700,fontSize:10,color:C.t2,textTransform:"uppercase",letterSpacing:.8,borderTop:`2px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>{title}</td></tr>
+  );
+  const Row = ({label, vals, fmt=null, bestVal=null, bold=false, sub=false}:any) => (
+    <tr style={{borderBottom:`1px solid ${C.border}`}}>
+      <td style={{padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,background:C.card,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,whiteSpace:"nowrap",paddingLeft:sub?24:14}}>{label}</td>
+      {vals.map((v,i)=>{
+        const isBest = bestVal!=null && v===bestVal && quotations.length>1;
+        return (
+          <td key={i} style={{padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.card,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+            {fmt ? fmt(v) : (v||"—")}
+            {isBest && <span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}
+          </td>
+        );
+      })}
+    </tr>
+  );
+  return (
+    <Modal title={`Quotation Comparison · ${rfq.title}`} onClose={onClose} width="90vw">
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {quotations.map((qt,i)=>(
+          <div key={qt.id} style={{flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
+            <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
+            <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <Badge s={qt.status}/>
+              <span style={{fontSize:11,fontWeight:700,color:calcNet(qt)===bestNet&&quotations.length>1?C.ok:C.t1}}>{idr(calcNet(qt))}</span>
+              {calcNet(qt)===bestNet&&quotations.length>1&&<span style={{fontSize:10,color:C.ok,fontWeight:700}}>★ Lowest</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:"6px 12px",background:C.infoBg,borderRadius:4,marginBottom:12,fontSize:11,color:C.info,display:"flex",gap:16,flexWrap:"wrap"}}>
+        <span><strong>RFQ:</strong> {rfq.id}</span>
+        <span><strong>Category:</strong> {rfq.cat}</span>
+        <span><strong>Purch. Org:</strong> {rfq.purchOrg||"—"}</span>
+        <span><strong>Purch. Group:</strong> {pgLabel(rfq.purchGroup)}</span>
+        <span><strong>Company:</strong> {rfq.companyCode||"—"}</span>
+        <span><strong>Plant:</strong> {rfq.plant||"—"}</span>
+        <span><strong>Est. Budget:</strong> {idr(rfq.estVal)}</span>
+      </div>
+      <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"55vh"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*quotations.length}}>
+          <thead><tr style={{position:"sticky",top:0,zIndex:2}}>
+            <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left",background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,minWidth:LABEL_W}}>Parameter</th>
+            {quotations.map((qt,i)=>(
+              <th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            <SectionHdr title="Vendor Information"/>
+            <Row label="Vendor Number" vals={quotations.map(q=>q.vendorId)}/>
+            <Row label="Vendor Name" vals={quotations.map(q=>q.vendorName)}/>
+            <Row label="Sales Person / Contact" vals={quotations.map(q=>q.salesPerson||"—")}/>
+            <Row label="Quotation ID" vals={quotations.map(q=>q.id)}/>
+            <Row label="Submitted Date" vals={quotations.map(q=>fmtDate(q.submittedDate))}/>
+            <Row label="Valid Until" vals={quotations.map(q=>fmtDate(q.validUntil))}/>
+            <Row label="Status" vals={quotations.map(q=>q.status)}/>
+            <SectionHdr title="Purchasing Details"/>
+            <Row label="Purchasing Organization" vals={quotations.map(()=>rfq.purchOrg||"—")}/>
+            <Row label="Purchasing Group" vals={quotations.map(q=>pgLabel(q.purchGroup||rfq.purchGroup))}/>
+            <SectionHdr title="Commercial Terms"/>
+            <Row label="Terms of Payment" vals={quotations.map(q=>q.termsOfPayment||"—")}/>
+            <Row label="Delivery Terms (Incoterms)" vals={quotations.map(q=>q.deliveryTerms||"—")}/>
+            <Row label="Lead Time" vals={quotations.map(q=>q.leadTime||"—")}/>
+            <Row label="Warranty Period" vals={quotations.map(q=>q.warrantyPeriod||"—")}/>
+            <SectionHdr title="Line Items — Price Comparison"/>
+            {(rfq.items||[]).map((item,ii)=>(
+              <>
+                <tr key={`ih-${ii}`} style={{background:C.infoBg}}>
+                  <td colSpan={quotations.length+1} style={{padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>
+                    {String(item.no).padStart(3,"0")} · {item.desc}<span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span>
+                  </td>
+                </tr>
+                <Row key={`mg-${ii}`} label="Product / Material Group" vals={quotations.map(q=>q.items?.[ii]?.materialGroup||item.materialGroup||"—")} sub/>
+                <Row key={`up-${ii}`} label="Unit Price (IDR)" vals={quotations.map(q=>q.items?.[ii]?.unitPrice||0)} fmt={v=>idr(v)} bestVal={itemBestPrice[ii]} bold sub/>
+                <Row key={`tot-${ii}`} label="Item Total (IDR)" vals={quotations.map(q=>q.items?.[ii]?.total||0)} fmt={v=>idr(v)} sub/>
+              </>
+            ))}
+            <SectionHdr title="Price Conditions & Summary"/>
+            <Row label="Subtotal" vals={quotations.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
+            <Row label="Discount (%)" vals={quotations.map(q=>`${q.priceConditions?.discount||0}%`)}/>
+            <Row label="Discount Amount" vals={quotations.map(q=>q.totalAmt*(q.priceConditions?.discount||0)/100)} fmt={v=>v>0?`(${idr(v)})`:"—"} sub/>
+            <Row label="Surcharge (%)" vals={quotations.map(q=>`${q.priceConditions?.surcharge||0}%`)}/>
+            <Row label="Surcharge Amount" vals={quotations.map(q=>q.totalAmt*(q.priceConditions?.surcharge||0)/100)} fmt={v=>v>0?idr(v):"—"} sub/>
+            <Row label="Freight Cost" vals={quotations.map(q=>q.priceConditions?.freight||0)} fmt={v=>v>0?idr(v):"—"}/>
+            <Row label="Insurance Cost" vals={quotations.map(q=>q.priceConditions?.insurance||0)} fmt={v=>v>0?idr(v):"—"}/>
+            <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
+              <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
+              {quotations.map((qt,i)=>{
+                const net=nets[i]; const isBest=net===bestNet&&quotations.length>1;
+                return (
+                  <td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+                    {idr(net)}
+                    {isBest&&<div style={{fontSize:10,color:C.ok,fontWeight:700,marginTop:2}}>★ Recommended (Lowest Net)</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style={{marginTop:12,padding:"10px 14px",background:C.subtle,borderRadius:4,fontSize:11,color:C.t2}}>
+        <strong style={{color:C.t1}}>💡 Other suggested evaluation criteria (not automated):</strong>
+        {" "}TKDN / Local Content %, ISO & SNI Certification, After-Sales Support SLA, Vendor Track Record & References, Financial Health (Bonafide Score), HSE Compliance Record, Delivery Reliability History, ESG Rating.
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:12}}>
+        <Btn v="neutral" onClick={onClose}>Close</Btn>
+      </div>
+    </Modal>
+  );
+};
+
 // ── BRM RFQ Mgmt ───────────────────────────────────────────────
 // Status indicator — all 4 shapes in a row; active = filled color, inactive = grey fill + dark outline
 const RfqStatusIcon = ({s}) => {
@@ -879,6 +1044,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
+  const [compareData,setCompareData]=useState<any>(null);
   const [allExpanded,setAllExpanded]=useState(false);
   const [detailRfq,setDetailRfq]=useState<any>(null);
   const [rfqTab,setRfqTab]=useState("general");
@@ -928,7 +1094,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     applied.estValMax&&{label:"Est. Value ≤",val:`IDR ${Number(applied.estValMax).toLocaleString()}`,onClear:()=>clrA2("estValMax")},
   ].filter(Boolean);
 
-  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
+  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",purchGroup:"",
     items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   const sf=(k,v)=>setF(p=>({...p,[k]:v}));
   const list=rfqs
@@ -954,6 +1120,39 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
   const allSel=list.length>0&&list.every(r=>selIds.has(r.id));
   const toggleAll=()=>setSelIds(allSel?new Set():new Set(list.map(r=>r.id)));
   const [showApproval,setShowApproval]=useState(false);
+  const [showPublish,setShowPublish]=useState(false);
+  const VENDOR_EMAILS:Record<string,{name:string,email:string,pic:string,phone:string}> = {
+    "10000001":{name:"PT Maju Bersama",     email:"ap@majubersama.co.id",        pic:"Bapak Andi Surya – Procurement Director",    phone:"+62 21 5555-1234"},
+    "10000002":{name:"CV Sukses Mandiri",   email:"finance@suksesmandiri.co.id", pic:"Ibu Rina Wati – Business Development Manager",phone:"+62 21 5555-5678"},
+  };
+  const EMPTY_PUB={invitationNo:"",invitationDate:new Date().toISOString().split("T")[0],submissionDeadline:"",submissionMethod:"Portal",notes:"",termsAndConditions:"",vendorInvitees:[] as {vendorId:string,name:string,email:string,pic:string,phone:string,include:boolean}[]};
+  const [pubForm,setPubForm]=useState<any>(EMPTY_PUB);
+  const pu=(k,v)=>setPubForm(p=>({...p,[k]:v}));
+  const updateInvitee=(vid,field,val)=>setPubForm(p=>({...p,vendorInvitees:p.vendorInvitees.map((v:any)=>v.vendorId===vid?{...v,[field]:val}:v)}));
+
+  const openPublish=()=>{
+    const sel=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
+    const allTargetIds=[...new Set(sel.flatMap((r:any)=>r.targets||[]))];
+    const today=new Date().toISOString().split("T")[0];
+    const latestClose=sel.map((r:any)=>r.closingDate).sort().reverse()[0]||"";
+    const invNo=sel.length===1?sel[0].id:sel.map((r:any)=>r.id).join(", ");
+    const invitees=allTargetIds.map(vid=>{const ve=VENDOR_EMAILS[vid]||{name:vid,email:"",pic:"",phone:""};return{vendorId:vid,...ve,include:true};});
+    const rfqList=sel.map((r:any)=>`• ${r.id} – ${r.title}`).join("\n");
+    const defaultNotes=`Yth. Tim Pengadaan,\n\nDengan hormat kami mengundang perusahaan Anda untuk berpartisipasi dalam proses pengadaan berikut:\n\n${rfqList}\n\nMohon menyampaikan penawaran harga sesuai dengan spesifikasi yang telah kami lampirkan. Penawaran dapat disubmit melalui BRM Vendor Portal sebelum batas waktu yang ditentukan.\n\nHormat kami,\nTim Pengadaan BRM Group`;
+    const defaultTnc=`1. Penawaran harus disampaikan dalam format PDF melalui BRM Vendor Portal.\n2. Penawaran yang disampaikan setelah batas waktu tidak akan diproses.\n3. Harga penawaran harus dalam IDR dan sudah termasuk pajak (PPN 11%).\n4. Masa berlaku penawaran minimal 60 hari kalender sejak tanggal pengiriman.\n5. BRM Group berhak untuk menerima atau menolak penawaran tanpa memberikan alasan.\n6. Vendor wajib menjaga kerahasiaan dokumen pengadaan ini.\n7. Informasi lebih lanjut dapat menghubungi Procurement Team melalui portal.`;
+    setPubForm({invitationNo:invNo,invitationDate:today,submissionDeadline:latestClose,submissionMethod:"Portal",notes:defaultNotes,termsAndConditions:defaultTnc,vendorInvitees:invitees});
+    setShowPublish(true);
+  };
+
+  const submitPublish=()=>{
+    const activeInvitees=pubForm.vendorInvitees.filter((v:any)=>v.include);
+    if(activeInvitees.length===0){alert("Please include at least one vendor.");return;}
+    const today=new Date().toISOString().split("T")[0];
+    const sel=[...selIds];
+    setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Open",publishedAt:today,invitationNo:pubForm.invitationNo,publishNotes:pubForm.notes}:r));
+    setShowPublish(false);setPubForm(EMPTY_PUB);setSelIds(new Set());
+  };
+
   const COMMITTEE_GROUPS={
     "Bulk Material":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Budi Santoso",role:"Member"},{name:"Dewi Rahayu",role:"Member"},{name:"Eko Prasetyo",role:"Secretary"},{name:"Farida Hanum",role:"Member"}],
     "Civil":[{name:"Ahmad Rizki",role:"Chairperson"},{name:"Gunawan Setiawan",role:"Member"},{name:"Hendra Wijaya",role:"Member"},{name:"Indah Pertiwi",role:"Secretary"},{name:"Joko Susilo",role:"Member"}],
@@ -982,7 +1181,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Created",estVal:Number(f.estVal),
       items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
     setForm(false);
-    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
+    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",purchGroup:"",
       items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   };
 
@@ -1085,8 +1284,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
             const allCreated=selList.length>0&&selList.every(r=>r.status==="Created");
             const allComplete=selList.length>0&&selList.every(r=>r.status==="Complete");
+            const canCompare=selList.length===1&&getQts(selList[0].id).length>0;
             return(<>
-              <button onClick={()=>{if(!allCreated)return;if(!window.confirm(`Publish ${selList.length} RFQ(s) to vendors?\n\n${selList.map(r=>r.id).join(", ")}\n\nVendors will be notified and can start submitting quotations.`))return;const today=new Date().toISOString().split("T")[0];setRfqs(p=>p.map(r=>selList.find(s=>s.id===r.id)?{...r,status:"Open",publishedAt:today}:r));setSelIds(new Set());}} disabled={!allCreated}
+              <button onClick={()=>{if(!allCreated)return;openPublish();}} disabled={!allCreated}
                 style={{background:allCreated?"#107e3e":C.subtle,border:`1px solid ${allCreated?"transparent":C.border}`,color:allCreated?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allCreated?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allCreated?1:0.6,transition:"all .15s"}}
                 title={selIds.size===0?"Select RFQ(s) first":!allCreated?"Only 'Created' RFQs can be published to vendors":""}>
                 <SapIcon name="paper-plane" size={13} color={allCreated?"#fff":C.t2}/> Publish{selList.length>0&&allCreated?` (${selList.length})`:""}
@@ -1095,6 +1295,11 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                 style={{background:allComplete?C.primary:C.subtle,border:`1px solid ${allComplete?"transparent":C.border}`,color:allComplete?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allComplete?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allComplete?1:0.6,transition:"all .15s"}}
                 title={selIds.size===0?"Select RFQ(s) first":!allComplete?"Only 'Complete' RFQs can be sent for approval":""}>
                 <SapIcon name="workflow-tasks" size={13} color={allComplete?"#fff":C.t2}/> Send for Approval{selList.length>0&&allComplete?` (${selList.length})`:""}
+              </button>
+              <button onClick={()=>{if(!canCompare)return;const rfq=selList[0];setCompareData({rfq,quotations:getQts(rfq.id)});}} disabled={!canCompare}
+                style={{background:canCompare?"#6f2da8":C.subtle,border:`1px solid ${canCompare?"transparent":C.border}`,color:canCompare?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canCompare?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canCompare?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ to compare":getQts(selList[0]?.id||"").length===0?"No quotations received for this RFQ":""}>
+                <SapIcon name="compare" size={13} color={canCompare?"#fff":C.t2}/> Compare Quotations
               </button>
             </>);
           })()}
@@ -1213,10 +1418,15 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                   ))}
                   {qts.length>0&&(
                     <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Received Quotations</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Received Quotations ({qts.length})</div>
+                        <div onClick={e=>e.stopPropagation()}>
+                          <Btn sm v="ghost" onClick={()=>setCompareData({rfq,quotations:qts})}>⊞ Compare Quotations</Btn>
+                        </div>
+                      </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                        {qts.map(qt=>(
-                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                        {qts.map((qt,qi)=>(
+                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderLeft:`3px solid ${VDR_COLORS[qi%VDR_COLORS.length]}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
                             <span style={{fontWeight:600}}>{qt.vendorName}</span>
                             <span style={{color:C.t2}}>·</span>
                             <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
@@ -1238,6 +1448,119 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
       </div>
       </div>
 
+
+      {showPublish&&(
+        <Modal title="Publish RFQ — Vendor Invitation" onClose={()=>{setShowPublish(false);setPubForm(EMPTY_PUB);}} width={700}>
+          <div style={{display:"flex",flexDirection:"column",gap:18,padding:"4px 0"}}>
+
+            {/* Selected RFQs summary */}
+            <div style={{background:"#e8f0fe",border:"1px solid #b3c8f5",borderRadius:6,padding:"10px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
+              <SapIcon name="information" size={16} color="#0057D2"/>
+              <div style={{fontSize:12.5,color:"#0057D2",lineHeight:1.6}}>
+                <b>Publishing {[...selIds].length} RFQ(s) to vendors.</b> Invited vendors will be notified via email and can immediately submit quotations through the portal.
+                <div style={{marginTop:4,color:"#1a56c4"}}>
+                  {[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean).map((r:any)=>(
+                    <span key={r.id} style={{display:"inline-flex",alignItems:"center",gap:4,background:"#c5d9f8",borderRadius:3,padding:"1px 7px",marginRight:5,marginTop:2,fontSize:11.5,fontWeight:600}}>{r.id} – {r.title}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Invitation Details */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>Invitation Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 18px"}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.t2,marginBottom:3}}>Invitation Reference No.</div>
+                  <Inp value={pubForm.invitationNo} onChange={v=>pu("invitationNo",v)} placeholder="e.g. BRM-INV-20250701-01"/>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.t2,marginBottom:3}}>Invitation Date</div>
+                  <DateInp value={pubForm.invitationDate} onChange={v=>pu("invitationDate",v)}/>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.t2,marginBottom:3}}>Submission Deadline</div>
+                  <DateInp value={pubForm.submissionDeadline} onChange={v=>pu("submissionDeadline",v)}/>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.t2,marginBottom:3}}>Submission Method</div>
+                  <Sel value={pubForm.submissionMethod} onChange={v=>pu("submissionMethod",v)}
+                    opts={["Portal","Email","Portal + Hard Copy","Hard Copy Only"].map(x=>({v:x,l:x}))}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Vendor Invitation List */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>
+                Vendor Invitation List
+              </div>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5}}>
+                <thead>
+                  <tr style={{background:C.subtle}}>
+                    <th style={{padding:"6px 8px",textAlign:"left",fontWeight:600,color:C.t2,borderBottom:`1px solid ${C.border}`,width:30}}></th>
+                    <th style={{padding:"6px 8px",textAlign:"left",fontWeight:600,color:C.t2,borderBottom:`1px solid ${C.border}`}}>Vendor Name</th>
+                    <th style={{padding:"6px 8px",textAlign:"left",fontWeight:600,color:C.t2,borderBottom:`1px solid ${C.border}`}}>Contact Person</th>
+                    <th style={{padding:"6px 8px",textAlign:"left",fontWeight:600,color:C.t2,borderBottom:`1px solid ${C.border}`}}>Email Address</th>
+                    <th style={{padding:"6px 8px",textAlign:"left",fontWeight:600,color:C.t2,borderBottom:`1px solid ${C.border}`,width:30}}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pubForm.vendorInvitees.map((v:any,i:number)=>(
+                    <tr key={v.vendorId||i} style={{borderBottom:`1px solid ${C.border}`,opacity:v.include?1:0.45}}>
+                      <td style={{padding:"5px 8px",textAlign:"center"}}>
+                        <input type="checkbox" checked={v.include} onChange={e=>updateInvitee(v.vendorId,"include",e.target.checked)} style={{cursor:"pointer"}}/>
+                      </td>
+                      <td style={{padding:"5px 8px",fontWeight:600,color:C.t1}}>{v.name}</td>
+                      <td style={{padding:"5px 8px"}}>
+                        <input value={v.pic} onChange={e=>updateInvitee(v.vendorId,"pic",e.target.value)}
+                          style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:3,padding:"3px 7px",fontSize:12,background:C.field,color:C.t1,fontFamily:"inherit"}}/>
+                      </td>
+                      <td style={{padding:"5px 8px"}}>
+                        <input value={v.email} onChange={e=>updateInvitee(v.vendorId,"email",e.target.value)}
+                          style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:3,padding:"3px 7px",fontSize:12,background:C.field,color:C.t1,fontFamily:"inherit"}}/>
+                      </td>
+                      <td style={{padding:"5px 8px",textAlign:"center"}}>
+                        <button onClick={()=>setPubForm(p=>({...p,vendorInvitees:p.vendorInvitees.filter((_:any,j:number)=>j!==i)}))}
+                          style={{background:"none",border:"none",cursor:"pointer",color:"#BB0000",fontSize:15,lineHeight:1}} title="Remove">×</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Add row */}
+                  <tr>
+                    <td colSpan={5} style={{padding:"6px 8px"}}>
+                      <button onClick={()=>setPubForm(p=>({...p,vendorInvitees:[...p.vendorInvitees,{vendorId:`ext-${Date.now()}`,name:"",email:"",pic:"",phone:"",include:true}]}))}
+                        style={{background:"none",border:`1px dashed ${C.border}`,borderRadius:4,padding:"4px 12px",fontSize:12,color:C.primary,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
+                        <SapIcon name="add" size={12} color={C.primary}/> Add Vendor
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Buyer Notes / Cover Letter */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:6}}>Buyer Notes / Cover Letter</div>
+              <TA value={pubForm.notes} onChange={v=>pu("notes",v)} rows={6} placeholder="Enter cover letter or notes for vendors..."/>
+            </div>
+
+            {/* Terms & Conditions */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:6}}>Terms &amp; Conditions</div>
+              <TA value={pubForm.termsAndConditions} onChange={v=>pu("termsAndConditions",v)} rows={5} placeholder="Enter terms and conditions..."/>
+            </div>
+
+            {/* Footer */}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,paddingTop:6,borderTop:`1px solid ${C.border}`}}>
+              <Btn variant="ghost" onClick={()=>{setShowPublish(false);setPubForm(EMPTY_PUB);}}>Cancel</Btn>
+              <Btn variant="success" onClick={submitPublish}>
+                <SapIcon name="paper-plane" size={13} color="#fff"/> Publish to Vendors
+              </Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showApproval&&(
         <Modal title="Send RFQ for Tender Committee Approval" onClose={()=>{setShowApproval(false);setApvForm(EMPTY_APV);}} width={640}>
@@ -1355,6 +1678,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             <div>
               <Lbl>Purchasing Org</Lbl>
               <Sel value={f.purchOrg} onChange={v=>sf("purchOrg",v)} opts={[{v:"",l:"— Select —"},{v:"PO10",l:"PO10 – Procurement Central"},{v:"PO20",l:"PO20 – Procurement Regional"}]}/>
+            </div>
+            <div>
+              <Lbl>Purchasing Group</Lbl>
+              <Sel value={f.purchGroup} onChange={v=>sf("purchGroup",v)} opts={[{v:"",l:"— Select —"},...PURCHASING_GROUPS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
             </div>
             <div style={{gridColumn:"1/-1"}}><Lbl>Estimated Budget (IDR)</Lbl><AmtInp value={f.estVal} onChange={v=>sf("estVal",v)}/></div>
           </div>
@@ -1610,6 +1937,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         );
       })()}
     </>}
+    {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
   </div>
   );
 };
@@ -1631,6 +1959,9 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
   const ALL_RFQ_STATUSES=["Open","On Process","Complete","Pending Approval","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
+
+  const [selIds,setSelIds]=useState(new Set<string>());
+  const [compareData,setCompareData]=useState<any>(null);
 
   // Approve/Reject modal state
   const [actionModal,setActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
@@ -1668,8 +1999,8 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const getQts=rfqId=>quotations.filter(q=>q.rfqId===rfqId);
   const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
 
-  const HDR_COLS=["","Status","SAP RFQ No","RFQ Number","Description","Created Date","Closing Date","Tender Admin","Budget","Co. Code","Quotations"];
-  const [colW,setColW]=useState([32,90,130,115,200,85,90,120,120,60,75]);
+  const HDR_COLS=["","","Status","SAP RFQ No","RFQ Number","Description","Created Date","Closing Date","Tender Admin","Budget","Co. Code","Quotations"];
+  const [colW,setColW]=useState([32,32,90,130,115,200,85,90,120,120,60,75]);
   const _rfqTot=colW.reduce((a,b)=>a+b,0);
   const rfqMinW=_rfqTot;
   const gridCols=colW.map(w=>`${(w/_rfqTot*100).toFixed(3)}%`).join(" ");
@@ -1798,6 +2129,17 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+          {(()=>{
+            const selList=[...selIds].map(id=>list.find(r=>r.id===id)).filter(Boolean);
+            const canCompare=selList.length===1&&getQts(selList[0].id).length>0;
+            return(
+              <button onClick={()=>{if(!canCompare)return;const rfq=selList[0];setCompareData({rfq,quotations:getQts(rfq.id)});}} disabled={!canCompare}
+                style={{background:canCompare?"#6f2da8":C.subtle,border:`1px solid ${canCompare?"transparent":C.border}`,color:canCompare?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canCompare?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canCompare?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ to compare":getQts(selList[0]?.id||"").length===0?"No quotations received for this RFQ":""}>
+                <SapIcon name="compare" size={13} color={canCompare?"#fff":C.t2}/> Compare Quotations
+              </button>
+            );
+          })()}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -1810,7 +2152,12 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
       <div style={{overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`}}>
       <div style={{minWidth:rfqMinW,background:C.card}}>
         <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
-          {HDR_COLS.map((h,i)=>(
+          <div style={{padding:"8px 10px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <input type="checkbox" checked={list.length>0&&list.every(r=>selIds.has(r.id))}
+              onChange={e=>{const s=new Set(selIds);if(e.target.checked)list.forEach(r=>s.add(r.id));else list.forEach(r=>s.delete(r.id));setSelIds(s);}}
+              style={{accentColor:C.primary,cursor:"pointer"}}/>
+          </div>
+          {HDR_COLS.slice(1).map((h,i)=>(
             <div key={i} style={{padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2,whiteSpace:"nowrap",overflow:"hidden",userSelect:"none",display:"flex",alignItems:"center"}}>{h}</div>
           ))}
         </div>
@@ -1820,14 +2167,18 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         {list.map(rfq=>{
           const open=!!expanded[rfq.id];
           const qts=getQts(rfq.id);
-          const rowBg=C.card;
+          const sel=selIds.has(rfq.id);
+          const rowBg=sel?C.selection:C.card;
           const cell=(extra?:any)=>({padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap" as const,...extra});
           const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
           return (
             <div key={rfq.id} style={{borderBottom:`1px solid ${C.border}`}}>
               <div onClick={()=>toggle(rfq.id)} style={{display:"grid",gridTemplateColumns:gridCols,background:rowBg,cursor:"pointer",transition:"background .12s"}}
-                onMouseEnter={e=>e.currentTarget.style.background=C.infoBg}
+                onMouseEnter={e=>e.currentTarget.style.background=sel?C.selection:C.infoBg}
                 onMouseLeave={e=>e.currentTarget.style.background=rowBg}>
+                <div onClick={e=>{e.stopPropagation();const s=new Set(selIds);sel?s.delete(rfq.id):s.add(rfq.id);setSelIds(s);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
+                  <input type="checkbox" checked={sel} onChange={()=>{}} style={{accentColor:C.primary,cursor:"pointer"}}/>
+                </div>
                 <div onClick={e=>{e.stopPropagation();toggle(rfq.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
                   <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                 </div>
@@ -1923,6 +2274,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         })}
       </div>
       </div>
+      {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
     </div>
   );
 };
