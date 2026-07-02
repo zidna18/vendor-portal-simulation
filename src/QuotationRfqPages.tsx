@@ -339,7 +339,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const [vhOpen,setVhOpen]=useState<string|null>(null);
   const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
 
-  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","Approved"];
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","PO Ready"];
   const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
 
   const activeTokens=[
@@ -463,7 +463,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
           selected={draft.statuses} onConfirm={s=>{sd("statuses",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
       )}
 
-      <FilterBar opts={["All","Draft","Submitted","Accepted","Win","Approved","Completed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Draft","Submitted","Accepted","Win","PO Ready","Completed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -634,7 +634,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
             {s:"Submitted",  desc:"Quotation formally sent by supplier to client"},
             {s:"Accepted",   desc:"Quotation confirmed/acknowledged by client"},
             {s:"Win",        desc:"Quotation awarded – approval workflow in progress"},
-            {s:"Approved",   desc:"Approval finalized – ready for PO creation in SAP"},
+            {s:"PO Ready",   desc:"Approval finalized – ready for PO creation in SAP"},
             {s:"Completed",  desc:"Quotation did not win – RFQ has been closed"},
           ].map(({s,desc})=>(
             <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:280}}>
@@ -2403,9 +2403,10 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
           {(()=>{
             const selList=[...selIds].map(id=>list.find(r=>r.id===id)).filter(Boolean);
-            const canScore=selList.length===1&&getQts(selList[0].id).length>0;
+            const acceptedQts=selList.length===1?getQts(selList[0].id).filter(q=>q.status==="Accepted"):[];
+            const canScore=selList.length===1&&acceptedQts.length>0;
             return(
-              <button onClick={()=>{if(!canScore)return;const rfq=selList[0];const qts=getQts(rfq.id);setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}} disabled={!canScore}
+              <button onClick={()=>{if(!canScore)return;const rfq=selList[0];const qts=acceptedQts;setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}} disabled={!canScore}
                 style={{background:canScore?"#107e3e":C.subtle,border:`1px solid ${canScore?"transparent":C.border}`,color:canScore?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canScore?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canScore?1:0.6,transition:"all .15s"}}
                 title={selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":getQts(selList[0]?.id||"").length===0?"No quotations received for this RFQ":""}>
                 <SapIcon name="performance" size={13} color={canScore?"#fff":C.t2}/> Submit Score
@@ -2544,7 +2545,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                         <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");}}>
                           <SapIcon name="cancel" size={13} color="#fff"/> Reject
                         </Btn>
-                        <Btn v="success" sm onClick={()=>{const qts=getQts(rfq.id);setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}}>
+                        <Btn v="success" sm onClick={()=>{const qts=getQts(rfq.id).filter(q=>q.status==="Accepted");if(!qts.length){alert("No Accepted quotations to evaluate. Please accept quotations first.");return;}setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}}>
                           <SapIcon name="scoring" size={13} color="#fff"/> Submit Score
                         </Btn>
                       </div>
@@ -2772,7 +2773,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
   const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
 
   const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
-  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","Approved"];
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","PO Ready"];
 
   const activeTokens=[
     applied.vendorIds.length>0&&{label:"Vendor",val:applied.vendorIds.length===1?(VENDORS[applied.vendorIds[0]] as any)?.name||applied.vendorIds[0]:`${applied.vendorIds.length} selected`,onClear:()=>clrA("vendorIds")},
@@ -2807,7 +2808,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
     const action=aprModal.action;
     setQuotations(prev=>prev.map(q=>
       q.id===aprModal.qt.id
-        ?{...q,approvalStatus:action==="approve"?"Approved":"Rejected",
+        ?{...q,approvalStatus:action==="approve"?"PO Ready":"Rejected",
                approvalNotes:notes,
                approvedBy:user.name,
                approvedAt:new Date().toISOString().split("T")[0]}
@@ -2817,7 +2818,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
   };
 
   const approvalBadge=(qt)=>{
-    if(qt.approvalStatus==="Approved") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dcfce7",color:"#107e3e",whiteSpace:"nowrap"}}>✓ Approved by You</span>;
+    if(qt.approvalStatus==="PO Ready") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dcfce7",color:"#107e3e",whiteSpace:"nowrap"}}>✓ PO Ready</span>;
     if(qt.approvalStatus==="Rejected") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#fff1f0",color:"#bb0000",whiteSpace:"nowrap"}}>✗ Rejected by You</span>;
     return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.subtle,color:C.t2,whiteSpace:"nowrap"}}>Pending</span>;
   };

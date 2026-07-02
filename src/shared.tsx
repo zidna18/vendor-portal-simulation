@@ -1063,6 +1063,7 @@ const buildSTC = () => ({
   Win:         {c:"#188918", bg:"#eaf7ea"},
   Completed:   {c:"#6a6d70", bg:"#f4f4f4"},
   Approved:    {c:"#6f2da8", bg:"#f3eeff"},
+  "PO Ready":  {c:"#0a6ed1", bg:"#dbeeff"},
   Active:      {c:C.ok,   bg:C.okBg},
   "Posted":              {c:C.ok,    bg:C.okBg},
   "Converted to Invoice":{c:C.info,  bg:C.infoBg},
