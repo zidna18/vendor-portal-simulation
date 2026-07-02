@@ -547,6 +547,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                 {(()=>{const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
                 <div style={{padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap"}}>
                   {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<a href="#" target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:13,fontWeight:600,color:C.primary,textDecoration:"none",borderBottom:`1px solid ${C.primary}`,overflow:"hidden",textOverflow:"ellipsis"}}>{sapNo}</a>}
+                  {qt.poSapNo&&<span style={{fontSize:11,color:"#6f2da8",fontWeight:700,marginLeft:6}}>PO: {qt.poSapNo}</span>}
                 </div>);})()}
                 {/* quotation id */}
                 <div style={{padding:"8px 10px",fontSize:13,fontWeight:700,color:C.primary,display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{qt.id}</div>
@@ -748,6 +749,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                     {sHdr("Follow-On Document")}
                     {field("Follow-On Document Type","PO Project (PO03)")}
                     {field("SAP Quotation No",sapNo)}
+                    {field("SAP PO No",qt.poSapNo||"—")}
                     {field("Status",qt.status)}
                     {field("Valid Until",fmtDate(qt.validUntil))}
                   </div>
@@ -2817,15 +2819,10 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
     if(!aprModal)return;
     setQuotations(prev=>prev.map(q=>
       q.id===aprModal.qt.id
-        ?{...q,status:"PO Ready",approvalNotes:notes,approvedBy:user.name,approvedAt:new Date().toISOString().split("T")[0]}
+        ?{...q,status:"PO Ready",poSapNo:notes.trim()||"—",approvedBy:user.name,approvedAt:new Date().toISOString().split("T")[0]}
         :q
     ));
     setAprModal(null);setNotes("");
-  };
-
-  const approvalBadge=(qt)=>{
-    if(qt.status==="PO Ready") return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:"#dbeeff",color:"#0a6ed1",whiteSpace:"nowrap"}}>✓ PO Ready</span>;
-    return <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:10,background:C.subtle,color:C.t2,whiteSpace:"nowrap"}}>Pending SAP</span>;
   };
 
   return (
@@ -2879,7 +2876,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
           <thead>
             <tr style={{background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
-              {["Status","SAP Quotation No","Quotation ID","RFQ Title","Vendor","Submitted","Valid Until","Total Amount","Approval","Actions"].map(h=>(
+              {["Status","SAP Quotation No","Quotation ID","RFQ Title","Vendor","Submitted","Valid Until","Total Amount","SAP PO No","Actions"].map(h=>(
                 <Th key={h}>{h}</Th>
               ))}
             </tr>
@@ -2909,7 +2906,11 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
                   <Td style={{fontSize:12,color:C.t2}}>{fmtDate(qt.submittedDate)||"—"}</Td>
                   <Td style={{fontSize:12,color:C.t2}}>{fmtDate(qt.validUntil)||"—"}</Td>
                   <Td style={{fontSize:13,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</Td>
-                  <Td>{approvalBadge(qt)}</Td>
+                  <Td>
+                    {qt.poSapNo&&qt.poSapNo!=="—"
+                      ?<span style={{fontSize:12,fontWeight:700,color:"#6f2da8",fontFamily:"monospace"}}>{qt.poSapNo}</span>
+                      :<span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>—</span>}
+                  </Td>
                   <Td>
                     {canAct&&(
                       <Btn v="primary" sm onClick={()=>openApprove(qt)}>
