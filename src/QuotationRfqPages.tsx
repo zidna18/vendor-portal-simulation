@@ -2065,6 +2065,9 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
   const [selIds,setSelIds]=useState(new Set<string>());
   const [compareData,setCompareData]=useState<any>(null);
+  const [aprRfqTabs,setAprRfqTabs]=useState<{[id:string]:string}>({});
+  const aprTab=(rfqId)=>aprRfqTabs[rfqId]||"overview";
+  const setAprTab=(rfqId,tab)=>setAprRfqTabs(p=>({...p,[rfqId]:tab}));
   const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
 
   // Approve/Reject modal state
@@ -2305,73 +2308,96 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
               {open&&(
                 <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
-                  {/* Scope */}
-                  <div style={{padding:"8px 16px",borderBottom:`1px solid ${C.border}`}}>
-                    <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
-                    <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                  {/* Tab bar */}
+                  <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,overflowX:"auto"}}>
+                    {[{k:"overview",label:"Overview"},{k:"notes",label:"Notes"},{k:"discussion",label:`Discussion (${(rfq.discussions||[]).length})`}].map(t=>(
+                      <button key={t.k} onClick={()=>setAprTab(rfq.id,t.k)} style={{background:"none",border:"none",borderBottom:aprTab(rfq.id)===t.k?`2px solid ${C.primary}`:"2px solid transparent",color:aprTab(rfq.id)===t.k?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:aprTab(rfq.id)===t.k?700:400,cursor:"pointer",padding:"9px 14px",whiteSpace:"nowrap",transition:"color .15s",marginBottom:-1}}>
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Side-by-side Quotation Comparison */}
-                  {qts.length>0&&(
-                    <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
-                      <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Quotation Comparison</div>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{borderCollapse:"collapse",minWidth:500,width:"100%",fontSize:12}}>
-                          <thead>
-                            <tr style={{background:"rgba(0,112,242,0.07)"}}>
-                              <th style={{padding:"7px 10px",textAlign:"left",fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>Criteria</th>
-                              {qts.map(qt=>(
-                                <th key={qt.id} style={{padding:"7px 10px",textAlign:"center",fontWeight:700,color:C.primary,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",borderLeft:`1px solid ${C.border}`}}>
-                                  <div>{qt.vendorName}</div>
-                                  <div style={{fontWeight:400,fontSize:11,color:C.t2}}>{qt.id}</div>
-                                  <Badge s={qt.status}/>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[
-                              {label:"Total Amount",render:(qt)=><strong style={{color:C.t1}}>{idr(qt.totalAmt)}</strong>},
-                              {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validityDate)||"—"}</span>},
-                              {label:"Delivery Terms",render:(qt)=><span style={{color:C.t2}}>{qt.deliveryTerms||"—"}</span>},
-                              {label:"Payment Terms",render:(qt)=><span style={{color:C.t2}}>{qt.paymentTerms||"—"}</span>},
-                              {label:"Notes",render:(qt)=><span style={{color:C.t2}}>{qt.notes||"—"}</span>},
-                            ].map((row,ri)=>(
-                              <tr key={ri} style={{background:ri%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
-                                <td style={{padding:"7px 10px",fontWeight:600,color:C.t1,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{row.label}</td>
+                  {/* Overview tab */}
+                  {aprTab(rfq.id)==="overview"&&(<>
+                    {/* Scope */}
+                    <div style={{padding:"8px 16px",borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
+                      <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                    </div>
+
+                    {/* Side-by-side Quotation Comparison */}
+                    {qts.length>0&&(
+                      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Quotation Comparison</div>
+                        <div style={{overflowX:"auto"}}>
+                          <table style={{borderCollapse:"collapse",minWidth:500,width:"100%",fontSize:12}}>
+                            <thead>
+                              <tr style={{background:"rgba(0,112,242,0.07)"}}>
+                                <th style={{padding:"7px 10px",textAlign:"left",fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>Criteria</th>
                                 {qts.map(qt=>(
-                                  <td key={qt.id} style={{padding:"7px 10px",textAlign:"center",borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`}}>{row.render(qt)}</td>
+                                  <th key={qt.id} style={{padding:"7px 10px",textAlign:"center",fontWeight:700,color:C.primary,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",borderLeft:`1px solid ${C.border}`}}>
+                                    <div>{qt.vendorName}</div>
+                                    <div style={{fontWeight:400,fontSize:11,color:C.t2}}>{qt.id}</div>
+                                    <Badge s={qt.status}/>
+                                  </th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {[
+                                {label:"Total Amount",render:(qt)=><strong style={{color:C.t1}}>{idr(qt.totalAmt)}</strong>},
+                                {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validityDate)||"—"}</span>},
+                                {label:"Delivery Terms",render:(qt)=><span style={{color:C.t2}}>{qt.deliveryTerms||"—"}</span>},
+                                {label:"Payment Terms",render:(qt)=><span style={{color:C.t2}}>{qt.paymentTerms||"—"}</span>},
+                                {label:"Notes",render:(qt)=><span style={{color:C.t2}}>{qt.notes||"—"}</span>},
+                              ].map((row,ri)=>(
+                                <tr key={ri} style={{background:ri%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
+                                  <td style={{padding:"7px 10px",fontWeight:600,color:C.t1,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{row.label}</td>
+                                  {qts.map(qt=>(
+                                    <td key={qt.id} style={{padding:"7px 10px",textAlign:"center",borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`}}>{row.render(qt)}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
+                    )}
+                    {qts.length===0&&(
+                      <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
+                    )}
+
+                    {/* Action buttons for Pending Approval */}
+                    {rfq.status==="Pending Approval"&&(
+                      <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
+                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>Submitted by <strong style={{color:C.t1}}>{rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.submittedForApprovalAt)}</span>
+                        <div style={{flex:1}}/>
+                        <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");setWinnerVendorId("");}}>
+                          <SapIcon name="cancel" size={13} color="#fff"/> Reject
+                        </Btn>
+                        <Btn v="success" sm onClick={()=>{setActionModal({rfq,action:"approve"});setActionNotes("");setWinnerVendorId("");}}>
+                          <SapIcon name="accept" size={13} color="#fff"/> Approve & Select Winner
+                        </Btn>
+                      </div>
+                    )}
+                    {rfq.status!=="Pending Approval"&&(
+                      <div style={{padding:"8px 16px 10px"}}>
+                        <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
+                      </div>
+                    )}
+                  </>)}
+
+                  {/* Notes tab */}
+                  {aprTab(rfq.id)==="notes"&&(
+                    <div style={{padding:"16px"}}>
+                      <div style={{fontSize:13,color:C.t1,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{rfq.desc||"No notes."}</div>
                     </div>
-                  )}
-                  {qts.length===0&&(
-                    <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
                   )}
 
-                  {/* Action buttons for Pending Approval */}
-                  {rfq.status==="Pending Approval"&&(
-                    <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
-                      <span style={{fontSize:12,color:C.t2,marginRight:4}}>Submitted by <strong style={{color:C.t1}}>{rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.submittedForApprovalAt)}</span>
-                      <div style={{flex:1}}/>
-                      <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");setWinnerVendorId("");}}>
-                        <SapIcon name="cancel" size={13} color="#fff"/> Reject
-                      </Btn>
-                      <Btn v="success" sm onClick={()=>{setActionModal({rfq,action:"approve"});setActionNotes("");setWinnerVendorId("");}}>
-                        <SapIcon name="accept" size={13} color="#fff"/> Approve & Select Winner
-                      </Btn>
-                    </div>
+                  {/* Discussion tab */}
+                  {aprTab(rfq.id)==="discussion"&&(
+                    <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
                   )}
-                  {rfq.status!=="Pending Approval"&&(
-                    <div style={{padding:"8px 16px 10px"}}>
-                      <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
-                    </div>
-                  )}
-                  <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
                 </div>
               )}
             </div>
