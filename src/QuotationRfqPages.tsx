@@ -1432,8 +1432,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             const canSendApproval=selList.length>0&&selList.every(r=>r.status==="Scored");
             const selRfq=selList.length===1?selList[0]:null;
             const selRfqQts=selRfq?getQts(selRfq.id):[];
-            const canEvaluate=!!selRfq&&selRfq.status==="Open"&&selRfqQts.length>0&&selRfqQts.every(q=>q.status==="Accepted");
-            const evaluateTitle=selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Open"?"RFQ must be Open to evaluate":selRfqQts.length===0?"No quotations received":!selRfqQts.every(q=>q.status==="Accepted")?"All quotations must be Accepted before scoring":"";
+            const canEvaluate=!!selRfq&&selRfq.status==="Open"&&selRfqQts.length>=2&&selRfqQts.every(q=>q.status==="Accepted");
+            const evaluateTitle=selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Open"?"RFQ must be Open to evaluate":selRfqQts.length===0?"No quotations received":selRfqQts.length<2?"At least 2 quotations required to evaluate":!selRfqQts.every(q=>q.status==="Accepted")?"All quotations must be Accepted before scoring":"";
             return(<>
               <button onClick={()=>{if(!allCreated)return;openPublish();}} disabled={!allCreated}
                 style={{background:allCreated?"#107e3e":C.subtle,border:`1px solid ${allCreated?"transparent":C.border}`,color:allCreated?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allCreated?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allCreated?1:0.6,transition:"all .15s"}}
