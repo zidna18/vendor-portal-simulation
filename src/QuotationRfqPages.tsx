@@ -1852,9 +1852,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
         <div style={{display:"flex",flexWrap:"wrap",gap:"10px 28px",marginBottom:14}}>
           {[
             {s:"Created",          desc:"RFQ created in SAP system – not yet published to vendors"},
-            {s:"Open",             desc:"RFQ published to vendors – quotations can be submitted"},
-            {s:"On Process",       desc:"Quotations being reviewed by procurement team"},
-            {s:"Complete",         desc:"All vendors have submitted – ready for tender committee"},
+            {s:"Open",             desc:"RFQ published to vendors – no quotation received yet"},
+            {s:"On Process",       desc:"One or more quotations accepted by buyer, evaluation in progress"},
+            {s:"Complete",         desc:"All targeted vendor quotations accepted – ready for tender committee"},
             {s:"Pending Approval", desc:"Submitted to Tender Committee (Approver) for winner decision"},
             {s:"Closed",           desc:"Winner determined – RFQ concluded, proceeding to PO"},
           ].map(({s,desc})=>(

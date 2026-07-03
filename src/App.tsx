@@ -98,8 +98,6 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
             ))}
           </div>
         )}
-<<<<<<< HEAD
-        <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:isMob?0:10,flex:isMob?1:0,justifyContent:"flex-end"}}>
         {isMob&&<div style={{flex:1}}/>}
 
         {/* Right-side action icons */}
