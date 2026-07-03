@@ -1430,7 +1430,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
             const allCreated=selList.length>0&&selList.every(r=>r.status==="Created");
             const canSendApproval=selList.length>0&&selList.every(r=>r.status==="Scored");
-            const canCompare=selList.length===1&&getQts(selList[0].id).length>0;
+            const selRfq=selList.length===1?selList[0]:null;
+            const selRfqQts=selRfq?getQts(selRfq.id):[];
+            const canEvaluate=!!selRfq&&selRfq.status==="Open"&&selRfqQts.length>0&&selRfqQts.every(q=>q.status==="Accepted");
+            const evaluateTitle=selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Open"?"RFQ must be Open to evaluate":selRfqQts.length===0?"No quotations received":!selRfqQts.every(q=>q.status==="Accepted")?"All quotations must be Accepted before scoring":"";
             return(<>
               <button onClick={()=>{if(!allCreated)return;openPublish();}} disabled={!allCreated}
                 style={{background:allCreated?"#107e3e":C.subtle,border:`1px solid ${allCreated?"transparent":C.border}`,color:allCreated?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allCreated?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allCreated?1:0.6,transition:"all .15s"}}
@@ -1442,10 +1445,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
                 title={selIds.size===0?"Select RFQ(s) first":!canSendApproval?"Only 'Scored' RFQs can be sent for approval":""}>
                 <SapIcon name="workflow-tasks" size={13} color={canSendApproval?"#fff":C.t2}/> Send for Approval{selList.length>0&&canSendApproval?` (${selList.length})`:""}
               </button>
-              <button onClick={()=>{if(!canCompare)return;const rfq=selList[0];setCompareData({rfq,quotations:getQts(rfq.id)});}} disabled={!canCompare}
-                style={{background:canCompare?"#6f2da8":C.subtle,border:`1px solid ${canCompare?"transparent":C.border}`,color:canCompare?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canCompare?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canCompare?1:0.6,transition:"all .15s"}}
-                title={selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ to compare":getQts(selList[0]?.id||"").length===0?"No quotations received for this RFQ":""}>
-                <SapIcon name="compare" size={13} color={canCompare?"#fff":C.t2}/> Compare Quotations
+              <button onClick={()=>{if(!canEvaluate||!selRfq)return;setScoreModal({rfq:selRfq,qts:selRfqQts});setScores(initScores(selRfqQts));setScoreNotes("");}} disabled={!canEvaluate}
+                style={{background:canEvaluate?"#6f2da8":C.subtle,border:`1px solid ${canEvaluate?"transparent":C.border}`,color:canEvaluate?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canEvaluate?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canEvaluate?1:0.6,transition:"all .15s"}}
+                title={evaluateTitle}>
+                <SapIcon name="quality-issue" size={13} color={canEvaluate?"#fff":C.t2}/> Evaluate &amp; Score
               </button>
             </>);
           })()}
@@ -1568,11 +1571,6 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
                         <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Received Quotations ({qts.length})</div>
                         <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:6}}>
                           <Btn sm v="ghost" onClick={()=>setCompareData({rfq,quotations:qts})}>⊞ Compare Quotations</Btn>
-                          {rfq.status==="Open"&&getQts(rfq.id).some(q=>q.status==="Accepted")&&(
-                            <Btn v="ghost" sm onClick={()=>{const aqts=getQts(rfq.id).filter(q=>q.status==="Accepted");setScoreModal({rfq,qts:aqts});setScores(initScores(aqts));setScoreNotes("");}}>
-                              ★ Score Quotations
-                            </Btn>
-                          )}
                         </div>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
