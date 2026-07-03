@@ -1,11 +1,36 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  C, VENDORS, COMPANY_CODES, CURRENCIES,
+  C, VENDORS, COMPANY_CODES, CURRENCIES, PURCHASING_GROUPS,
   fmtDate, idr, uid, pg, mob,
   g2, g3,
   Badge, Btn, Inp, AmtInp, DateInp, Sel, TA, Lbl, Val, Sep, Modal,
   FilterBar, FioriBar, FField, SapIcon, Card, Th, Td,
 } from "./shared";
+
+// ── Local constants ────────────────────────────────────────────
+const PAYMENT_TERMS = [
+  {v:"Net 14 Days",l:"Net 14 Days"}, {v:"Net 30 Days",l:"Net 30 Days"},
+  {v:"Net 45 Days",l:"Net 45 Days"}, {v:"Net 60 Days",l:"Net 60 Days"},
+  {v:"Net 90 Days",l:"Net 90 Days"}, {v:"30/2 Net 60",l:"30/2 Net 60 (2% Early Pay)"},
+  {v:"COD",l:"Cash on Delivery"},    {v:"Advance 50%",l:"50% Advance, 50% on Delivery"},
+  {v:"Advance 100%",l:"100% Advance Payment"},
+];
+const INCOTERMS = [
+  {v:"EXW",l:"EXW – Ex Works"},          {v:"FCA",l:"FCA – Free Carrier"},
+  {v:"CPT",l:"CPT – Carriage Paid To"},  {v:"CIP",l:"CIP – Carriage & Insurance Paid"},
+  {v:"DAP",l:"DAP – Delivered at Place"},{v:"DPU",l:"DPU – Delivered at Place Unloaded"},
+  {v:"DDP",l:"DDP – Delivered Duty Paid"},{v:"FAS",l:"FAS – Free Alongside Ship"},
+  {v:"FOB",l:"FOB – Free on Board"},     {v:"CFR",l:"CFR – Cost & Freight"},
+  {v:"CIF",l:"CIF – Cost, Insurance & Freight"},
+  {v:"N/A – Service Contract",l:"N/A – Service Contract"},
+  {v:"N/A – Rental Contract",l:"N/A – Rental Contract"},
+  {v:"N/A – Professional Service",l:"N/A – Professional Service"},
+];
+const pgLabel = code => {
+  const p = PURCHASING_GROUPS.find(x=>x.v===code);
+  return p ? `${p.v} – ${p.l}` : (code||"—");
+};
+const VDR_COLORS = ["#0a6ed1","#107e3e","#8b5cf6","#d97706","#dc2626","#0891b2"];
 
 // ── Quotation Form Modal ───────────────────────────────────────
 export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
@@ -13,6 +38,9 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
     rfqId:rfq.id,rfqTitle:rfq.title,vendorId,vendorName,submittedDate:"",validUntil:"",notes:"",status:"Draft",files:[],
     totalAmt:rfq.items.reduce((s,i)=>s+i.estPrice*i.qty,0),
     items:rfq.items.map(i=>({...i,unitPrice:i.estPrice,total:i.estPrice*i.qty})),
+    salesPerson:"",termsOfPayment:"Net 30 Days",deliveryTerms:"DDP – Delivered Duty Paid",
+    leadTime:"",warrantyPeriod:"",purchGroup:rfq.purchGroup||"",
+    priceConditions:{discount:0,surcharge:0,freight:0,insurance:0},
   });
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const updItem=(idx,k,val)=>{
@@ -22,8 +50,10 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
   const save=draft=>{
     onSave({...f,id:f.id||`QT-${uid()}`,status:draft?"Draft":"Submitted",submittedDate:draft?"":new Date().toISOString().split("T")[0],files:f.files.length===0&&!draft?["quotation.pdf"]:f.files});
   };
+  const pc=f.priceConditions||{discount:0,surcharge:0,freight:0,insurance:0};
+  const updPc=(k,v)=>s("priceConditions",{...pc,[k]:Number(v)});
   return (
-    <Modal title={qt?`Edit Quotation: ${rfq.title}`:`Submit Quotation: ${rfq.title}`} onClose={onClose} width={740}>
+    <Modal title={qt?`Edit Quotation: ${rfq.title}`:`Submit Quotation: ${rfq.title}`} onClose={onClose} width={780}>
       <div style={{padding:"8px 12px",background:C.infoBg,borderRadius:4,marginBottom:14,fontSize:12}}>
         <strong>RFQ:</strong> {rfq.id} · Closing: {rfq.closingDate} · Est. Value: {idr(rfq.estVal)}
       </div>
@@ -31,6 +61,38 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
         <div><Lbl>Valid Until *</Lbl><DateInp value={f.validUntil} onChange={v=>s("validUntil",v)}/></div>
         <div><Lbl>Total Amount (IDR)</Lbl><Inp value={idr(f.totalAmt)} onChange={()=>{}}/></div>
       </div>
+
+      {/* Commercial Terms section */}
+      <div style={{marginBottom:14,padding:"10px 14px",border:`1px solid ${C.border}`,borderRadius:6,background:C.subtle}}>
+        <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>Commercial Terms</div>
+        <div style={{display:"grid",gridTemplateColumns:g2(),gap:10,marginBottom:10}}>
+          <div><Lbl>Sales Person / Contact</Lbl><Inp value={f.salesPerson} onChange={v=>s("salesPerson",v)} placeholder="Name / Phone or Email"/></div>
+          <div>
+            <Lbl>Purchasing Group</Lbl>
+            <Sel value={f.purchGroup} onChange={v=>s("purchGroup",v)} opts={[{v:"",l:"— Select —"},...PURCHASING_GROUPS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
+          </div>
+          <div>
+            <Lbl>Terms of Payment</Lbl>
+            <Sel value={f.termsOfPayment} onChange={v=>s("termsOfPayment",v)} opts={PAYMENT_TERMS}/>
+          </div>
+          <div>
+            <Lbl>Delivery Terms (Incoterms)</Lbl>
+            <Sel value={f.deliveryTerms} onChange={v=>s("deliveryTerms",v)} opts={INCOTERMS}/>
+          </div>
+          <div><Lbl>Lead Time</Lbl><Inp value={f.leadTime} onChange={v=>s("leadTime",v)} placeholder="e.g. 14 days"/></div>
+          <div><Lbl>Warranty Period</Lbl><Inp value={f.warrantyPeriod} onChange={v=>s("warrantyPeriod",v)} placeholder="e.g. 12 months"/></div>
+        </div>
+        <div style={{borderTop:`1px dashed ${C.border}`,paddingTop:10}}>
+          <div style={{fontSize:11,color:C.t2,fontWeight:600,marginBottom:8}}>Price Conditions</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+            <div><Lbl>Discount (%)</Lbl><AmtInp value={pc.discount} onChange={v=>updPc("discount",v)}/></div>
+            <div><Lbl>Surcharge (%)</Lbl><AmtInp value={pc.surcharge} onChange={v=>updPc("surcharge",v)}/></div>
+            <div><Lbl>Freight (IDR)</Lbl><AmtInp value={pc.freight} onChange={v=>updPc("freight",v)}/></div>
+            <div><Lbl>Insurance (IDR)</Lbl><AmtInp value={pc.insurance} onChange={v=>updPc("insurance",v)}/></div>
+          </div>
+        </div>
+      </div>
+
       <div style={{marginBottom:14}}>
         <Lbl>Line Items</Lbl>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginTop:6}}>
@@ -62,6 +124,201 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
         <Btn v="neutral" onClick={onClose}>Cancel</Btn>
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Quotation</Btn>
+      </div>
+    </Modal>
+  );
+};
+
+// ── Quotation Compare Modal ────────────────────────────────────
+const QuotationCompareModal = ({rfq, quotations, onClose}) => {
+  const calcNet = qt => {
+    const pc = qt.priceConditions||{};
+    const sub = qt.totalAmt;
+    return sub - sub*(pc.discount||0)/100 + sub*(pc.surcharge||0)/100 + (pc.freight||0) + (pc.insurance||0);
+  };
+  const nets = quotations.map(calcNet);
+  const bestNet = Math.min(...nets);
+
+  const itemBestPrice = (rfq.items||[]).map((_,ii)=>{
+    const prices = quotations.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));
+    return prices.length ? Math.min(...prices) : null;
+  });
+
+  const LABEL_W = 210;
+  const COL_W = Math.max(190, Math.floor(880/quotations.length));
+
+  const SectionHdr = ({title}) => (
+    <tr>
+      <td colSpan={quotations.length+1} style={{
+        padding:"7px 14px",background:C.subtle,fontWeight:700,fontSize:10,
+        color:C.t2,textTransform:"uppercase",letterSpacing:.8,
+        borderTop:`2px solid ${C.border}`,borderBottom:`1px solid ${C.border}`
+      }}>{title}</td>
+    </tr>
+  );
+
+  const Row = ({label, vals, fmt, bestVal, bold, sub}) => (
+    <tr style={{borderBottom:`1px solid ${C.border}`}}>
+      <td style={{
+        padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,
+        background:C.card,borderRight:`1px solid ${C.border}`,
+        minWidth:LABEL_W,whiteSpace:"nowrap",paddingLeft:sub?24:14
+      }}>{label}</td>
+      {vals.map((v,i)=>{
+        const isBest = bestVal!=null && v===bestVal && quotations.length>1;
+        return (
+          <td key={i} style={{
+            padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right",
+            color: isBest ? C.ok : C.t1,
+            background: isBest ? C.okBg : C.card,
+            borderRight:`1px solid ${C.border}`,minWidth:COL_W
+          }}>
+            {fmt ? fmt(v) : (v||"—")}
+            {isBest && quotations.length>1 && <span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}
+          </td>
+        );
+      })}
+    </tr>
+  );
+
+  return (
+    <Modal title={`Quotation Comparison · ${rfq.title}`} onClose={onClose} width="90vw">
+      {/* Vendor header cards */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {quotations.map((qt,i)=>(
+          <div key={qt.id} style={{
+            flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,
+            borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`
+          }}>
+            <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
+            <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
+            <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <Badge s={qt.status}/>
+              <span style={{fontSize:11,fontWeight:700,color: calcNet(qt)===bestNet&&quotations.length>1?C.ok:C.t1}}>{idr(calcNet(qt))}</span>
+              {calcNet(qt)===bestNet&&quotations.length>1&&<span style={{fontSize:10,color:C.ok,fontWeight:700}}>★ Lowest</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* RFQ meta strip */}
+      <div style={{padding:"6px 12px",background:C.infoBg,borderRadius:4,marginBottom:12,fontSize:11,color:C.info,display:"flex",gap:16,flexWrap:"wrap"}}>
+        <span><strong>RFQ:</strong> {rfq.id}</span>
+        <span><strong>Category:</strong> {rfq.cat}</span>
+        <span><strong>Purch. Org:</strong> {rfq.purchOrg||"—"}</span>
+        <span><strong>Purch. Group:</strong> {pgLabel(rfq.purchGroup)}</span>
+        <span><strong>Company:</strong> {rfq.companyCode||"—"}</span>
+        <span><strong>Plant:</strong> {rfq.plant||"—"}</span>
+        <span><strong>Est. Budget:</strong> {idr(rfq.estVal)}</span>
+      </div>
+
+      {/* Comparison table */}
+      <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"58vh"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*quotations.length}}>
+          <thead>
+            <tr style={{position:"sticky",top:0,zIndex:2}}>
+              <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left",
+                background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,
+                minWidth:LABEL_W}}>Parameter</th>
+              {quotations.map((qt,i)=>(
+                <th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",
+                  color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,
+                  borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,
+                  borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>
+                  {qt.vendorName}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {/* VENDOR INFORMATION */}
+            <SectionHdr title="Vendor Information"/>
+            <Row label="Vendor Number"           vals={quotations.map(q=>q.vendorId)}/>
+            <Row label="Vendor Name"             vals={quotations.map(q=>q.vendorName)}/>
+            <Row label="Sales Person / Contact"  vals={quotations.map(q=>q.salesPerson||"—")}/>
+            <Row label="Quotation ID"            vals={quotations.map(q=>q.id)}/>
+            <Row label="Submitted Date"          vals={quotations.map(q=>fmtDate(q.submittedDate))}/>
+            <Row label="Valid Until"             vals={quotations.map(q=>fmtDate(q.validUntil))}/>
+            <Row label="Status"                  vals={quotations.map(q=>q.status)}/>
+
+            {/* PURCHASING DETAILS */}
+            <SectionHdr title="Purchasing Details"/>
+            <Row label="Purchasing Organization" vals={quotations.map(()=>rfq.purchOrg||"—")}/>
+            <Row label="Purchasing Group"        vals={quotations.map(q=>pgLabel(q.purchGroup))}/>
+
+            {/* COMMERCIAL TERMS */}
+            <SectionHdr title="Commercial Terms"/>
+            <Row label="Terms of Payment"        vals={quotations.map(q=>q.termsOfPayment||"—")}/>
+            <Row label="Delivery Terms"          vals={quotations.map(q=>q.deliveryTerms||"—")}/>
+            <Row label="Lead Time"               vals={quotations.map(q=>q.leadTime||"—")}/>
+            <Row label="Warranty Period"         vals={quotations.map(q=>q.warrantyPeriod||"—")}/>
+
+            {/* LINE ITEMS */}
+            <SectionHdr title="Line Items — Price Comparison"/>
+            {(rfq.items||[]).map((item,ii)=>(
+              <>
+                <tr key={`ih-${ii}`} style={{background:C.infoBg}}>
+                  <td colSpan={quotations.length+1} style={{
+                    padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,
+                    color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`
+                  }}>
+                    {String(item.no).padStart(3,"0")} · {item.desc}
+                    <span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span>
+                  </td>
+                </tr>
+                <Row key={`mg-${ii}`} label="Material / Product Group"
+                  vals={quotations.map(q=>q.items?.[ii]?.materialGroup||item.materialGroup||"—")} sub/>
+                <Row key={`up-${ii}`} label="Unit Price (IDR)"
+                  vals={quotations.map(q=>q.items?.[ii]?.unitPrice||0)}
+                  fmt={v=>idr(v)} bestVal={itemBestPrice[ii]} bold sub/>
+                <Row key={`tot-${ii}`} label="Item Total (IDR)"
+                  vals={quotations.map(q=>q.items?.[ii]?.total||0)}
+                  fmt={v=>idr(v)} sub/>
+              </>
+            ))}
+
+            {/* PRICE CONDITIONS */}
+            <SectionHdr title="Price Conditions & Summary"/>
+            <Row label="Subtotal"              vals={quotations.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
+            <Row label="Discount (%)"          vals={quotations.map(q=>`${q.priceConditions?.discount||0}%`)}/>
+            <Row label="Discount Amount"       vals={quotations.map(q=>q.totalAmt*(q.priceConditions?.discount||0)/100)}
+              fmt={v=>v>0?`(${idr(v)})`:"—"} sub/>
+            <Row label="Surcharge (%)"         vals={quotations.map(q=>`${q.priceConditions?.surcharge||0}%`)}/>
+            <Row label="Surcharge Amount"      vals={quotations.map(q=>q.totalAmt*(q.priceConditions?.surcharge||0)/100)}
+              fmt={v=>v>0?idr(v):"—"} sub/>
+            <Row label="Freight Cost"          vals={quotations.map(q=>q.priceConditions?.freight||0)} fmt={v=>v>0?idr(v):"—"}/>
+            <Row label="Insurance Cost"        vals={quotations.map(q=>q.priceConditions?.insurance||0)} fmt={v=>v>0?idr(v):"—"}/>
+
+            {/* NET TOTAL highlight row */}
+            <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
+              <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,
+                borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
+              {quotations.map((qt,i)=>{
+                const net=nets[i];
+                const isBest=net===bestNet&&quotations.length>1;
+                return (
+                  <td key={qt.id} style={{
+                    padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"right",
+                    color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,
+                    borderRight:`1px solid ${C.border}`,minWidth:COL_W
+                  }}>
+                    {idr(net)}
+                    {isBest&&quotations.length>1&&<div style={{fontSize:10,color:C.ok,fontWeight:700,marginTop:2}}>★ Recommended (Lowest Net)</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Suggested additional parameters */}
+      <div style={{marginTop:12,padding:"10px 14px",background:C.subtle,borderRadius:4,fontSize:11,color:C.t2}}>
+        <strong style={{color:C.t1}}>💡 Other suggested evaluation criteria (not automated):</strong>
+        {" "}TKDN / Local Content %, ISO & SNI Certification, After-Sales Support SLA, Vendor Track Record & References, Financial Health (Bonafide Score), HSE Compliance Record, Delivery Reliability History, ESG Rating.
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:12}}>
+        <Btn v="neutral" onClick={onClose}>Close</Btn>
       </div>
     </Modal>
   );
@@ -149,6 +406,13 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={viewQt.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
+          {viewQt.salesPerson&&<div style={{marginBottom:10}}><Lbl>Sales Person / Contact</Lbl><Val>{viewQt.salesPerson}</Val></div>}
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            {viewQt.termsOfPayment&&<div><Lbl>Terms of Payment</Lbl><Val>{viewQt.termsOfPayment}</Val></div>}
+            {viewQt.deliveryTerms&&<div><Lbl>Delivery Terms</Lbl><Val>{viewQt.deliveryTerms}</Val></div>}
+            {viewQt.leadTime&&<div><Lbl>Lead Time</Lbl><Val>{viewQt.leadTime}</Val></div>}
+            {viewQt.warrantyPeriod&&<div><Lbl>Warranty Period</Lbl><Val>{viewQt.warrantyPeriod}</Val></div>}
+          </div>
           <Lbl>Line Items</Lbl>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,margin:"6px 0 14px"}}>
             <thead><tr style={{background:C.subtle}}>{["Description","Qty","UoM","Unit Price","Total"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>)}</tr></thead>
@@ -202,6 +466,14 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
               <div key={l}><Lbl>{l}</Lbl>{l==="Status"?<Badge s={view.status}/>:<Val>{val}</Val>}</div>
             ))}
           </div>
+          {view.salesPerson&&<div style={{marginBottom:10}}><Lbl>Sales Person / Contact</Lbl><Val>{view.salesPerson}</Val></div>}
+          <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:14}}>
+            {view.termsOfPayment&&<div><Lbl>Terms of Payment</Lbl><Val>{view.termsOfPayment}</Val></div>}
+            {view.deliveryTerms&&<div><Lbl>Delivery Terms</Lbl><Val>{view.deliveryTerms}</Val></div>}
+            {view.leadTime&&<div><Lbl>Lead Time</Lbl><Val>{view.leadTime}</Val></div>}
+            {view.warrantyPeriod&&<div><Lbl>Warranty Period</Lbl><Val>{view.warrantyPeriod}</Val></div>}
+            {view.purchGroup&&<div><Lbl>Purchasing Group</Lbl><Val>{pgLabel(view.purchGroup)}</Val></div>}
+          </div>
           <Lbl>Line Items</Lbl>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,margin:"6px 0 14px"}}>
             <thead><tr style={{background:C.subtle}}>{["Description","Qty","UoM","Unit Price","Total"].map(h=><th key={h} style={{padding:"6px 10px",textAlign:"left",borderBottom:`1px solid ${C.border}`,fontSize:11}}>{h}</th>)}</tr></thead>
@@ -221,8 +493,93 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   );
 };
 
+const DiscussionBox = ({rfqId, discussions=[], onPost, user}) => {
+  const [msg, setMsg] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const ROLE_COLOR = {
+    "Procurement Manager": "#0a6ed1",
+    "Senior Buyer": "#107e3e",
+    "Finance Approver": "#6f2da8",
+  };
+
+  const submit = () => {
+    const t = msg.trim();
+    if(!t) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2,"0");
+    const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    onPost(rfqId, {
+      id: `D-${uid()}`,
+      userId: user.username,
+      userName: user.name,
+      role: user.role==="approver" ? "Finance Approver" : user.role==="brm" ? (user.name==="Siti Rahma" ? "Senior Buyer" : "Procurement Manager") : user.role,
+      postedAt: ts,
+      message: t,
+    });
+    setMsg("");
+    setTimeout(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),50);
+  };
+
+  const initials = (name) => name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+
+  return (
+    <div style={{borderTop:`1px solid ${C.border}`,padding:"14px 16px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+        <SapIcon name="discussion" size={14} color={C.t2}/>
+        <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Discussion ({discussions.length})</span>
+      </div>
+
+      {/* Message list */}
+      {discussions.length===0&&(
+        <div style={{padding:"12px 0",color:C.t2,fontSize:13,fontStyle:"italic"}}>No discussion yet. Be the first to comment.</div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:280,overflowY:"auto",marginBottom:12,paddingRight:4}}>
+        {discussions.map((d,i)=>{
+          const isMe = d.userId===user.username;
+          const roleColor = ROLE_COLOR[d.role] || C.t2;
+          return (
+            <div key={d.id||i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+              {/* Avatar */}
+              <div style={{width:32,height:32,borderRadius:"50%",background:roleColor,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}}>
+                {initials(d.userName)}
+              </div>
+              <div style={{flex:1,background:isMe?"#e8f2fb":C.subtle,borderRadius:8,padding:"8px 12px",border:`1px solid ${isMe?"#b3d4f5":C.border}`}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                  <span style={{fontWeight:700,fontSize:12,color:roleColor}}>{d.userName}</span>
+                  <span style={{fontSize:11,color:C.t2,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"0 6px"}}>{d.role}</span>
+                  <span style={{fontSize:11,color:C.t2,marginLeft:"auto"}}>{d.postedAt}</span>
+                </div>
+                <div style={{fontSize:13,color:C.t1,lineHeight:1.5}}>{d.message}</div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef}/>
+      </div>
+
+      {/* Input area */}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <div style={{width:32,height:32,borderRadius:"50%",background:ROLE_COLOR[user.role==="approver"?"Finance Approver":user.role==="brm"?(user.name==="Siti Rahma"?"Senior Buyer":"Procurement Manager"):"BRM"]||C.primary,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}}>
+          {initials(user.name||"U")}
+        </div>
+        <div style={{flex:1,border:`1px solid ${C.fieldBorder}`,borderRadius:6,background:C.field,overflow:"hidden"}}>
+          <textarea value={msg} onChange={e=>setMsg(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit();}}}
+            placeholder="Write your suggestion, note, or question… (Enter to send, Shift+Enter for newline)"
+            rows={2}
+            style={{width:"100%",border:"none",outline:"none",resize:"none",padding:"8px 10px",fontSize:13,fontFamily:"inherit",background:"transparent",color:C.t1,boxSizing:"border-box" as const}}/>
+        </div>
+        <Btn v="primary" sm onClick={submit} disabled={!msg.trim()}>
+          <SapIcon name="paper-plane" size={13} color="#fff"/> Send
+        </Btn>
+      </div>
+      <div style={{fontSize:11,color:C.t2,marginTop:4,marginLeft:40}}>Enter to send · Shift+Enter for new line</div>
+    </div>
+  );
+};
+
 // ── BRM RFQ Mgmt ───────────────────────────────────────────────
-// Status indicator shape for RFQ
 const RfqStatusIcon = ({s}) => {
   const map = {
     "Open":       {shape:"square",  color:"#BB0000"},
@@ -240,10 +597,14 @@ const RfqStatusIcon = ({s}) => {
   return <div style={{width:13,height:13,borderRadius:2,background:m.color,flexShrink:0}}/>;
 };
 
-export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
+export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
   const [showForm,setForm]=useState(false);
+  const postDiscussion = (rfqId, entry) => {
+    setRfqs(p => p.map(r => r.id===rfqId ? {...r, discussions:[...(r.discussions||[]), entry]} : r));
+  };
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
+  const [compare,setCompare]=useState(null);
   const EMPTY_FLT={company:"",purchOrg:"",plant:"",rfqNo:"",tenderAdmin:""};
   const [filters,setFilters]=useState(EMPTY_FLT);
   const [applied,setApplied]=useState(EMPTY_FLT);
@@ -258,7 +619,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     applied.tenderAdmin &&{label:"Tender Admin", val:applied.tenderAdmin, onClear:()=>{setFilters(p=>({...p,tenderAdmin:""}));setApplied(p=>({...p,tenderAdmin:""}));}},
   ].filter(Boolean);
 
-  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
+  const [f,setF]=useState({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",purchGroup:"",
     items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   const sf=(k,v)=>setF(p=>({...p,[k]:v}));
   const list=rfqs
@@ -277,7 +638,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
     setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Open",estVal:Number(f.estVal),
       items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
     setForm(false);
-    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",
+    setF({title:"",cat:"",closingDate:"",desc:"",targets:[],estVal:"",companyCode:"",plant:"",purchOrg:"",purchGroup:"",
       items:[{no:1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]});
   };
 
@@ -359,7 +720,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
 
               {open&&(
                 <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
-                  <div style={{display:"grid",gridTemplateColumns:"28px 40px 1fr 130px 120px 80px 80px 60px 110px",background:"rgba(0,112,242,0.07)",borderBottom:`1px solid ${C.border}`,padding:"0"}}>
+                  {/* Item columns header */}
+                  <div style={{display:"grid",gridTemplateColumns:"28px 40px 1fr 130px 120px 80px 80px 60px 110px",background:"rgba(0,112,242,0.07)",borderBottom:`1px solid ${C.border}`}}>
                     {["","#","Material / Service","Mat. No.","Material Group","Plant","Qty","UoM","Date"].map((h,i)=>(
                       <div key={i} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:C.primary,textTransform:"uppercase",letterSpacing:.4}}>{h}</div>
                     ))}
@@ -388,12 +750,27 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                       </div>
                     </div>
                   ))}
+
+                  {/* Received Quotations with Compare button */}
                   {qts.length>0&&(
                     <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Received Quotations</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>
+                          Received Quotations ({qts.length})
+                        </div>
+                        <div onClick={e=>e.stopPropagation()}>
+                          <Btn sm v="ghost" onClick={()=>setCompare({rfq,quotations:qts})}>
+                            ⊞ Compare Quotations
+                          </Btn>
+                        </div>
+                      </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                        {qts.map(qt=>(
-                          <div key={qt.id} style={{padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8}}>
+                        {qts.map((qt,qi)=>(
+                          <div key={qt.id} style={{
+                            padding:"5px 12px",background:C.card,border:`1px solid ${C.border}`,
+                            borderLeft:`3px solid ${VDR_COLORS[qi%VDR_COLORS.length]}`,
+                            borderRadius:4,fontSize:12,display:"flex",alignItems:"center",gap:8
+                          }}>
                             <span style={{fontWeight:600}}>{qt.vendorName}</span>
                             <span style={{color:C.t2}}>·</span>
                             <span style={{fontWeight:700}}>{idr(qt.totalAmt)}</span>
@@ -403,10 +780,19 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
                       </div>
                     </div>
                   )}
-                  <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`}}>
-                    <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
-                    <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+
+                  <div style={{padding:"8px 16px 12px",borderTop:`1px solid ${C.border}`,display:"flex",gap:20,flexWrap:"wrap",alignItems:"baseline"}}>
+                    <div>
+                      <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
+                      <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                    </div>
+                    {rfq.purchGroup&&(
+                      <span style={{fontSize:11,color:C.t2,whiteSpace:"nowrap"}}>
+                        <span style={{fontWeight:700}}>Purch. Group:</span> {pgLabel(rfq.purchGroup)}
+                      </span>
+                    )}
                   </div>
+                  {user&&<DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>}
                 </div>
               )}
             </div>
@@ -426,8 +812,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
         ))}
       </div>
 
+      {/* Create RFQ Modal */}
       {showForm&&(
-        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={800}>
+        <Modal title="Create & Publish New RFQ" onClose={()=>setForm(false)} width={820}>
           <div style={{display:"grid",gridTemplateColumns:g2(),gap:12,marginBottom:12}}>
             <div style={{gridColumn:"1/-1"}}><Lbl>RFQ Title *</Lbl><Inp value={f.title} onChange={v=>sf("title",v)} placeholder="e.g. Procurement of Office Chairs"/></div>
             <div><Lbl>Category *</Lbl><Inp value={f.cat} onChange={v=>sf("cat",v)} placeholder="e.g. Furniture"/></div>
@@ -440,6 +827,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
             <div>
               <Lbl>Purchasing Org</Lbl>
               <Sel value={f.purchOrg} onChange={v=>sf("purchOrg",v)} opts={[{v:"",l:"— Select —"},{v:"PO10",l:"PO10 – Procurement Central"},{v:"PO20",l:"PO20 – Procurement Regional"}]}/>
+            </div>
+            <div>
+              <Lbl>Purchasing Group</Lbl>
+              <Sel value={f.purchGroup} onChange={v=>sf("purchGroup",v)} opts={[{v:"",l:"— Select —"},...PURCHASING_GROUPS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/>
             </div>
             <div style={{gridColumn:"1/-1"}}><Lbl>Estimated Budget (IDR)</Lbl><AmtInp value={f.estVal} onChange={v=>sf("estVal",v)}/></div>
           </div>
@@ -491,6 +882,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations}) => {
           </div>
         </Modal>
       )}
+
+      {/* Quotation Compare Modal */}
+      {compare&&<QuotationCompareModal rfq={compare.rfq} quotations={compare.quotations} onClose={()=>setCompare(null)}/>}
     </div>
   );
 };
