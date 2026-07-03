@@ -2123,6 +2123,81 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               {qts.map((qt,i)=>(<th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>))}
             </tr></thead>
             <tbody>
+              {/* ── Quotation Comparison ── */}
+              <tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:"rgba(16,126,62,0.08)",fontWeight:700,fontSize:10,color:"#107e3e",textTransform:"uppercase",letterSpacing:.8,borderBottom:`1px solid ${C.border}`}}>Quotation Comparison</td></tr>
+              {/* Total Amount */}
+              {(()=>{
+                const amts=qts.map(qt=>qt.totalAmt||0);
+                const minAmt=Math.min(...amts);
+                const maxAmt=Math.max(...amts);
+                return(
+                  <tr style={{borderBottom:`1px solid ${C.border}`,background:C.card}}>
+                    <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
+                      <div style={{fontSize:12,fontWeight:700,color:C.t1}}>Total Quoted Amount</div>
+                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>vs Est. Budget: {idr(rfq.estVal)}</div>
+                    </td>
+                    {qts.map((qt,i)=>{
+                      const isLowest=qt.totalAmt===minAmt;
+                      const isHighest=qt.totalAmt===maxAmt&&minAmt!==maxAmt;
+                      const diff=rfq.estVal>0?((qt.totalAmt-rfq.estVal)/rfq.estVal*100):null;
+                      return(
+                        <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",background:isLowest?"#f0faf4":isHighest?"#fff5f5":C.card,minWidth:COL_W}}>
+                          <div style={{fontSize:15,fontWeight:700,color:isLowest?"#107e3e":isHighest?"#bb0000":C.t1}}>{idr(qt.totalAmt)}</div>
+                          {diff!==null&&<div style={{fontSize:10,marginTop:3,color:diff<=0?"#107e3e":"#e9730c",fontWeight:600}}>{diff<=0?`${Math.abs(diff).toFixed(1)}% under budget`:`${diff.toFixed(1)}% over budget`}</div>}
+                          {isLowest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>★ Lowest Price</div>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })()}
+              {/* Valid Until */}
+              <tr style={{borderBottom:`1px solid ${C.border}`,background:C.subtle}}>
+                <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t1}}>Validity Period</div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>Quotation valid until</div>
+                </td>
+                {qts.map((qt,i)=>{
+                  const latest=qts.reduce((a,b)=>(a.validUntil||"")>(b.validUntil||"")?a:b);
+                  const isLatest=qt.validUntil===latest.validUntil&&qt.validUntil;
+                  return(
+                    <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",minWidth:COL_W}}>
+                      <div style={{fontSize:13,fontWeight:600,color:isLatest?"#107e3e":C.t1}}>{qt.validUntil||"—"}</div>
+                      {isLatest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>Longest Validity</div>}
+                    </td>
+                  );
+                })}
+              </tr>
+              {/* Item-level unit price comparison */}
+              {rfq.items&&rfq.items.length>0&&rfq.items.map((item,ii)=>{
+                const unitPrices=qts.map(qt=>{
+                  const match=qt.items?.find((it:any)=>it.no===item.no||it.desc===item.desc);
+                  return match?.unitPrice||null;
+                });
+                const validPrices=unitPrices.filter(p=>p!==null);
+                const minPrice=validPrices.length?Math.min(...validPrices):null;
+                return(
+                  <tr key={`item-${ii}`} style={{borderBottom:`1px solid ${C.border}`,background:ii%2===0?C.card:C.subtle}}>
+                    <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
+                      <div style={{fontSize:12,fontWeight:700,color:C.t1}}>#{item.no} {item.desc}</div>
+                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>Unit price · {item.qty} {item.uom}</div>
+                    </td>
+                    {qts.map((qt,i)=>{
+                      const match=qt.items?.find((it:any)=>it.no===item.no||it.desc===item.desc);
+                      const price=match?.unitPrice||null;
+                      const isLowest=price!==null&&price===minPrice;
+                      return(
+                        <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",background:isLowest?"#f0faf4":undefined,minWidth:COL_W}}>
+                          {price!==null?<>
+                            <div style={{fontSize:13,fontWeight:600,color:isLowest?"#107e3e":C.t1}}>{idr(price)}</div>
+                            {isLowest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>★ Lowest</div>}
+                          </>:<span style={{color:C.t2,fontSize:12}}>—</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
               <tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:"rgba(0,112,242,0.08)",fontWeight:700,fontSize:10,color:C.primary,textTransform:"uppercase",letterSpacing:.8,borderBottom:`1px solid ${C.border}`}}>Evaluation Scoring (0 – 100 per criteria)</td></tr>
               {SCORE_CRITERIA.map((crit,ri)=>(
                 <tr key={crit.key} style={{borderBottom:`1px solid ${C.border}`,background:ri%2===0?C.card:C.subtle}}>
