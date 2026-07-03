@@ -114,6 +114,9 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
   const quoted=rfqId=>mine.find(q=>q.rfqId===rfqId);
   const save=qt=>{setQuotations(p=>p.find(q=>q.id===qt.id)?p.map(q=>q.id===qt.id?qt:q):[...p,qt]);setQR(null);setEQ(null);};
   const withdraw=id=>{if(window.confirm("Withdraw quotation?"))setQuotations(p=>p.map(q=>q.id===id?{...q,status:"Withdrawn"}:q));};
+  const [inviteStatus,setInviteStatus]=useState<{[rfqId:string]:"accepted"|"declined"}>({});
+  const acceptInvite=(rfqId)=>setInviteStatus(p=>({...p,[rfqId]:"accepted"}));
+  const declineInvite=(rfqId)=>setInviteStatus(p=>({...p,[rfqId]:"declined"}));
   return (
     <div style={{padding:pg()}}>
       <div style={{marginBottom:18,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
@@ -130,6 +133,19 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
           const q=quoted(rfq.id);
           return(
             <Card key={rfq.id}>
+              {rfq.status==="Open"&&!q&&!inviteStatus[rfq.id]&&(
+                <div style={{background:C.infoBg,border:`1px solid ${C.info}`,borderRadius:6,padding:"10px 14px",marginBottom:10}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#0854a0",marginBottom:4}}>📨 New Invitation to Quote</div>
+                  <div style={{fontSize:11,color:C.t2,marginBottom:8}}>Invitation No: {rfq.invitationNo||rfq.id} · Submission Deadline: {fmtDate(rfq.closingDate)}</div>
+                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <Btn v="ghost" sm onClick={()=>declineInvite(rfq.id)}>Decline</Btn>
+                    <Btn v="primary" sm onClick={()=>acceptInvite(rfq.id)}>Accept Invitation</Btn>
+                  </div>
+                </div>
+              )}
+              {rfq.status==="Open"&&!q&&inviteStatus[rfq.id]==="declined"&&(
+                <div style={{fontSize:11,color:C.t2,fontStyle:"italic",marginBottom:6}}>⊘ Invitation declined – you have opted not to submit a quotation for this RFQ.</div>
+              )}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7,flexWrap:"wrap"}}>
@@ -142,7 +158,7 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
                   <div style={{fontSize:11,color:C.t2}}>{rfq.items.length} items · Est. {idr(rfq.estVal)}</div>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",marginLeft:16}}>
-                  {rfq.status==="Open"&&!q&&<Btn onClick={()=>setQR(rfq)}>Submit Quotation</Btn>}
+                  {rfq.status==="Open"&&!q&&inviteStatus[rfq.id]==="accepted"&&<Btn onClick={()=>setQR(rfq)}>Submit Quotation</Btn>}
                   {rfq.status==="Open"&&q&&<Btn v="ghost" onClick={()=>{setEQ(q);setQR(rfq);}}>Edit Quotation</Btn>}
                 </div>
               </div>
@@ -157,7 +173,7 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
       )}
       {tab==="my"&&(
         <div>
-          <FilterBar opts={["All","Draft","Submitted","Accepted","Win","Completed"]} val={flt} onChange={setFlt}/>
+          <FilterBar opts={["All","Draft","Submitted","Accepted","Rejected","Win","Lost","Revised","PO Ready","Withdrawn"]} val={flt} onChange={setFlt}/>
           <Card style={{padding:0,overflow:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
               <thead><tr>{["RFQ Title","Submitted","Valid Until","Total Amount","Files","Status","Actions"].map(h=><Th key={h}>{h}</Th>)}</tr></thead>
@@ -339,7 +355,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const [vhOpen,setVhOpen]=useState<string|null>(null);
   const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
 
-  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","PO Ready"];
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Rejected","Win","Lost","Revised","PO Ready","Withdrawn"];
   const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
 
   const activeTokens=[
@@ -380,9 +396,9 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
   const canReject   = selRows.some(q=>q.status==="Submitted");
 
   const awardSel   =()=>{setQuotations(p=>p.map(q=>selIds.has(q.id)&&(q.status==="Submitted"||q.status==="Accepted")?{...q,status:"Win"}:q));setSelIds(new Set());};
-  const completeSel=()=>{setQuotations(p=>p.map(q=>selIds.has(q.id)&&(q.status==="Submitted"||q.status==="Accepted")?{...q,status:"Completed"}:q));setSelIds(new Set());};
+  const completeSel=()=>{setQuotations(p=>p.map(q=>selIds.has(q.id)&&(q.status==="Submitted"||q.status==="Accepted")?{...q,status:"Lost"}:q));setSelIds(new Set());};
   const acceptSel  =()=>{setQuotations(p=>p.map(q=>selIds.has(q.id)&&q.status==="Submitted"?{...q,status:"Accepted"}:q));setSelIds(new Set());};
-  const rejectSel  =()=>{if(!window.confirm(`Reject ${selRows.filter(q=>q.status==="Submitted").length} quotation(s)?`))return;setQuotations(p=>p.map(q=>selIds.has(q.id)&&q.status==="Submitted"?{...q,status:"Win"}:q));setSelIds(new Set());};
+  const rejectSel  =()=>{if(!window.confirm(`Reject ${selRows.filter(q=>q.status==="Submitted").length} quotation(s)?`))return;setQuotations(p=>p.map(q=>selIds.has(q.id)&&q.status==="Submitted"?{...q,status:"Rejected"}:q));setSelIds(new Set());};
 
   const exportQtCSV=()=>{
     const rows=selIds.size>0?list.filter(q=>selIds.has(q.id)):list;
@@ -463,7 +479,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
           selected={draft.statuses} onConfirm={s=>{sd("statuses",s);setVhOpen(null);}} onClose={()=>setVhOpen(null)}/>
       )}
 
-      <FilterBar opts={["All","Draft","Submitted","Accepted","Win","PO Ready","Completed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Draft","Submitted","Accepted","Rejected","Win","Lost","Revised","PO Ready","Withdrawn"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -482,7 +498,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
             const sep=<div style={{width:1,height:20,background:C.border,margin:"0 4px",flexShrink:0,alignSelf:"center"}}/>;
             return <>
               {tbBtn("🏆 Award",    awardSel,    canAward,    "")}
-              {tbBtn("✔ Complete", completeSel, canComplete, "")}
+              {tbBtn("✗ Mark Lost", completeSel, canComplete, "")}
               {tbBtn("✓ Accept",   acceptSel,   canAccept,   "")}
               {tbBtn("✗ Reject",   rejectSel,   canReject,   "")}
               {sep}
@@ -631,16 +647,17 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
         <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:10,textTransform:"uppercase",letterSpacing:.6}}>Quotation Status Legend</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"10px 24px",marginBottom:14}}>
           {[
-            {s:"Draft",      desc:"Quotation created by vendor but not yet sent to buyer"},
-            {s:"Submitted",  desc:"Quotation sent to Buyer, waiting for Acceptance"},
-            {s:"Accepted",   desc:"Quotation accepted and qualified by buyer"},
-            {s:"Win",        desc:"Set as winner by buyer based on RFQ evaluation & score by PIC"},
-            {s:"PO Ready",   desc:"PO already created in SAP (confirmed via SAP outbound)"},
-            {s:"Completed",  desc:"Quotation lost the RFQ/Tender (auto-set when winner is determined)"},
+            {s:"Draft",    desc:"Quotation saved but not yet submitted to buyer"},
+            {s:"Submitted",desc:"Quotation submitted – awaiting buyer evaluation"},
+            {s:"Accepted", desc:"Quotation accepted into scoring round by buyer"},
+            {s:"Rejected", desc:"Quotation rejected by buyer during evaluation"},
+            {s:"Win",      desc:"Awarded as winner after scoring and approval"},
+            {s:"Lost",     desc:"Not selected – automatically set when winner is determined"},
+            {s:"Revised",  desc:"Quotation re-opened for revision after approval rejection"},
+            {s:"PO Ready", desc:"Purchase Order confirmed in SAP system"},
           ].map(({s,desc})=>(
             <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:300}}>
-              <Badge s={s}/>
-              <span style={{fontSize:12,color:C.t2}}>{desc}</span>
+              <Badge s={s}/><span style={{fontSize:12,color:C.t2}}>{desc}</span>
             </div>
           ))}
         </div>
@@ -648,12 +665,10 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
           <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginRight:4}}>Status Flow:</span>
           {["Draft","Submitted","Accepted","Win","PO Ready"].map((s,i,arr)=>(
             <span key={s} style={{display:"flex",alignItems:"center",gap:6}}>
-              <Badge s={s}/>
-              {i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
+              <Badge s={s}/>{i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
             </span>
           ))}
-          <span style={{color:C.t2,fontSize:12,marginLeft:4}}>· Lost →</span>
-          <Badge s="Completed"/>
+          <span style={{color:C.t2,fontSize:12,marginLeft:8}}>· Rejected / Lost (terminal)</span>
         </div>
       </div>
 
@@ -687,9 +702,9 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
         const sHdr=(title)=><div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:14,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>{title}</div>;
         const APPROVAL_STEPS=[
           {type:"⚙",name:"1. Automatic Release of Supplier Quotation",status:"Supplier Quotation Released",processor:"Workflow System",recipient:"Recipients determined automatically"},
-          {type:"👤",name:"2. Procurement Officer Review",status:qt.status==="Submitted"?"Pending":qt.status==="Accepted"||qt.status==="Win"||qt.status==="Completed"?"Approved":"In Progress",processor:(VENDORS[qt.vendorId] as any)?.name||qt.vendorName,recipient:"Procurement Officer"},
-          {type:"👤",name:"3. Senior Buyer Approval",status:qt.status==="Win"||qt.status==="Completed"?"Approved":qt.status==="Accepted"?"In Review":"Pending",processor:"Siti Rahma",recipient:"Senior Buyer"},
-          {type:"👤",name:"4. Procurement Manager Final Approval",status:qt.status==="Completed"?"Approved":qt.status==="Win"?"In Review":"Pending",processor:"Ahmad Rizki",recipient:"Procurement Manager"},
+          {type:"👤",name:"2. Procurement Officer Review",status:qt.status==="Submitted"?"Pending":qt.status==="Accepted"||qt.status==="Win"||qt.status==="PO Ready"?"Approved":"In Progress",processor:(VENDORS[qt.vendorId] as any)?.name||qt.vendorName,recipient:"Procurement Officer"},
+          {type:"👤",name:"3. Senior Buyer Approval",status:qt.status==="Win"||qt.status==="PO Ready"?"Approved":qt.status==="Accepted"?"In Review":"Pending",processor:"Siti Rahma",recipient:"Senior Buyer"},
+          {type:"👤",name:"4. Procurement Manager Final Approval",status:qt.status==="PO Ready"?"Approved":qt.status==="Win"?"In Review":"Pending",processor:"Ahmad Rizki",recipient:"Procurement Manager"},
         ];
         return(
         <div style={{flex:`0 0 ${split}%`,position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",boxShadow:"-2px 0 10px rgba(0,0,0,0.08)"}}>
@@ -807,7 +822,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                       <div style={{padding:"8px",fontSize:12,color:C.primary,fontFamily:"monospace"}}>{rfqItem?.materialNo||"—"}</div>
                       <div style={{padding:"8px",fontSize:12,color:C.t1,textAlign:"right"}}>{rfqItem?.qty||it.qty}</div>
                       <div style={{padding:"8px",fontSize:12,color:C.t1,textAlign:"right"}}>{it.qty}</div>
-                      <div style={{padding:"8px",fontSize:12,color:qt.status==="Win"||qt.status==="Completed"?C.ok:C.t2,textAlign:"right",fontWeight:700}}>{qt.status==="Win"||qt.status==="Completed"?it.qty:"—"}</div>
+                      <div style={{padding:"8px",fontSize:12,color:qt.status==="Win"||qt.status==="PO Ready"?C.ok:C.t2,textAlign:"right",fontWeight:700}}>{qt.status==="Win"||qt.status==="PO Ready"?it.qty:"—"}</div>
                       <div style={{padding:"8px",fontSize:12,color:C.t2,textAlign:"right"}}>{it.uom}</div>
                     </div>
                     <div style={{padding:"8px 12px",background:"rgba(0,112,242,0.04)",borderTop:`1px solid ${C.border}`,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,fontSize:12}}>
@@ -1111,10 +1126,9 @@ const DiscussionBox = ({rfqId, discussions=[], onPost, user}) => {
 const RfqStatusIcon = ({s}) => {
   const STEPS = [
     {key:"Created",    shape:"diamond",  color:"#5b738b"},
-    {key:"Open",       shape:"square",   color:"#BB0000"},
-    {key:"On Process", shape:"triangle", color:"#E9730C"},
-    {key:"Complete",   shape:"circle",   color:"#188918"},
-    {key:"Closed",     shape:"circle2",  color:"#0070F2"},
+    {key:"Open",       shape:"square",   color:"#0854a0"},
+    {key:"Scored",     shape:"triangle", color:"#6f2da8"},
+    {key:"Closed",     shape:"circle",   color:"#6a6d70"},
   ];
   const SZ = 13;
   const INACTIVE_FILL   = "#C8CDD2";
@@ -1151,7 +1165,7 @@ const RfqStatusIcon = ({s}) => {
   );
 };
 
-export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
+export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
@@ -1187,7 +1201,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
 
-  const ALL_RFQ_STATUSES=["Created","Open","On Process","Complete","Pending Approval","Closed"];
+  const ALL_RFQ_STATUSES=["Created","Open","Scored","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
   const POSTED_BY_ROWS=[...new Set(rfqs.map(r=>r.postedBy).filter(Boolean))].sort().map(n=>({v:n,l:n}));
 
@@ -1283,8 +1297,28 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
     if(!apvForm.targetDate){alert("Please set a target approval date.");return;}
     const sel=[...selIds];
     const today=new Date().toISOString().split("T")[0];
-    setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Pending Approval",submittedForApprovalAt:today,submittedForApprovalBy:"Ahmad Rizki",committeeGroup:apvForm.committeeGroup,approvalPriority:apvForm.priority,approvalTargetDate:apvForm.targetDate}:r));
+    setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Scored",submittedForApprovalAt:today,submittedForApprovalBy:"Ahmad Rizki",committeeGroup:apvForm.committeeGroup,approvalPriority:apvForm.priority,approvalTargetDate:apvForm.targetDate}:r));
     setShowApproval(false);setApvForm(EMPTY_APV);setSelIds(new Set());
+  };
+  // ── Scoring (buyer step, produces Scored status) ──
+  const [scoreModal,setScoreModal]=useState<any>(null);
+  const [scores,setScores]=useState<{[qtId:string]:{technical:string,commercial:string,hse:string}}>({});
+  const [scoreNotes,setScoreNotes]=useState("");
+  const SCORE_CRITERIA=[
+    {key:"technical",label:"Technical Aspect",weight:0.40,desc:"Scope coverage, methodology, experience, proposed team"},
+    {key:"commercial",label:"Commercial Aspect",weight:0.40,desc:"Total price, payment terms, validity, price competitiveness"},
+    {key:"hse",label:"HSE & Compliance",weight:0.20,desc:"Safety record, K3 certifications, BPJS enrollment, environmental permits"},
+  ];
+  const initScores=(qts)=>{const s={};qts.forEach(qt=>{const ex=qt.scores||{};s[qt.id]={technical:String(ex.technical||""),commercial:String(ex.commercial||""),hse:String(ex.hse||"")};});return s;};
+  const getWeightedTotal=(qtId)=>{const s=scores[qtId]||{};const t=Number(s.technical)||0,c=Number(s.commercial)||0,h=Number(s.hse)||0;if(!s.technical&&!s.commercial&&!s.hse)return null;return Math.round(t*0.4+c*0.4+h*0.2);};
+  const submitBuyerScores=()=>{
+    if(!scoreNotes.trim()){alert("Please enter evaluation notes before submitting.");return;}
+    const {rfq}=scoreModal;
+    const today=new Date().toISOString().split("T")[0];
+    setQuotations(p=>p.map(q=>{if(!scores[q.id])return q;const s=scores[q.id];return{...q,scores:{technical:Number(s.technical)||0,commercial:Number(s.commercial)||0,hse:Number(s.hse)||0,weighted:getWeightedTotal(q.id)||0}};}));
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Scored",scoredAt:today,scoredBy:user?.name||"Buyer",scoreNotes}:r));
+    setScoreModal(null);setScores({});setScoreNotes("");
+    alert("Scoring submitted. RFQ is now in Scored status and ready for approval submission.");
   };
   const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
@@ -1385,7 +1419,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Created","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Created","Open","Scored","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -1395,7 +1429,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
           {(()=>{
             const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
             const allCreated=selList.length>0&&selList.every(r=>r.status==="Created");
-            const allComplete=selList.length>0&&selList.every(r=>r.status==="Complete");
+            const canSendApproval=selList.length>0&&selList.every(r=>r.status==="Scored");
             const canCompare=selList.length===1&&getQts(selList[0].id).length>0;
             return(<>
               <button onClick={()=>{if(!allCreated)return;openPublish();}} disabled={!allCreated}
@@ -1403,10 +1437,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
                 title={selIds.size===0?"Select RFQ(s) first":!allCreated?"Only 'Created' RFQs can be published to vendors":""}>
                 <SapIcon name="paper-plane" size={13} color={allCreated?"#fff":C.t2}/> Publish{selList.length>0&&allCreated?` (${selList.length})`:""}
               </button>
-              <button onClick={()=>allComplete&&setShowApproval(true)} disabled={!allComplete}
-                style={{background:allComplete?C.primary:C.subtle,border:`1px solid ${allComplete?"transparent":C.border}`,color:allComplete?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:allComplete?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:allComplete?1:0.6,transition:"all .15s"}}
-                title={selIds.size===0?"Select RFQ(s) first":!allComplete?"Only 'Complete' RFQs can be sent for approval":""}>
-                <SapIcon name="workflow-tasks" size={13} color={allComplete?"#fff":C.t2}/> Send for Approval{selList.length>0&&allComplete?` (${selList.length})`:""}
+              <button onClick={()=>canSendApproval&&setShowApproval(true)} disabled={!canSendApproval}
+                style={{background:canSendApproval?C.primary:C.subtle,border:`1px solid ${canSendApproval?"transparent":C.border}`,color:canSendApproval?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canSendApproval?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canSendApproval?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select RFQ(s) first":!canSendApproval?"Only 'Scored' RFQs can be sent for approval":""}>
+                <SapIcon name="workflow-tasks" size={13} color={canSendApproval?"#fff":C.t2}/> Send for Approval{selList.length>0&&canSendApproval?` (${selList.length})`:""}
               </button>
               <button onClick={()=>{if(!canCompare)return;const rfq=selList[0];setCompareData({rfq,quotations:getQts(rfq.id)});}} disabled={!canCompare}
                 style={{background:canCompare?"#6f2da8":C.subtle,border:`1px solid ${canCompare?"transparent":C.border}`,color:canCompare?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canCompare?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canCompare?1:0.6,transition:"all .15s"}}
@@ -1532,8 +1566,13 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
                     <div style={{padding:"10px 16px",borderTop:`1px solid ${C.border}`,background:"rgba(0,0,0,0.02)"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                         <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Received Quotations ({qts.length})</div>
-                        <div onClick={e=>e.stopPropagation()}>
+                        <div onClick={e=>e.stopPropagation()} style={{display:"flex",gap:6}}>
                           <Btn sm v="ghost" onClick={()=>setCompareData({rfq,quotations:qts})}>⊞ Compare Quotations</Btn>
+                          {rfq.status==="Open"&&getQts(rfq.id).some(q=>q.status==="Accepted")&&(
+                            <Btn v="ghost" sm onClick={()=>{const aqts=getQts(rfq.id).filter(q=>q.status==="Accepted");setScoreModal({rfq,qts:aqts});setScores(initScores(aqts));setScoreNotes("");}}>
+                              ★ Score Quotations
+                            </Btn>
+                          )}
                         </div>
                       </div>
                       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1851,12 +1890,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
         <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:12,textTransform:"uppercase",letterSpacing:.6}}>RFQ Status Legend</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"10px 28px",marginBottom:14}}>
           {[
-            {s:"Created",          desc:"RFQ created in SAP system – not yet published to vendors"},
-            {s:"Open",             desc:"RFQ published to vendors – no quotation received yet"},
-            {s:"On Process",       desc:"One or more quotations accepted by buyer, evaluation in progress"},
-            {s:"Complete",         desc:"All targeted vendor quotations accepted – ready for tender committee"},
-            {s:"Pending Approval", desc:"Submitted to Tender Committee (Approver) for winner decision"},
-            {s:"Closed",           desc:"Winner determined – RFQ concluded, proceeding to PO"},
+            {s:"Created",    desc:"RFQ created in SAP – not yet published to vendors"},
+            {s:"Open",       desc:"Published to vendors – collecting and evaluating quotations"},
+            {s:"Scored",     desc:"Scoring session completed – submitted to Tender Committee for approval"},
+            {s:"Closed",     desc:"Approved by Tender Committee – winner determined, PO in progress"},
           ].map(({s,desc})=>(
             <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:300}}>
               <Badge s={s}/>
@@ -1866,7 +1903,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
         </div>
         <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Status Flow:</span>
-          {["Created","Open","On Process","Complete","Pending Approval","Closed"].map((s,i,arr)=>(
+          {["Created","Open","Scored","Closed"].map((s,i,arr)=>(
             <span key={s} style={{display:"flex",alignItems:"center",gap:6}}>
               <Badge s={s}/>
               {i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
@@ -2054,13 +2091,106 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,user}) => {
       })()}
     </>}
     {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
+
+    {/* Score Quotations Modal (buyer) */}
+    {scoreModal&&(()=>{
+      const {rfq,qts}=scoreModal;
+      const maxTotal=Math.max(0,...qts.map(qt=>getWeightedTotal(qt.id)||0));
+      const LABEL_W=240;
+      const COL_W=Math.max(200,Math.floor(760/qts.length));
+      return(
+      <Modal title={`Evaluation Scoring · ${rfq.title}`} onClose={()=>{setScoreModal(null);setScores({});setScoreNotes("");}} width="90vw">
+        <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+          {qts.map((qt,i)=>(
+            <div key={qt.id} style={{flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
+              <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
+              <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <Badge s={qt.status}/>
+                <span style={{fontSize:11,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{padding:"6px 12px",background:C.infoBg,borderRadius:4,marginBottom:12,fontSize:11,color:C.info,display:"flex",gap:16,flexWrap:"wrap"}}>
+          <span><strong>RFQ:</strong> {rfq.id}</span>
+          <span><strong>Category:</strong> {rfq.cat||"—"}</span>
+          <span><strong>Company:</strong> {rfq.companyCode||"—"}</span>
+          <span><strong>Est. Budget:</strong> {idr(rfq.estVal)}</span>
+        </div>
+        <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"55vh",marginBottom:16}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*qts.length}}>
+            <thead><tr style={{position:"sticky",top:0,zIndex:2}}>
+              <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left",background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,minWidth:LABEL_W}}>Criteria</th>
+              {qts.map((qt,i)=>(<th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>))}
+            </tr></thead>
+            <tbody>
+              <tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:"rgba(0,112,242,0.08)",fontWeight:700,fontSize:10,color:C.primary,textTransform:"uppercase",letterSpacing:.8,borderBottom:`1px solid ${C.border}`}}>Evaluation Scoring (0 – 100 per criteria)</td></tr>
+              {SCORE_CRITERIA.map((crit,ri)=>(
+                <tr key={crit.key} style={{borderBottom:`1px solid ${C.border}`,background:ri%2===0?C.card:C.subtle}}>
+                  <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
+                    <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{crit.label} <span style={{fontSize:10,fontWeight:400,color:C.primary}}>({(crit.weight*100).toFixed(0)}%)</span></div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:2}}>{crit.desc}</div>
+                  </td>
+                  {qts.map((qt,i)=>{
+                    const val=(scores[qt.id]||{})[crit.key]||"";
+                    const num=Number(val);
+                    const scoreColor=val===""?C.border:num>=80?"#107e3e":num>=60?VDR_COLORS[i%VDR_COLORS.length]:num>=40?"#e9730c":"#bb0000";
+                    return(
+                      <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",verticalAlign:"middle",minWidth:COL_W}}>
+                        <input type="number" min={0} max={100} value={val}
+                          onChange={e=>setScores(p=>({...p,[qt.id]:{...(p[qt.id]||{}),[crit.key]:e.target.value}}))}
+                          style={{width:80,textAlign:"center",padding:"6px 10px",border:`2px solid ${scoreColor}`,borderRadius:6,fontSize:16,fontWeight:700,color:scoreColor===C.border?C.t2:scoreColor,background:C.card,outline:"none",fontFamily:"inherit"}}
+                          placeholder="—"
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              <tr style={{background:"rgba(0,112,242,0.05)",borderTop:`2px solid ${C.primary}`}}>
+                <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>
+                  WEIGHTED TOTAL SCORE
+                  <div style={{fontSize:10,fontWeight:400,color:C.t2,marginTop:2}}>40% Tech + 40% Commercial + 20% HSE</div>
+                </td>
+                {qts.map((qt,i)=>{
+                  const total=getWeightedTotal(qt.id);
+                  const isTop=total!==null&&total===maxTotal&&maxTotal>0;
+                  return(
+                    <td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"center",color:isTop?"#107e3e":C.t1,background:isTop?"#e8f5e9":"rgba(0,112,242,0.05)",borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+                      {total!==null?<><div style={{fontSize:28,fontWeight:700}}>{total}</div>{isTop&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:4}}>★ Top Score</div>}</>:<span style={{fontSize:13,color:C.t2}}>—</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Evaluation Notes / Remarks</label>
+          <TA value={scoreNotes} onChange={setScoreNotes} rows={3} placeholder="Summarize evaluation rationale, key differentiators, or committee remarks…"/>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
+          <span style={{fontSize:11,color:C.t2,flex:1}}>Submitting scores moves this RFQ to Scored status, ready to be sent for approval.</span>
+          <Btn v="ghost" onClick={()=>{setScoreModal(null);setScores({});setScoreNotes("");}}>Cancel</Btn>
+          <Btn v="success" onClick={()=>{
+            const allFilled=qts.every(qt=>SCORE_CRITERIA.every(c=>(scores[qt.id]||{})[c.key]!==""));
+            if(!allFilled){alert("Please fill in all scores for all vendors before submitting.");return;}
+            submitBuyerScores();
+          }}>
+            <SapIcon name="accept" size={13} color="#fff"/> Submit Scoring
+          </Btn>
+        </div>
+      </Modal>
+      );
+    })()}
   </div>
   );
 };
 
 // ── Approver RFQ ──────────────────────────────────────────────
 export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) => {
-  const [flt,setFlt]=useState("Pending Approval");
+  const [flt,setFlt]=useState("Scored");
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
   const [adaptOpen2,setAdaptOpen2]=useState(false);
@@ -2073,7 +2203,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const resetFilters=()=>{setDraft2(EMPTY_FLT2);setApplied(EMPTY_FLT2);};
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
-  const ALL_RFQ_STATUSES=["Open","On Process","Complete","Pending Approval","Closed"];
+  const ALL_RFQ_STATUSES=["Open","Scored","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
 
   const [selIds,setSelIds]=useState(new Set<string>());
@@ -2090,46 +2220,12 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const [winnerVendorId,setWinnerVendorId]=useState("");
   const [actionNotes,setActionNotes]=useState("");
 
-  // Scoring modal state
-  const [scoreModal,setScoreModal]=useState<any>(null); // {rfq, qts}
-  const SCORE_CRITERIA=[
-    {key:"technical",label:"Technical Aspect",weight:0.40,desc:"Scope coverage, methodology, experience, proposed team"},
-    {key:"commercial",label:"Commercial Aspect",weight:0.40,desc:"Total price, payment terms, validity, price competitiveness"},
-    {key:"hse",label:"HSE & Compliance",weight:0.20,desc:"Safety record, K3 certifications, BPJS enrollment, environmental permits"},
-  ];
-  const [scores,setScores]=useState<{[qtId:string]:{technical:string,commercial:string,hse:string}}>({});
-  const [scoreNotes,setScoreNotes]=useState("");
-  const initScores=(qts)=>{
-    const s={};
-    qts.forEach(qt=>{
-      const existing=qt.scores||{};
-      s[qt.id]={technical:String(existing.technical||""),commercial:String(existing.commercial||""),hse:String(existing.hse||"")};
-    });
-    return s;
-  };
-  const getWeightedTotal=(qtId)=>{
-    const s=scores[qtId]||{};
+  const getWeightedTotal=(qt)=>{
+    const s=qt.scores||{};
+    if(s.weighted!=null) return s.weighted;
     const t=Number(s.technical)||0, c=Number(s.commercial)||0, h=Number(s.hse)||0;
     if(!s.technical&&!s.commercial&&!s.hse) return null;
     return Math.round(t*0.4+c*0.4+h*0.2);
-  };
-  const submitScores=()=>{
-    if(!scoreNotes.trim()){alert("Evaluation Notes / Remarks is required before submitting.");return;}
-    const {rfq,qts}=scoreModal;
-    const today=new Date().toISOString().split("T")[0];
-    // Save scores to quotation records
-    setQuotations(p=>p.map(q=>{
-      if(!scores[q.id]) return q;
-      const s=scores[q.id];
-      return {...q,scores:{technical:Number(s.technical)||0,commercial:Number(s.commercial)||0,hse:Number(s.hse)||0,weighted:getWeightedTotal(q.id)||0}};
-    }));
-    // Find highest scorer to recommend as winner
-    const ranked=[...qts].sort((a,b)=>(getWeightedTotal(b.id)||0)-(getWeightedTotal(a.id)||0));
-    const winnerId=ranked[0]?.vendorId||"";
-    // Approve & close RFQ with winner = highest scorer
-    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",approvalNotes:scoreNotes,winnerVendorId:winnerId,scored:true}:r));
-    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerId?"Win":"Completed"}:q));
-    setScoreModal(null);setScores({});setScoreNotes("");
   };
 
   const activeTokens=[
@@ -2178,8 +2274,19 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
     const {rfq}=actionModal;
     const today=new Date().toISOString().split("T")[0];
     if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
-    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Complete",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Open",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
+    setQuotations(p=>p.map(q=>q.rfqId===rfq.id&&["Accepted","Submitted"].includes(q.status)?{...q,status:"Revised"}:q));
     setActionModal(null);setActionNotes("");
+  };
+  const approveRfq=(rfq)=>{
+    const qts=getQts(rfq.id).filter(q=>q.status==="Accepted");
+    if(!qts.length){alert("No Accepted quotations to award for this RFQ.");return;}
+    const ranked=[...qts].sort((a,b)=>(getWeightedTotal(b)||0)-(getWeightedTotal(a)||0));
+    const winnerVendorId=ranked[0]?.vendorId||"";
+    if(!window.confirm(`Approve and close RFQ ${rfq.id}?\nWinner: ${ranked[0]?.vendorName} (weighted ${getWeightedTotal(ranked[0])??"—"}).`))return;
+    const today=new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",winnerVendorId,approvalNotes:`Approved by Tender Committee. Winner: ${ranked[0]?.vendorName}.`}:r));
+    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerVendorId?"Win":"Lost"}:q));
   };
 
   return (
@@ -2216,156 +2323,6 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           </div>
         </Modal>
       )}
-
-      {/* Score Modal */}
-      {scoreModal&&(()=>{
-        const {rfq,qts}=scoreModal;
-        const maxTotal=Math.max(0,...qts.map(qt=>getWeightedTotal(qt.id)||0));
-        const LABEL_W=240;
-        const COL_W=Math.max(200,Math.floor(760/qts.length));
-        return(
-        <Modal title={`Evaluation Scoring · ${rfq.title}`} onClose={()=>{setScoreModal(null);setScores({});setScoreNotes("");}} width="90vw">
-          {/* Vendor summary cards */}
-          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-            {qts.map((qt,i)=>(
-              <div key={qt.id} style={{flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`}}>
-                <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
-                <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
-                <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                  <Badge s={qt.status}/>
-                  <span style={{fontSize:11,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* RFQ info bar */}
-          <div style={{padding:"6px 12px",background:C.infoBg,borderRadius:4,marginBottom:12,fontSize:11,color:C.info,display:"flex",gap:16,flexWrap:"wrap"}}>
-            <span><strong>RFQ:</strong> {rfq.id}</span>
-            <span><strong>Category:</strong> {rfq.cat||"—"}</span>
-            <span><strong>Company:</strong> {rfq.companyCode||"—"}</span>
-            <span><strong>Est. Budget:</strong> {idr(rfq.estVal)}</span>
-            <span><strong>Submitted by:</strong> {rfq.submittedForApprovalBy||"Buyer"}</span>
-          </div>
-
-          {/* Single unified table: comparison + scoring in one scroll container */}
-          {(()=>{
-            const calcNet=qt=>{const pc=qt.priceConditions||{};const sub=qt.totalAmt;return sub-sub*(pc.discount||0)/100+sub*(pc.surcharge||0)/100+(pc.freight||0)+(pc.insurance||0);};
-            const nets=qts.map(calcNet);
-            const bestNet=Math.min(...nets);
-            const itemBestPrice=(rfq.items||[]).map((_,ii)=>{const prices=qts.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));return prices.length?Math.min(...prices):null;});
-            const SHdr=({title,accent=false}:any)=>(<tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:accent?"rgba(0,112,242,0.08)":C.subtle,fontWeight:700,fontSize:10,color:accent?C.primary:C.t2,textTransform:"uppercase",letterSpacing:.8,borderTop:`2px solid ${accent?C.primary:C.border}`,borderBottom:`1px solid ${C.border}`}}>{title}</td></tr>);
-            const CRow=({label,vals,fmt=null,bestVal=null,bold=false,sub=false}:any)=>(<tr style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,background:C.card,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,whiteSpace:"nowrap",paddingLeft:sub?24:14}}>{label}</td>{vals.map((v,i)=>{const isBest=bestVal!=null&&v===bestVal&&qts.length>1;return(<td key={i} style={{padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.card,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>{fmt?fmt(v):(v||"—")}{isBest&&<span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}</td>);})}</tr>);
-            return(
-            <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"55vh",marginBottom:16}}>
-              <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*qts.length}}>
-                <thead><tr style={{position:"sticky",top:0,zIndex:2}}>
-                  <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left",background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,minWidth:LABEL_W}}>Parameter / Criteria</th>
-                  {qts.map((qt,i)=>(<th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>))}
-                </tr></thead>
-                <tbody>
-                  {/* ── Comparison section ── */}
-                  <SHdr title="Vendor Information"/>
-                  <CRow label="Vendor Number" vals={qts.map(q=>q.vendorId)}/>
-                  <CRow label="Vendor Name" vals={qts.map(q=>q.vendorName)}/>
-                  <CRow label="Sales Person / Contact" vals={qts.map(q=>q.salesPerson||"—")}/>
-                  <CRow label="Quotation ID" vals={qts.map(q=>q.id)}/>
-                  <CRow label="Submitted Date" vals={qts.map(q=>fmtDate(q.submittedDate))}/>
-                  <CRow label="Valid Until" vals={qts.map(q=>fmtDate(q.validUntil))}/>
-                  <CRow label="Status" vals={qts.map(q=>q.status)}/>
-                  <SHdr title="Purchasing Details"/>
-                  <CRow label="Purchasing Organization" vals={qts.map(()=>rfq.purchOrg||"—")}/>
-                  <CRow label="Purchasing Group" vals={qts.map(q=>pgLabel(q.purchGroup||rfq.purchGroup))}/>
-                  <SHdr title="Commercial Terms"/>
-                  <CRow label="Terms of Payment" vals={qts.map(q=>q.termsOfPayment||q.paymentTerms||"—")}/>
-                  <CRow label="Delivery Terms (Incoterms)" vals={qts.map(q=>q.deliveryTerms||"—")}/>
-                  <CRow label="Lead Time" vals={qts.map(q=>q.leadTime||"—")}/>
-                  <CRow label="Warranty Period" vals={qts.map(q=>q.warrantyPeriod||"—")}/>
-                  <SHdr title="Line Items — Price Comparison"/>
-                  {(rfq.items||[]).map((item,ii)=>(
-                    <>
-                      <tr key={`ih-${ii}`} style={{background:C.infoBg}}><td colSpan={qts.length+1} style={{padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>{String(item.no).padStart(3,"0")} · {item.desc}<span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span></td></tr>
-                      <CRow key={`mg-${ii}`} label="Product / Material Group" vals={qts.map(q=>q.items?.[ii]?.materialGroup||item.materialGroup||"—")} sub/>
-                      <CRow key={`up-${ii}`} label="Unit Price (IDR)" vals={qts.map(q=>q.items?.[ii]?.unitPrice||0)} fmt={v=>idr(v)} bestVal={itemBestPrice[ii]} bold sub/>
-                      <CRow key={`tot-${ii}`} label="Item Total (IDR)" vals={qts.map(q=>q.items?.[ii]?.total||0)} fmt={v=>idr(v)} sub/>
-                    </>
-                  ))}
-                  <SHdr title="Price Conditions & Summary"/>
-                  <CRow label="Subtotal" vals={qts.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
-                  <CRow label="Discount (%)" vals={qts.map(q=>`${q.priceConditions?.discount||0}%`)}/>
-                  <CRow label="Discount Amount" vals={qts.map(q=>q.totalAmt*(q.priceConditions?.discount||0)/100)} fmt={v=>v>0?`(${idr(v)})`:"—"} sub/>
-                  <CRow label="Surcharge (%)" vals={qts.map(q=>`${q.priceConditions?.surcharge||0}%`)}/>
-                  <CRow label="Freight Cost" vals={qts.map(q=>q.priceConditions?.freight||0)} fmt={v=>v>0?idr(v):"—"}/>
-                  <CRow label="Insurance Cost" vals={qts.map(q=>q.priceConditions?.insurance||0)} fmt={v=>v>0?idr(v):"—"}/>
-                  <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
-                    <td style={{padding:"10px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
-                    {qts.map((qt,i)=>{const net=nets[i];const isBest=net===bestNet&&qts.length>1;return(<td key={qt.id} style={{padding:"10px 14px",fontSize:13,fontWeight:700,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>{idr(net)}{isBest&&<div style={{fontSize:9,color:C.ok,fontWeight:700,marginTop:2}}>★ Lowest Net</div>}</td>);})}
-                  </tr>
-
-                  {/* ── Scoring section ── */}
-                  <SHdr title="Evaluation Scoring (0 – 100 per criteria)" accent/>
-                  {SCORE_CRITERIA.map((crit,ri)=>(
-                    <tr key={crit.key} style={{borderBottom:`1px solid ${C.border}`,background:ri%2===0?C.card:C.subtle}}>
-                      <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
-                        <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{crit.label} <span style={{fontSize:10,fontWeight:400,color:C.primary}}>({(crit.weight*100).toFixed(0)}%)</span></div>
-                        <div style={{fontSize:11,color:C.t2,marginTop:2}}>{crit.desc}</div>
-                      </td>
-                      {qts.map((qt,i)=>{
-                        const val=(scores[qt.id]||{})[crit.key]||"";
-                        const num=Number(val);
-                        const scoreColor=val===""?C.border:num>=80?"#107e3e":num>=60?VDR_COLORS[i%VDR_COLORS.length]:num>=40?"#e9730c":"#bb0000";
-                        return(
-                          <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",verticalAlign:"middle",minWidth:COL_W}}>
-                            <input type="number" min={0} max={100} value={val}
-                              onChange={e=>setScores(p=>({...p,[qt.id]:{...(p[qt.id]||{}),[crit.key]:e.target.value}}))}
-                              style={{width:80,textAlign:"center",padding:"6px 10px",border:`2px solid ${scoreColor}`,borderRadius:6,fontSize:16,fontWeight:700,color:scoreColor===C.border?C.t2:scoreColor,background:C.card,outline:"none",fontFamily:"inherit"}}
-                              placeholder="—"
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  <tr style={{background:"rgba(0,112,242,0.05)",borderTop:`2px solid ${C.primary}`}}>
-                    <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>
-                      WEIGHTED TOTAL SCORE
-                      <div style={{fontSize:10,fontWeight:400,color:C.t2,marginTop:2}}>40% Tech + 40% Commercial + 20% HSE</div>
-                    </td>
-                    {qts.map((qt,i)=>{
-                      const total=getWeightedTotal(qt.id);
-                      const isTop=total!==null&&total===maxTotal&&maxTotal>0;
-                      return(
-                        <td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"center",color:isTop?"#107e3e":C.t1,background:isTop?"#e8f5e9":"rgba(0,112,242,0.05)",borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
-                          {total!==null?<><div style={{fontSize:28,fontWeight:700}}>{total}</div>{isTop&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:4}}>★ Recommended</div>}</>:<span style={{fontSize:13,color:C.t2}}>—</span>}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            );
-          })()}
-
-          {/* Notes + actions */}
-          <div style={{marginBottom:14}}>
-            <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Evaluation Notes / Remarks</label>
-            <TA value={scoreNotes} onChange={setScoreNotes} rows={3} placeholder="Summarize evaluation rationale, key differentiators, or committee remarks…"/>
-          </div>
-          <div style={{display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center"}}>
-            <span style={{fontSize:11,color:C.t2,flex:1}}>Highest scorer will be automatically selected as the winning vendor and the RFQ will be closed.</span>
-            <Btn v="ghost" onClick={()=>{setScoreModal(null);setScores({});setScoreNotes("");}}>Cancel</Btn>
-            <Btn v="success" onClick={()=>{
-              const allFilled=qts.every(qt=>SCORE_CRITERIA.every(c=>(scores[qt.id]||{})[c.key]!==""));
-              if(!allFilled){alert("Please fill in all scores for all vendors before submitting.");return;}
-              submitScores();
-            }}>
-              <SapIcon name="accept" size={13} color="#fff"/> Submit Score & Close RFQ
-            </Btn>
-          </div>
-        </Modal>
-        );
-      })()}
 
       <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen2(true)} adaptFiltersCount={visibleFields2.size}>
         {visibleFields2.has("companyCodes")&&<FField label="Company Code"><ValueHelpInp selected={draft2.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen2("companyCode")} placeholder="All Company Codes"/></FField>}
@@ -2407,25 +2364,13 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Open","On Process","Complete","Pending Approval","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Scored","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
-          {(()=>{
-            const selList=[...selIds].map(id=>list.find(r=>r.id===id)).filter(Boolean);
-            const acceptedQts=selList.length===1?getQts(selList[0].id).filter(q=>q.status==="Accepted"):[];
-            const canScore=selList.length===1&&acceptedQts.length>0;
-            return(
-              <button onClick={()=>{if(!canScore)return;const rfq=selList[0];const qts=acceptedQts;setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}} disabled={!canScore}
-                style={{background:canScore?"#107e3e":C.subtle,border:`1px solid ${canScore?"transparent":C.border}`,color:canScore?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canScore?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canScore?1:0.6,transition:"all .15s"}}
-                title={selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":getQts(selList[0]?.id||"").length===0?"No quotations received for this RFQ":""}>
-                <SapIcon name="performance" size={13} color={canScore?"#fff":C.t2}/> Submit Score
-              </button>
-            );
-          })()}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -2550,20 +2495,20 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                       <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
                     )}
 
-                    {/* Action buttons for Pending Approval */}
-                    {rfq.status==="Pending Approval"&&(
+                    {/* Action buttons for Scored RFQs pending approval */}
+                    {rfq.status==="Scored"&&(
                       <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
-                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>Submitted by <strong style={{color:C.t1}}>{rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.submittedForApprovalAt)}</span>
+                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>Scored by <strong style={{color:C.t1}}>{rfq.scoredBy||rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.scoredAt||rfq.submittedForApprovalAt)}</span>
                         <div style={{flex:1}}/>
                         <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");}}>
-                          <SapIcon name="cancel" size={13} color="#fff"/> Reject
+                          <SapIcon name="cancel" size={13} color="#fff"/> Reject – Return to Buyer
                         </Btn>
-                        <Btn v="success" sm onClick={()=>{const qts=getQts(rfq.id).filter(q=>q.status==="Accepted");if(!qts.length){alert("No Accepted quotations to evaluate. Please accept quotations first.");return;}setScoreModal({rfq,qts});setScores(initScores(qts));setScoreNotes("");}}>
-                          <SapIcon name="scoring" size={13} color="#fff"/> Submit Score
+                        <Btn v="success" sm onClick={()=>approveRfq(rfq)}>
+                          <SapIcon name="accept" size={13} color="#fff"/> Approve & Close
                         </Btn>
                       </div>
                     )}
-                    {rfq.status!=="Pending Approval"&&(
+                    {rfq.status!=="Scored"&&(
                       <div style={{padding:"8px 16px 10px"}}>
                         <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
                       </div>
@@ -2786,7 +2731,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
   const clrA=(k)=>{setDraft(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT[k])?[]:EMPTY_FLT[k]}));};
 
   const VENDOR_ROWS=Object.values(VENDORS).map((v:any)=>({v:v.id,l:v.name}));
-  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Win","Completed","PO Ready"];
+  const ALL_QT_STATUSES=["Draft","Submitted","Accepted","Rejected","Win","Lost","Revised","PO Ready","Withdrawn"];
 
   const activeTokens=[
     applied.vendorIds.length>0&&{label:"Vendor",val:applied.vendorIds.length===1?(VENDORS[applied.vendorIds[0]] as any)?.name||applied.vendorIds[0]:`${applied.vendorIds.length} selected`,onClear:()=>clrA("vendorIds")},
@@ -2955,28 +2900,26 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
 export const DirectorHome = ({user, rfqs, quotations, setSection}) => {
   const today = new Date().toISOString().split("T")[0];
   const totalRfqs = rfqs.length;
-  const pending = rfqs.filter(r=>r.status==="Pending Approval");
+  const created = rfqs.filter(r=>r.status==="Created");
+  const pending = rfqs.filter(r=>r.status==="Scored");
   const closed = rfqs.filter(r=>r.status==="Closed");
   const open = rfqs.filter(r=>r.status==="Open");
-  const onProcess = rfqs.filter(r=>r.status==="On Process");
-  const complete = rfqs.filter(r=>r.status==="Complete");
-  const scored = rfqs.filter(r=>r.scored);
+  const scored = rfqs.filter(r=>r.status==="Scored");
   const totalBudget = rfqs.reduce((s,r)=>s+(r.estVal||0),0);
   const pendingBudget = pending.reduce((s,r)=>s+(r.estVal||0),0);
 
   const statuses = [
-    {label:"Open",count:open.length,color:"#0070f2",bg:"#edf4ff"},
-    {label:"On Process",count:onProcess.length,color:"#e76500",bg:"#fff3e6"},
-    {label:"Pending Approval",count:pending.length,color:"#6f2da8",bg:"#f3e8ff"},
-    {label:"Closed",count:closed.length,color:"#107e3e",bg:"#e8f5e9"},
-    {label:"Complete",count:complete.length,color:"#32363a",bg:C.subtle},
+    {label:"Created",count:created.length,color:"#5b738b",bg:"#e8edf1"},
+    {label:"Open",count:open.length,color:"#0854a0",bg:"#dbeeff"},
+    {label:"Scored",count:scored.length,color:"#6f2da8",bg:"#f3eeff"},
+    {label:"Closed",count:closed.length,color:"#6a6d70",bg:"#f4f4f4"},
   ];
 
   // Group pending by priority
   const highVal = pending.filter(r=>(r.estVal||0)>=1000000000);
   const recentDiscussions = rfqs.filter(r=>(r.discussions||[]).length>0)
     .sort((a,b)=>(b.discussions||[]).length-(a.discussions||[]).length).slice(0,5);
-  const scoredPending = pending.filter(r=>r.scored);
+  const scoredPending = pending;
 
   const KpiCard = ({icon,label,value,sub,color="#0a6ed1",onClick=null}:any) => (
     <div onClick={onClick} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"16px 20px",borderTop:`3px solid ${color}`,cursor:onClick?"pointer":"default",transition:"box-shadow .15s"}}
@@ -3003,9 +2946,9 @@ export const DirectorHome = ({user, rfqs, quotations, setSection}) => {
       {/* KPI Cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
         <KpiCard icon="org-chart" label="Total RFQs" value={totalRfqs} sub={`IDR ${(totalBudget/1e9).toFixed(1)}B total budget`} color="#32363a"/>
-        <KpiCard icon="approvals" label="Pending Approval" value={pending.length} sub={`IDR ${(pendingBudget/1e9).toFixed(1)}B awaiting decision`} color="#6f2da8" onClick={()=>setSection("dir-rfq")}/>
-        <KpiCard icon="complete" label="Closed (Winner)" value={closed.length} sub={`${complete.length} fully completed`} color="#107e3e"/>
-        <KpiCard icon="performance" label="Scored by PIC" value={`${scored.length}/${pending.length}`} sub="of Pending Approval RFQs" color="#0070f2"/>
+        <KpiCard icon="approvals" label="Scored (Pending Approval)" value={pending.length} sub={`IDR ${(pendingBudget/1e9).toFixed(1)}B awaiting decision`} color="#6f2da8" onClick={()=>setSection("dir-rfq")}/>
+        <KpiCard icon="complete" label="Closed (Winner)" value={closed.length} sub={`${closed.length} awarded`} color="#107e3e"/>
+        <KpiCard icon="performance" label="Open RFQs" value={open.length} sub="collecting & evaluating quotes" color="#0070f2"/>
         <KpiCard icon="discussion" label="Active Discussions" value={rfqs.filter(r=>(r.discussions||[]).length>0).length} sub="RFQs with discussion threads" color="#e76500"/>
       </div>
 
@@ -3041,7 +2984,7 @@ export const DirectorHome = ({user, rfqs, quotations, setSection}) => {
           </div>
           {pending.length===0&&<div style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>No RFQs pending approval.</div>}
           {pending.slice(0,5).map(r=>{
-            const isScored=r.scored;
+            const isScored=r.status==="Scored"||!!r.scoredAt;
             const daysLeft=r.closingDate?Math.ceil((new Date(r.closingDate).getTime()-Date.now())/(1000*60*60*24)):null;
             return(
               <div key={r.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -3114,11 +3057,10 @@ export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
   const calcNet = qt => {const pc=qt.priceConditions||{};const s=qt.totalAmt;return s-s*(pc.discount||0)/100+s*(pc.surcharge||0)/100+(pc.freight||0)+(pc.insurance||0);};
 
   const statusColor = (s) => {
-    if(s==="Open") return "#0070f2";
-    if(s==="Pending Approval") return "#6f2da8";
-    if(s==="Closed") return "#107e3e";
-    if(s==="On Process") return "#e76500";
-    if(s==="Complete") return "#32363a";
+    if(s==="Created") return "#5b738b";
+    if(s==="Open") return "#0854a0";
+    if(s==="Scored") return "#6f2da8";
+    if(s==="Closed") return "#6a6d70";
     return C.t2;
   };
 
@@ -3130,11 +3072,11 @@ export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
         <div style={{fontSize:13,color:C.t2,marginTop:2}}>Director view · Full RFQ oversight — discussions, evaluations, and scoring by PIC</div>
       </div>
 
-      <FilterBar opts={["All","Open","On Process","Pending Approval","Closed","Complete"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Created","Open","Scored","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Summary row */}
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const}}>
-        {[{l:"Showing",v:list.length,c:C.t1},{l:"Pending Approval",v:list.filter(r=>r.status==="Pending Approval").length,c:"#6f2da8"},{l:"Scored",v:list.filter(r=>r.scored).length,c:"#107e3e"},{l:"With Discussions",v:list.filter(r=>(r.discussions||[]).length>0).length,c:"#0070f2"}].map(s=>(
+        {[{l:"Showing",v:list.length,c:C.t1},{l:"Scored",v:list.filter(r=>r.status==="Scored").length,c:"#6f2da8"},{l:"Closed",v:list.filter(r=>r.status==="Closed").length,c:"#107e3e"},{l:"With Discussions",v:list.filter(r=>(r.discussions||[]).length>0).length,c:"#0070f2"}].map(s=>(
           <div key={s.l} style={{padding:"4px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,fontSize:12,color:C.t2}}>
             <strong style={{color:s.c}}>{s.v}</strong> {s.l}
           </div>
@@ -3147,7 +3089,7 @@ export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
           const qts = getQts(rfq.id);
           const isOpen = expanded[rfq.id];
           const t = getTab(rfq.id);
-          const isScored = rfq.scored;
+          const isScored = rfq.status==="Scored"||!!rfq.scoredAt;
           const discussions = rfq.discussions||[];
 
           return (

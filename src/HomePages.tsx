@@ -292,7 +292,7 @@ export const ApproverHome = ({user, quotations, setQuotations, rfqs, setRfqs, se
   const [rejectModal, setRejectModal] = useState<any>(null);
   const [notes, setNotes] = useState("");
 
-  const pendingRfqs = rfqs.filter(r => r.status === "Pending Approval");
+  const pendingRfqs = rfqs.filter(r => r.status === "Scored");
   const closedRfqs  = rfqs.filter(r => r.status === "Closed");
   const totalPendingVal = pendingRfqs.reduce((s,r) => s + (r.estVal||0), 0);
   const totalClosedVal  = closedRfqs.reduce((s,r)  => s + (r.estVal||0), 0);
@@ -315,13 +315,13 @@ export const ApproverHome = ({user, quotations, setQuotations, rfqs, setRfqs, se
     if (!notes.trim()) { alert("Please enter rejection notes."); return; }
     const today = new Date().toISOString().split("T")[0];
     setRfqs((prev:any[]) => prev.map(r =>
-      r.id === rejectModal.id ? {...r, status:"Complete", rejectedByApprover:true, approverRejNotes:notes, approverRejAt:today} : r
+      r.id === rejectModal.id ? {...r, status:"Open", rejectedByApprover:true, approverRejNotes:notes, approverRejAt:today} : r
     ));
     setRejectModal(null); setNotes("");
   };
 
   const kpis = [
-    {l:"Pending Approval", n:pendingRfqs.length,  c:"#6f2da8", ico:"approvals",   s:"apr-rfq"},
+    {l:"Pending Approval", n:pendingRfqs.length,  c:"#6f2da8", ico:"approvals",   s:"apr-rfq"},  // "Scored" RFQs awaiting approval
     {l:"Closed (Winner Decided)", n:closedRfqs.length, c:"#107e3e", ico:"accept", s:"apr-rfq"},
     {l:"All RFQs",         n:rfqs.length,          c:C.primary, ico:"document",   s:"apr-rfq"},
     {l:"Total Pending Value", n:idr(totalPendingVal), c:"#e76500", ico:"money-bills", s:"apr-rfq", big:true},
@@ -334,7 +334,7 @@ export const ApproverHome = ({user, quotations, setQuotations, rfqs, setRfqs, se
       if (!acc[k]) acc[k]={name:k, pending:0, closed:0, total:0, val:0};
       acc[k].total++;
       acc[k].val += r.estVal||0;
-      if (r.status==="Pending Approval") acc[k].pending++;
+      if (r.status==="Scored") acc[k].pending++;
       if (r.status==="Closed") acc[k].closed++;
       return acc;
     }, {})

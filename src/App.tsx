@@ -102,7 +102,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
 
         {/* Right-side action icons */}
         <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:4}}>
-          {iconBtn(undefined,"Search",<SapIcon name="search" size={16} color="rgba(255,255,255,0.75)"/>)}
+          <button title="Search" aria-label="Search" style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.75)",transition:"background .1s",flexShrink:0}} onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,255,255,0.1)")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}><SapIcon name="search" size={16} color="rgba(255,255,255,0.75)"/></button>
           <div ref={notifRef} style={{position:"relative"}}>
             <button onClick={()=>setNotifOpen(o=>!o)} title="Notifications" aria-label="Notifications"
               style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"rgba(255,255,255,0.75)",transition:"background .1s",flexShrink:0,position:"relative"}}
@@ -545,7 +545,7 @@ export default function App() {
     switch(section){
       case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
       case "brm-quotation": return <BrmQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
-      case "brm-rfq":       return <BrmRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} user={user}/>;
+      case "brm-rfq":       return <BrmRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
       default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no:string)=>drillInvoice(no,"brm-invoice")}/>;
     }
   };
