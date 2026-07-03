@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import {
   C, VENDORS, COMPANY_CODES, CURRENCIES, ccName, PURCHASING_GROUPS,
   fmtDate, idr, uid, pg, mob,
@@ -1251,7 +1251,19 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
     "10000001":{name:"PT Maju Bersama",     email:"ap@majubersama.co.id",        pic:"Bapak Andi Surya – Procurement Director",    phone:"+62 21 5555-1234"},
     "10000002":{name:"CV Sukses Mandiri",   email:"finance@suksesmandiri.co.id", pic:"Ibu Rina Wati – Business Development Manager",phone:"+62 21 5555-5678"},
   };
-  const EMPTY_PUB={invitationNo:"",invitationDate:new Date().toISOString().split("T")[0],submissionDeadline:"",submissionMethod:"Portal",notes:"",termsAndConditions:"",vendorInvitees:[] as {vendorId:string,name:string,email:string,pic:string,phone:string,include:boolean}[]};
+  const DEFAULT_REQ_DOCS=[
+    {id:"doc1",label:"Company Profile",required:true,checked:true},
+    {id:"doc2",label:"Proposal Teknis",required:true,checked:true},
+    {id:"doc3",label:"Quotation / Penawaran Harga",required:true,checked:true},
+    {id:"doc4",label:"Laporan Keuangan 2 Tahun Terakhir",required:true,checked:true},
+    {id:"doc5",label:"NPWP / NIB (Nomor Induk Berusaha)",required:true,checked:true},
+    {id:"doc6",label:"Akta Pendirian Perusahaan",required:false,checked:false},
+    {id:"doc7",label:"Sertifikat ISO / Kompetensi",required:false,checked:false},
+    {id:"doc8",label:"HSE Plan / Kebijakan K3",required:false,checked:false},
+    {id:"doc9",label:"Surat Referensi / Pengalaman Kerja",required:false,checked:false},
+    {id:"doc10",label:"Rekening Koran 3 Bulan Terakhir",required:false,checked:false},
+  ];
+  const EMPTY_PUB={invitationNo:"",invitationDate:new Date().toISOString().split("T")[0],submissionDeadline:"",submissionMethod:"Portal",notes:"",termsAndConditions:"",vendorInvitees:[] as {vendorId:string,name:string,email:string,pic:string,phone:string,include:boolean}[],requiredDocs:DEFAULT_REQ_DOCS.map(d=>({...d})),attachments:[] as {name:string,size:string,type:string}[]};
   const [pubForm,setPubForm]=useState<any>(EMPTY_PUB);
   const pu=(k,v)=>setPubForm(p=>({...p,[k]:v}));
   const updateInvitee=(vid,field,val)=>setPubForm(p=>({...p,vendorInvitees:p.vendorInvitees.map((v:any)=>v.vendorId===vid?{...v,[field]:val}:v)}));
@@ -1266,7 +1278,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
     const rfqList=sel.map((r:any)=>`• ${r.id} – ${r.title}`).join("\n");
     const defaultNotes=`Yth. Tim Pengadaan,\n\nDengan hormat kami mengundang perusahaan Anda untuk berpartisipasi dalam proses pengadaan berikut:\n\n${rfqList}\n\nMohon menyampaikan penawaran harga sesuai dengan spesifikasi yang telah kami lampirkan. Penawaran dapat disubmit melalui BRM Vendor Portal sebelum batas waktu yang ditentukan.\n\nHormat kami,\nTim Pengadaan BRM Group`;
     const defaultTnc=`1. Penawaran harus disampaikan dalam format PDF melalui BRM Vendor Portal.\n2. Penawaran yang disampaikan setelah batas waktu tidak akan diproses.\n3. Harga penawaran harus dalam IDR dan sudah termasuk pajak (PPN 11%).\n4. Masa berlaku penawaran minimal 60 hari kalender sejak tanggal pengiriman.\n5. BRM Group berhak untuk menerima atau menolak penawaran tanpa memberikan alasan.\n6. Vendor wajib menjaga kerahasiaan dokumen pengadaan ini.\n7. Informasi lebih lanjut dapat menghubungi Procurement Team melalui portal.`;
-    setPubForm({invitationNo:invNo,invitationDate:today,submissionDeadline:latestClose,submissionMethod:"Portal",notes:defaultNotes,termsAndConditions:defaultTnc,vendorInvitees:invitees});
+    setPubForm({invitationNo:invNo,invitationDate:today,submissionDeadline:latestClose,submissionMethod:"Portal",notes:defaultNotes,termsAndConditions:defaultTnc,vendorInvitees:invitees,requiredDocs:DEFAULT_REQ_DOCS.map(d=>({...d})),attachments:[]});
     setShowPublish(true);
   };
 
@@ -1700,6 +1712,77 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               <TA value={pubForm.termsAndConditions} onChange={v=>pu("termsAndConditions",v)} rows={5} placeholder="Enter terms and conditions..."/>
             </div>
 
+            {/* Required Documents */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:4}}>Required Documents to Submit</div>
+              <div style={{fontSize:11.5,color:C.t2,marginBottom:10}}>Check the documents vendors must include in their submission.</div>
+              <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
+                <div style={{background:C.subtle,padding:"6px 12px",display:"grid",gridTemplateColumns:"1fr 64px 72px",fontSize:11,fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`}}>
+                  <span>Document</span>
+                  <span style={{textAlign:"center"}}>Include</span>
+                  <span style={{textAlign:"center"}}>Mandatory</span>
+                </div>
+                {pubForm.requiredDocs.map((doc,i)=>(
+                  <div key={doc.id} style={{display:"grid",gridTemplateColumns:"1fr 64px 72px",alignItems:"center",padding:"7px 12px",borderBottom:i<pubForm.requiredDocs.length-1?`1px solid ${C.border}`:"none",background:doc.checked?C.card:C.subtle}}>
+                    <span style={{fontSize:13,color:doc.checked?C.t1:C.t2}}>{doc.label}</span>
+                    <div style={{display:"flex",justifyContent:"center"}}>
+                      <input type="checkbox" checked={doc.checked}
+                        onChange={e=>pu("requiredDocs",pubForm.requiredDocs.map((d,j)=>j===i?{...d,checked:e.target.checked,required:e.target.checked?d.required:false}:d))}
+                        style={{cursor:"pointer",width:15,height:15,accentColor:C.primary}}/>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"center"}}>
+                      <input type="checkbox" checked={doc.required} disabled={!doc.checked}
+                        onChange={e=>pu("requiredDocs",pubForm.requiredDocs.map((d,j)=>j===i?{...d,required:e.target.checked}:d))}
+                        style={{cursor:doc.checked?"pointer":"not-allowed",width:15,height:15,accentColor:"#BB0000",opacity:doc.checked?1:0.35}}/>
+                    </div>
+                  </div>
+                ))}
+                {/* Custom doc row */}
+                <div style={{padding:"6px 12px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,alignItems:"center"}}>
+                  <input id="customDocInp" placeholder="+ Tambah dokumen lainnya..."
+                    style={{flex:1,border:`1px dashed ${C.border}`,borderRadius:3,padding:"4px 8px",fontSize:12,background:C.field,color:C.t1,fontFamily:"inherit",outline:"none"}}
+                    onKeyDown={e=>{if(e.key==="Enter"){const inp=e.target as HTMLInputElement;const v=inp.value.trim();if(v){pu("requiredDocs",[...pubForm.requiredDocs,{id:`cust-${Date.now()}`,label:v,checked:true,required:false}]);inp.value="";}}}}/>
+                  <span style={{fontSize:11,color:C.t2}}>Enter to add</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Attachments */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.6,marginBottom:4}}>Buyer Attachments</div>
+              <div style={{fontSize:11.5,color:C.t2,marginBottom:10}}>Attach reference files, specs, or templates for vendors (e.g. Bill of Quantity, Technical Specification).</div>
+              <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden"}}>
+                {pubForm.attachments.length>0&&(
+                  <div>
+                    {pubForm.attachments.map((att,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:`1px solid ${C.border}`,background:C.card}}>
+                        <SapIcon name="attachment" size={14} color={C.t2}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12.5,color:C.t1,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{att.name}</div>
+                          <div style={{fontSize:11,color:C.t2}}>{att.size} · {att.type}</div>
+                        </div>
+                        <button onClick={()=>pu("attachments",pubForm.attachments.filter((_,j)=>j!==i))}
+                          style={{background:"none",border:"none",cursor:"pointer",color:"#BB0000",fontSize:16,lineHeight:1,padding:"0 2px"}} title="Remove">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{padding:"12px",textAlign:"center"}}>
+                  <label style={{display:"inline-flex",alignItems:"center",gap:7,cursor:"pointer",background:C.subtle,border:`1px dashed ${C.border}`,borderRadius:5,padding:"8px 18px",fontSize:12.5,color:C.primary,fontFamily:"inherit"}}>
+                    <SapIcon name="upload" size={13} color={C.primary}/>
+                    <span>Choose File(s) to Attach</span>
+                    <input type="file" multiple style={{display:"none"}} onChange={e=>{
+                      const files=Array.from(e.target.files||[]);
+                      const newAtts=files.map(f=>({name:f.name,size:f.size>1024*1024?`${(f.size/1024/1024).toFixed(1)} MB`:`${Math.round(f.size/1024)} KB`,type:f.type||"application/octet-stream"}));
+                      pu("attachments",[...pubForm.attachments,...newAtts]);
+                      e.target.value="";
+                    }}/>
+                  </label>
+                  {pubForm.attachments.length===0&&<div style={{fontSize:11,color:C.t2,marginTop:6}}>No attachments added yet</div>}
+                </div>
+              </div>
+            </div>
+
             {/* Footer */}
             <div style={{display:"flex",justifyContent:"flex-end",gap:10,paddingTop:6,borderTop:`1px solid ${C.border}`}}>
               <Btn variant="ghost" onClick={()=>{setShowPublish(false);setPubForm(EMPTY_PUB);}}>Cancel</Btn>
@@ -2123,81 +2206,63 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               {qts.map((qt,i)=>(<th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center",color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>))}
             </tr></thead>
             <tbody>
-              {/* ── Quotation Comparison ── */}
-              <tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:"rgba(16,126,62,0.08)",fontWeight:700,fontSize:10,color:"#107e3e",textTransform:"uppercase",letterSpacing:.8,borderBottom:`1px solid ${C.border}`}}>Quotation Comparison</td></tr>
-              {/* Total Amount */}
+              {/* ── Quotation Comparison (full) ── */}
               {(()=>{
-                const amts=qts.map(qt=>qt.totalAmt||0);
-                const minAmt=Math.min(...amts);
-                const maxAmt=Math.max(...amts);
-                return(
-                  <tr style={{borderBottom:`1px solid ${C.border}`,background:C.card}}>
-                    <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
-                      <div style={{fontSize:12,fontWeight:700,color:C.t1}}>Total Quoted Amount</div>
-                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>vs Est. Budget: {idr(rfq.estVal)}</div>
-                    </td>
-                    {qts.map((qt,i)=>{
-                      const isLowest=qt.totalAmt===minAmt;
-                      const isHighest=qt.totalAmt===maxAmt&&minAmt!==maxAmt;
-                      const diff=rfq.estVal>0?((qt.totalAmt-rfq.estVal)/rfq.estVal*100):null;
-                      return(
-                        <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",background:isLowest?"#f0faf4":isHighest?"#fff5f5":C.card,minWidth:COL_W}}>
-                          <div style={{fontSize:15,fontWeight:700,color:isLowest?"#107e3e":isHighest?"#bb0000":C.t1}}>{idr(qt.totalAmt)}</div>
-                          {diff!==null&&<div style={{fontSize:10,marginTop:3,color:diff<=0?"#107e3e":"#e9730c",fontWeight:600}}>{diff<=0?`${Math.abs(diff).toFixed(1)}% under budget`:`${diff.toFixed(1)}% over budget`}</div>}
-                          {isLowest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>★ Lowest Price</div>}
-                        </td>
-                      );
-                    })}
+                const calcNetLocal=(qt)=>{const pc=qt.priceConditions||{};const sub=qt.totalAmt;return sub-sub*(pc.discount||0)/100+sub*(pc.surcharge||0)/100+(pc.freight||0)+(pc.insurance||0);};
+                const netsLocal=qts.map(calcNetLocal);
+                const bestNetLocal=Math.min(...netsLocal);
+                const itemBestPriceLocal=(rfq.items||[]).map((_,ii)=>{const prices=qts.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));return prices.length?Math.min(...prices):null;});
+                const SHdr=({title})=>(<tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:C.subtle,fontWeight:700,fontSize:10,color:C.t2,textTransform:"uppercase",letterSpacing:.8,borderTop:`2px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>{title}</td></tr>);
+                const CRow=({label,vals,fmt=null,bestVal=null,bold=false,sub=false}:any)=>(
+                  <tr style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,background:C.card,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,whiteSpace:"nowrap" as const,paddingLeft:sub?24:14}}>{label}</td>
+                    {vals.map((v,i)=>{const isBest=bestVal!=null&&v===bestVal&&qts.length>1;return(<td key={i} style={{padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.card,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>{fmt?fmt(v):(v||"—")}{isBest&&<span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}</td>);})}
                   </tr>
                 );
+                return(<>
+                  <SHdr title="Vendor Information"/>
+                  <CRow label="Vendor Number" vals={qts.map(q=>q.vendorId)}/>
+                  <CRow label="Vendor Name" vals={qts.map(q=>q.vendorName)}/>
+                  <CRow label="Sales Person / Contact" vals={qts.map(q=>q.salesPerson||"—")}/>
+                  <CRow label="Quotation ID" vals={qts.map(q=>q.id)}/>
+                  <CRow label="Submitted Date" vals={qts.map(q=>fmtDate(q.submittedDate))}/>
+                  <CRow label="Valid Until" vals={qts.map(q=>fmtDate(q.validUntil))}/>
+                  <CRow label="Status" vals={qts.map(q=>q.status)}/>
+                  <SHdr title="Purchasing Details"/>
+                  <CRow label="Purchasing Organization" vals={qts.map(()=>rfq.purchOrg||"—")}/>
+                  <CRow label="Purchasing Group" vals={qts.map(q=>pgLabel(q.purchGroup||rfq.purchGroup))}/>
+                  <SHdr title="Commercial Terms"/>
+                  <CRow label="Terms of Payment" vals={qts.map(q=>q.termsOfPayment||"—")}/>
+                  <CRow label="Delivery Terms (Incoterms)" vals={qts.map(q=>q.deliveryTerms||"—")}/>
+                  <CRow label="Lead Time" vals={qts.map(q=>q.leadTime||"—")}/>
+                  <CRow label="Warranty Period" vals={qts.map(q=>q.warrantyPeriod||"—")}/>
+                  <SHdr title="Line Items — Price Comparison"/>
+                  {(rfq.items||[]).map((item,ii)=>(
+                    <Fragment key={`ci-${ii}`}>
+                      <tr style={{background:C.infoBg}}>
+                        <td colSpan={qts.length+1} style={{padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>
+                          {String(item.no).padStart(3,"0")} · {item.desc}<span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span>
+                        </td>
+                      </tr>
+                      <CRow label="Product / Material Group" vals={qts.map(q=>q.items?.[ii]?.materialGroup||item.materialGroup||"—")} sub/>
+                      <CRow label="Unit Price (IDR)" vals={qts.map(q=>q.items?.[ii]?.unitPrice||0)} fmt={v=>idr(v)} bestVal={itemBestPriceLocal[ii]} bold sub/>
+                      <CRow label="Item Total (IDR)" vals={qts.map(q=>q.items?.[ii]?.total||0)} fmt={v=>idr(v)} sub/>
+                    </Fragment>
+                  ))}
+                  <SHdr title="Price Conditions & Summary"/>
+                  <CRow label="Subtotal" vals={qts.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
+                  <CRow label="Discount (%)" vals={qts.map(q=>`${q.priceConditions?.discount||0}%`)}/>
+                  <CRow label="Discount Amount" vals={qts.map(q=>q.totalAmt*(q.priceConditions?.discount||0)/100)} fmt={v=>v>0?`(${idr(v)})`:"—"} sub/>
+                  <CRow label="Surcharge (%)" vals={qts.map(q=>`${q.priceConditions?.surcharge||0}%`)}/>
+                  <CRow label="Surcharge Amount" vals={qts.map(q=>q.totalAmt*(q.priceConditions?.surcharge||0)/100)} fmt={v=>v>0?idr(v):"—"} sub/>
+                  <CRow label="Freight Cost" vals={qts.map(q=>q.priceConditions?.freight||0)} fmt={v=>v>0?idr(v):"—"}/>
+                  <CRow label="Insurance Cost" vals={qts.map(q=>q.priceConditions?.insurance||0)} fmt={v=>v>0?idr(v):"—"}/>
+                  <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
+                    <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
+                    {qts.map((qt,i)=>{const net=netsLocal[i];const isBest=net===bestNetLocal&&qts.length>1;return(<td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"right",color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>{idr(net)}{isBest&&<div style={{fontSize:10,color:C.ok,fontWeight:700,marginTop:2}}>★ Recommended (Lowest Net)</div>}</td>);})}
+                  </tr>
+                </>);
               })()}
-              {/* Valid Until */}
-              <tr style={{borderBottom:`1px solid ${C.border}`,background:C.subtle}}>
-                <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t1}}>Validity Period</div>
-                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>Quotation valid until</div>
-                </td>
-                {qts.map((qt,i)=>{
-                  const latest=qts.reduce((a,b)=>(a.validUntil||"")>(b.validUntil||"")?a:b);
-                  const isLatest=qt.validUntil===latest.validUntil&&qt.validUntil;
-                  return(
-                    <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",minWidth:COL_W}}>
-                      <div style={{fontSize:13,fontWeight:600,color:isLatest?"#107e3e":C.t1}}>{qt.validUntil||"—"}</div>
-                      {isLatest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>Longest Validity</div>}
-                    </td>
-                  );
-                })}
-              </tr>
-              {/* Item-level unit price comparison */}
-              {rfq.items&&rfq.items.length>0&&rfq.items.map((item,ii)=>{
-                const unitPrices=qts.map(qt=>{
-                  const match=qt.items?.find((it:any)=>it.no===item.no||it.desc===item.desc);
-                  return match?.unitPrice||null;
-                });
-                const validPrices=unitPrices.filter(p=>p!==null);
-                const minPrice=validPrices.length?Math.min(...validPrices):null;
-                return(
-                  <tr key={`item-${ii}`} style={{borderBottom:`1px solid ${C.border}`,background:ii%2===0?C.card:C.subtle}}>
-                    <td style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,background:C.card}}>
-                      <div style={{fontSize:12,fontWeight:700,color:C.t1}}>#{item.no} {item.desc}</div>
-                      <div style={{fontSize:11,color:C.t2,marginTop:2}}>Unit price · {item.qty} {item.uom}</div>
-                    </td>
-                    {qts.map((qt,i)=>{
-                      const match=qt.items?.find((it:any)=>it.no===item.no||it.desc===item.desc);
-                      const price=match?.unitPrice||null;
-                      const isLowest=price!==null&&price===minPrice;
-                      return(
-                        <td key={qt.id} style={{padding:"10px 14px",borderRight:`1px solid ${C.border}`,textAlign:"center",background:isLowest?"#f0faf4":undefined,minWidth:COL_W}}>
-                          {price!==null?<>
-                            <div style={{fontSize:13,fontWeight:600,color:isLowest?"#107e3e":C.t1}}>{idr(price)}</div>
-                            {isLowest&&<div style={{fontSize:10,color:"#107e3e",fontWeight:700,marginTop:2}}>★ Lowest</div>}
-                          </>:<span style={{color:C.t2,fontSize:12}}>—</span>}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
               <tr><td colSpan={qts.length+1} style={{padding:"7px 14px",background:"rgba(0,112,242,0.08)",fontWeight:700,fontSize:10,color:C.primary,textTransform:"uppercase",letterSpacing:.8,borderBottom:`1px solid ${C.border}`}}>Evaluation Scoring (0 – 100 per criteria)</td></tr>
               {SCORE_CRITERIA.map((crit,ri)=>(
                 <tr key={crit.key} style={{borderBottom:`1px solid ${C.border}`,background:ri%2===0?C.card:C.subtle}}>

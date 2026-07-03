@@ -60,6 +60,8 @@ Static master data (`VENDORS`, `COMPANY_CODES`, `CURRENCIES`, `WHT_TYPES`) are p
 - **Vendor pages** filter every list by `user.vendorId`.
 - **BRM pages** see all records and drive status transitions.
 
+**Single source of truth rule:** `INIT_QT`, `INIT_RFQS`, and `INIT_INV` in `src/shared.tsx` are the only place mock data lives. Updating them once automatically covers all roles — vendor and BRM views both derive from the same seeded arrays. Never duplicate mock data per-role.
+
 ### Invoice status lifecycle
 
 `Draft` → `Submitted` → `Under Review` → `Confirmed` → **`Posted`**
