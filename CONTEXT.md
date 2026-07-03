@@ -1,85 +1,122 @@
-# BRM Vendor Portal — Project Context & Stories (V.1.00)
+# BRM Vendor Portal — Business Context & Process Flow
 
-## Background
+## Overview
 
-SAP Public Cloud has been implemented for **PT Bumi Resource Minerals (BRM)** and its 5 subsidiaries:
-
-| Entity | Description |
-|--------|-------------|
-| **BRM** | PT Bumi Resource Minerals (Holding Company) |
-| **CPM** | PT Citra Palu Minerals — Gold mining in Palu, Sulawesi (operating) |
-| **GM** | PT Gorontalo Minerals — Gold mining in Gorontalo, Sulawesi (exploration) |
-| **SHS** | PT Suma Heksa Sinergi — Gold mining in Banten, Jawa |
-| **LMR** | PT Linge Minerals — Gold mining in Aceh, Sumatera |
-
-**SAP Public Cloud Lines of Business implemented:**
-- Finance
-- Sourcing and Procurement
-- Supply Chain Management
-- Project Control
-
-> Note: Sales organization exists in the org structure but is not used operationally — created only as a prerequisite for several SCM processes.
+This portal supports the **end-to-end procurement process** for PT Bumi Resource Minerals Group, from Purchase Requisition (PR) to vendor award. It runs on SAP BTP and integrates with SAP S/4HANA Public Cloud.
 
 ---
 
-## Pain Points
+## Roles
 
-### Sourcing Management
-- **Multiple systems**: Procurement uses both SAP (PR, RFQ, Quotation, PO administration) and FARMS (tender process, committee assignment, quotation evaluation). No integration = fraud risk.
-- **Miscommunication**: Tender Committee lacks a centralized tool for evaluation and decision-making.
-- **Manual communication**: Vendors rely on manual notifications for invitation/tender status updates.
-
-### Supplier Invoice
-- **Volume**: 200–300 invoices/week, only 2 AP admins.
-- **Guest Invoice Book**: Excel-based manual intake log, junior staff checks document completeness.
-- **Lag time**: Data from guest book is entered into SAP 2–3 days later. Vendors request payment before SAP entry, causing off-system payments.
-- **Manual input**: AP admins manually scan PDF documents to enter into SAP "Create Supplier Invoice."
+| Role | Username | Description |
+|---|---|---|
+| **Vendor / Supplier** | `vendor1`, `vendor2` | External vendors invited to submit quotations |
+| **Buyer (BRM Employee)** | `brm.user`, `buyer1` | Internal procurement staff who manage RFQs and evaluate quotations |
+| **Approver (Tender Committee)** | `approver1` | Senior internal stakeholder (Finance / Management) who reviews and decides the winning vendor |
 
 ---
 
-## Application Goal
+## End-to-End Process Flow
 
-Build a **Vendor Portal web application** following SAP Public Cloud standard visual design using **UI5 Web Components** (https://ui5.github.io/webcomponents/components/).
+### Step 1 — Buyer Creates RFQ
+- Buyer receives a **Purchase Requisition (PR)** from an end user / department.
+- Buyer creates an **RFQ (Request for Quotation)** in the portal based on the PR details.
+- RFQ status: `Open`
+
+### Step 2 — Buyer Publishes RFQ to Vendors
+- Buyer selects which vendors to invite based on their knowledge of suppliers for the required goods/services.
+- Invited vendors receive a notification and can see the RFQ in their portal.
+- RFQ status: `Open`
+
+### Step 3 — Vendors Submit Quotations
+- Vendors log into the Vendor Portal and submit quotations for the RFQs they are invited to.
+- Each quotation includes pricing, delivery terms, and supporting documents.
+- Quotation status: `Submitted`
+
+### Step 4 — Buyer Reviews & Approves Quotations
+- Buyer reviews all submitted quotations for completeness and compliance.
+- Buyer can **Accept** or **Reject** individual vendor quotations.
+- Once all participating vendors have submitted, the buyer marks the RFQ as `Complete`.
+- RFQ status: `Complete` (all vendors have submitted — ready for tender committee)
+
+> ⚠️ **Rule:** An RFQ cannot be sent for tender committee approval if its status is still `Open` (i.e., no quotation submissions yet or not all vendors have submitted).
+
+### Step 5 — Buyer Sends for Approval (Tender Committee)
+- Buyer uses the **"Send for Approval"** action in RFQ Management to submit the RFQ + quotation comparison to the **Tender Committee (Approver role)**.
+- The Approver receives a notification with the list of quotations to review.
+- RFQ status: `Pending Approval`
+
+### Step 6 — Tender Committee Reviews & Decides Winner
+- The Approver (Tender Committee) reviews all submitted quotations side-by-side.
+- They discuss and determine the **winning vendor** based on price, quality, delivery, and compliance.
+- Approver can **Approve** (select winner) or **Reject** (send back to buyer with notes).
+- On approval, the winning quotation is marked and the RFQ is **Closed**.
+- RFQ status: `Closed`
+
+### Step 7 — RFQ Closed
+- Once the winning vendor is determined and the RFQ is closed, the procurement process moves to PO issuance (outside this portal scope).
+- All non-winning vendor quotations are marked accordingly.
 
 ---
 
-## Module 1: Sourcing Management Dashboard
+## RFQ Status Lifecycle
 
-### Role-Based Views
+```
+Open → Complete → Pending Approval → Closed
+         ↑                ↓
+     (all vendors    (Rejected by
+      submitted)      Approver → back to Buyer)
+```
 
-| View | Role / Persona | Description |
-|------|---------------|-------------|
-| Client View | BRM, CPM, GM, LMR, SHS | Internal stakeholders. Monitor sourcing activities, submit procurement requests, track tender status per business unit. |
-| Tender Committee View | Tender Committee | Evaluation committee. Review vendor proposals, conduct evaluations, issue final decisions on active tenders. |
-| Vendor View | Vendor / Supplier | External parties. Receive tender invitations, download RFQ/RFP documents, submit bids. |
+| Status | Meaning |
+|---|---|
+| `Open` | RFQ published, vendors can submit quotations |
+| `Complete` | All invited vendors have submitted; ready for approval submission |
+| `Pending Approval` | Submitted by buyer to Tender Committee for winner determination |
+| `Closed` | Winner determined, RFQ concluded |
 
----
-
-## Module 2: Invoice Management Dashboard
-
-### Role-Based Views
-- **Vendor View**
-- **Client View** (BRM, CPM, GM, LMR, SHS) — authorization is per company code
-
-### Business Rules / Validations
-- A PO already referenced in an invoice (even at Draft status) **cannot** be selected again for a new invoice.
-- Actual supplier invoice number **cannot be entered twice**.
-- Vendors can only manage their own invoices; clients can view all invoices from all vendors for their specified company code.
-
-### Process Flow
-
-| # | Activity | Agent | Detail |
-|---|----------|-------|--------|
-| 1 | **Submit Invoice** | Vendor | Submit invoice with: Company Code, Currency, Vendor Invoice No, Invoice Amount, VAT Base Amount, VAT Amount, WHT Type/Code/Base/Amount, PO Reference (multi-select — only POs with completed GR and open invoice), Faktur Pajak No, Invoice Attachment, Faktur Pajak Attachment, Notes (free text). Creates a **custom "pre-invoice"** object, not yet an SAP invoice. **Exception**: For non-ID country suppliers, PO GR check is skipped — invoice becomes a **Supplier Down Payment Request (DPR)** in SAP. After DPR is approved by client, it routes through portal workflow. |
-| 2 | **Review Invoice** | Client | View submitted invoice list. Pop-up preview of PDF attachments. Verify attachment amounts match system input. Can **Reject** (with comment — vendor notified, can edit & resubmit) or **Approve**. On approval of an invoice: hits SAP API → creates Supplier Invoice as parked-complete → continues SAP flexible invoice workflow. On approval of DPR: sent to SAP Build Process Automation (BPA) on BTP for Supplier Down Payment Request workflow until posted. |
-| 3 | **Edit / Cancel Invoice** | Vendor | While invoice status is "Submitted" (not yet reviewed by client), vendor can withdraw (cancel) or edit. |
-| 4 | **Manage Vendor Invoice** | Client | Lists all vendor invoices across all vendors. Links "pre-invoice" documents to SAP documents: Invoice → SAP MIRO document (51xxxx/20xx); Supplier DPR → SAP FI document (BRMS/100xxxx/20xx). On app open, fetches SAP document number via API to determine current status. **Statuses**: Open (not yet reviewed), On Progress (reviewed, pending workflow), Posted (document posted), Converted to Invoice (DPR only), Cleared to Invoice (DPR only). **Date fields**: Invoice Date, Vendor Submission Date, Invoice Fully Approved Date. |
-| 5 | **Convert DP to Invoice** | Client | Lists all posted Supplier DPRs. Also displays SAP supplier invoice number for matching. **Convert button**: creates Supplier Invoice as a post (not parked) via SAP API → returned document number listed in portal. **Clear button**: clears DPR to Invoice via SAP API journal entry clearing → clearing document number (BRMS/12xxxx/20xx) shown in list. |
+> RFQ cannot be sent for approval if status is `Open` (insufficient submissions).
 
 ---
 
-## Design Guidance
+## Quotation Status Lifecycle
 
-- Follow **SAP Fiori / UI5 Web Components** design language: https://ui5.github.io/webcomponents/components/
-- All API integrations target **SAP Public Cloud** (not on-prem)
-- BTP (SAP Build Process Automation) is used for DPR approval workflow
+```
+Draft → Submitted → Accepted | Rejected | Withdrawn
+```
+
+| Status | Meaning | Actor |
+|---|---|---|
+| `Draft` | Vendor saved but not yet submitted | Vendor |
+| `Submitted` | Submitted by vendor, awaiting buyer review | Vendor |
+| `Accepted` | Buyer accepted the quotation | Buyer |
+| `Rejected` | Buyer rejected the quotation | Buyer |
+| `Withdrawn` | Vendor withdrew their quotation | Vendor |
+| `Win` | Quotation selected as winner by Tender Committee | Approver |
+| `Approved` | Approved by Tender Committee (used in approval flow) | Approver |
+
+---
+
+## Approver (Tender Committee) — What They See
+
+- **Home page:** List of RFQs with status `Pending Approval` sent by buyers, displayed as To-Do cards. Insight tiles showing pending value, approval rate, and vendor breakdown.
+- **RFQ Management:** Read-only view of all RFQs. Can only act (Approve/Reject) on `Pending Approval` RFQs.
+- **Quotation view (within RFQ):** Read-only side-by-side comparison of all submitted quotations to support decision-making.
+- **Actions:** Approve (select winner) or Reject with mandatory notes.
+
+## Buyer (BRM Employee) — What They See
+
+- **RFQ Management:** Full CRUD on RFQs. Can publish, close, and send for approval.
+- **Quotation Management:** Review and Accept/Reject individual vendor quotations.
+- **"Send for Approval" button:** Only enabled when RFQ status is `Complete` (all vendors submitted). Disabled when status is `Open`.
+
+---
+
+## Key Business Rules
+
+1. RFQ must be `Complete` before it can be sent to Tender Committee.
+2. Only `Pending Approval` RFQs appear in the Approver's To-Do list.
+3. Approver cannot edit any RFQ or quotation data — view only + approve/reject.
+4. Buyer is responsible for quotation evaluation (Accept/Reject per quotation).
+5. Tender Committee is responsible for winner determination across all quotations.
+6. Once an RFQ is `Closed`, no further changes are allowed.
