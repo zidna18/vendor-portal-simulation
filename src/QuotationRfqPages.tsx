@@ -23,6 +23,20 @@ const INCOTERMS = [
 const pgLabel = code => { const p = PURCHASING_GROUPS.find(x=>x.v===code); return p ? `${p.v} – ${p.l}` : (code||"—"); };
 const VDR_COLORS = ["#0a6ed1","#107e3e","#8b5cf6","#d97706","#dc2626","#0891b2"];
 
+const AWARD_RATIONALE_OPTS = [
+  "Best overall score", "Competitive price", "Lowest net total", "Preferred vendor",
+  "Best warranty", "Fastest delivery", "Best payment terms", "Backup vendor",
+  "Risk mitigation", "Strategic supplier", "Local content (TKDN)", "Technical compliance",
+  "Price too high", "Low evaluation score", "Technical non-compliance", "Short validity",
+  "Capacity insufficient", "Delivery too slow"
+];
+
+const SERVICE_RATIONALE_OPTS = [
+  "Highest score", "Best SLA response time", "Full parts + labor warranty",
+  "Proven track record", "Best price", "Preferred vendor", "Local presence",
+  "Technical expertise", "Price too high", "Low score", "SLA not meeting requirement", "Limited coverage"
+];
+
 // ── Quotation Form Modal ───────────────────────────────────────
 export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
   const [f,setF]=useState(qt?{...qt}:{
@@ -405,7 +419,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
     if(rows.length===0){alert("No quotations to export.");return;}
     const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
     const hdr=["SAP Quotation No","Quotation ID","RFQ ID","RFQ Title","Vendor ID","Vendor Name","Submitted Date","Valid Until","Total Amount","Status","Notes"];
-    const data=rows.map(q=>{const sapNo=q.sapQtNo||(q.submittedDate?`80${q.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,q.id,q.rfqId,q.rfqTitle,q.vendorId,q.vendorName,q.submittedDate,q.validUntil,q.totalAmt,q.status,q.notes].map(esc).join(",");});
+    const data=rows.map(q=>{const sapNo=q.sapQtNo||(["Accepted","Win","PO Ready"].includes(q.status)?`80${q.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,q.id,q.rfqId,q.rfqTitle,q.vendorId,q.vendorName,q.submittedDate,q.validUntil,q.totalAmt,q.status,q.notes].map(esc).join(",");});
     const csv=[hdr.join(","),...data].join("\r\n");
     const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download=`quotations_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
   };
@@ -560,7 +574,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
                 {/* status badge */}
                 <div style={{padding:"8px 10px",display:"flex",alignItems:"center"}}><Badge s={qt.status}/></div>
                 {/* sap quotation no */}
-                {(()=>{const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
+                {(()=>{const sapNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
                 <div style={{padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap"}}>
                   {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<a href="#" target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:13,fontWeight:600,color:C.primary,textDecoration:"none",borderBottom:`1px solid ${C.primary}`,overflow:"hidden",textOverflow:"ellipsis"}}>{sapNo}</a>}
                   {qt.poSapNo&&<span style={{fontSize:11,color:"#6f2da8",fontWeight:700,marginLeft:6}}>PO: {qt.poSapNo}</span>}
@@ -686,7 +700,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
       {/* Detail Panel */}
       {(()=>{
         const qt=detailQt;
-        const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+        const sapNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
         const rfq=rfqs.find(r=>r.id===qt.rfqId);
         const rfqSapNo=rfq?(rfq.sapRfqNo||`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`):null;
         const items=qt.items||[];
@@ -896,6 +910,460 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
 };
 
 // ── Quotation Compare Modal ────────────────────────────────────
+// ── Award Decision Modal (buyer view — editable) ───────────────
+const AwardDecisionModal = ({rfq, quotations, user, onClose, onSubmit}) => {
+  const isService = rfq.rfqType === "Service";
+  const calcNet = qt => {
+    const pc = qt.priceConditions||{};
+    const sub = qt.totalAmt;
+    return sub - sub*(pc.discount||0)/100 + sub*(pc.surcharge||0)/100 + (pc.freight||0) + (pc.insurance||0);
+  };
+  const nets = quotations.map(calcNet);
+  const bestNet = Math.min(...nets);
+  const LABEL_W = 220;
+  const COL_W = Math.max(190, Math.floor(880/quotations.length));
+
+  // Award state per vendor
+  const [allocations, setAllocations] = useState<{[qtId:string]:{mode:"Full"|"Partial"|"None", qtys:{[no:number]:number}, rationales:string[], note:string}}>(
+    () => Object.fromEntries(quotations.map(qt => [qt.id, {mode:"None" as "Full"|"Partial"|"None", qtys:{}, rationales:[], note:""}]))
+  );
+  // Service: single winner
+  const [serviceWinner, setServiceWinner] = useState("");
+  const [serviceRationales, setServiceRationales] = useState<string[]>([]);
+  const [serviceNote, setServiceNote] = useState("");
+
+  const setMode = (qtId, mode) => setAllocations(p => ({...p, [qtId]: {...p[qtId], mode}}));
+  const setQty = (qtId, no, val) => setAllocations(p => ({...p, [qtId]: {...p[qtId], qtys: {...p[qtId].qtys, [no]: Number(val)}}}));
+  const toggleRationale = (qtId, opt) => setAllocations(p => {
+    const cur = p[qtId].rationales;
+    const next = cur.includes(opt) ? cur.filter(x=>x!==opt) : [...cur, opt];
+    return {...p, [qtId]: {...p[qtId], rationales: next}};
+  });
+  const setNote = (qtId, val) => setAllocations(p => ({...p, [qtId]: {...p[qtId], note: val}}));
+
+  const toggleServiceRationale = (opt) => setServiceRationales(p => p.includes(opt) ? p.filter(x=>x!==opt) : [...p, opt]);
+
+  const ratOpts = isService ? SERVICE_RATIONALE_OPTS : AWARD_RATIONALE_OPTS;
+
+  const buildPreview = (qtId) => {
+    const a = allocations[qtId];
+    const qt = quotations.find(q=>q.id===qtId);
+    if (!qt) return "";
+    if (a.mode === "None") return `${qt.vendorName} is not awarded on this RFQ.`;
+    if (a.mode === "Full") {
+      const parts = a.rationales.length > 0 ? ` Rationale: ${a.rationales.slice(0,3).join(", ")}.` : "";
+      return `${qt.vendorName} is awarded the full scope of this RFQ.${parts}`;
+    }
+    const lines = (rfq.items||[]).map(it => {
+      const q = a.qtys[it.no];
+      if (!q || q <= 0) return null;
+      return `${it.desc}: ${q} ${it.uom}`;
+    }).filter(Boolean);
+    const parts2 = a.rationales.length > 0 ? ` Rationale: ${a.rationales.slice(0,3).join(", ")}.` : "";
+    return `${qt.vendorName} is awarded a partial scope: ${lines.join("; ")}.${parts2}`;
+  };
+
+  const handleSubmit = () => {
+    const today = new Date().toISOString().split("T")[0];
+    let proposal: any;
+    if (isService) {
+      if (!serviceWinner) { alert("Please select a winner vendor for Service RFQ."); return; }
+      proposal = { type:"Service", winnerId: serviceWinner, rationales: serviceRationales, note: serviceNote, proposedBy: user?.name||"Buyer", proposedAt: today };
+    } else {
+      const awarded = Object.entries(allocations).filter(([,a])=>a.mode!=="None");
+      if (awarded.length === 0) { alert("Please assign at least one vendor an award allocation."); return; }
+      proposal = { type:"Material", allocations, proposedBy: user?.name||"Buyer", proposedAt: today };
+    }
+    onSubmit(proposal);
+  };
+
+  const SectionHdr = ({title}) => (
+    <tr><td colSpan={quotations.length+1} style={{padding:"7px 14px",background:C.subtle,fontWeight:700,fontSize:10,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.8,borderTop:`2px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>{title}</td></tr>
+  );
+  const Row = ({label, vals, fmt=null, bestVal=null, bold=false, sub=false}:any) => (
+    <tr style={{borderBottom:`1px solid ${C.border}`}}>
+      <td style={{padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,background:C.card,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,whiteSpace:"nowrap" as const,paddingLeft:sub?24:14}}>{label}</td>
+      {vals.map((v,i)=>{
+        const isBest = bestVal!=null && v===bestVal && quotations.length>1;
+        return (
+          <td key={i} style={{padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right" as const,color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.card,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+            {fmt ? fmt(v) : (v||"—")}
+            {isBest && <span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}
+          </td>
+        );
+      })}
+    </tr>
+  );
+  const itemBestPrice = (rfq.items||[]).map((_,ii)=>{
+    const prices = quotations.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));
+    return prices.length ? Math.min(...prices) : null;
+  });
+
+  return (
+    <Modal title={`Award Decision — ${rfq.id}`} onClose={onClose} width="92vw">
+      {/* Header meta */}
+      <div style={{marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <span style={{fontSize:15,fontWeight:700,color:C.t1}}>{rfq.title}</span>
+          <span style={{background:isService?"#f3eeff":"#e8f5fb",color:isService?"#6f2da8":"#0a6ed1",border:`1px solid ${isService?"#d0b8ff":"#a8d8f0"}`,borderRadius:12,fontSize:11,fontWeight:700,padding:"2px 10px"}}>{isService?"Service":"Material"}</span>
+        </div>
+        {/* Info banner */}
+        <div style={{background:"#fff8e1",border:"1px solid #f0d080",borderRadius:5,padding:"8px 14px",fontSize:12,display:"flex",gap:18,flexWrap:"wrap" as const,color:"#5d4037"}}>
+          <span><strong>Status:</strong> {rfq.status}</span>
+          <span><strong>Deadline:</strong> {fmtDate(rfq.closingDate)}</span>
+          <span><strong>Currency:</strong> IDR</span>
+          <span><strong>Quotations:</strong> {quotations.length}</span>
+          <span><strong>Split award:</strong> {isService ? "not applicable (Service RFQ)" : "allowed"}</span>
+        </div>
+      </div>
+      {/* Vendor header cards */}
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const}}>
+        {quotations.map((qt,i)=>(
+          <div key={qt.id} style={{flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
+            <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
+            <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap" as const}}>
+              <Badge s={qt.status}/>
+              <span style={{fontSize:11,fontWeight:700,color:calcNet(qt)===bestNet&&quotations.length>1?C.ok:C.t1}}>{idr(calcNet(qt))}</span>
+              {calcNet(qt)===bestNet&&quotations.length>1&&<span style={{fontSize:10,color:C.ok,fontWeight:700}}>★ Lowest</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Comparison table */}
+      <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"40vh",marginBottom:16}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*quotations.length}}>
+          <thead><tr style={{position:"sticky" as const,top:0,zIndex:2}}>
+            <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left" as const,background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,minWidth:LABEL_W}}>Parameter</th>
+            {quotations.map((qt,i)=>(
+              <th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center" as const,color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            <SectionHdr title="Vendor Information"/>
+            <Row label="Vendor Number" vals={quotations.map(q=>q.vendorId)}/>
+            <Row label="Vendor Name" vals={quotations.map(q=>q.vendorName)}/>
+            <Row label="Sales Person / Contact" vals={quotations.map(q=>q.salesPerson||"—")}/>
+            <Row label="Submitted Date" vals={quotations.map(q=>fmtDate(q.submittedDate))}/>
+            <Row label="Valid Until" vals={quotations.map(q=>fmtDate(q.validUntil))}/>
+            <SectionHdr title="Commercial Terms"/>
+            <Row label="Terms of Payment" vals={quotations.map(q=>q.termsOfPayment||"—")}/>
+            <Row label="Delivery Terms (Incoterms)" vals={quotations.map(q=>q.deliveryTerms||"—")}/>
+            <Row label="Lead Time" vals={quotations.map(q=>q.leadTime||"—")}/>
+            <Row label="Warranty Period" vals={quotations.map(q=>q.warrantyPeriod||"—")}/>
+            <SectionHdr title="Line Items — Price Comparison"/>
+            {(rfq.items||[]).map((item,ii)=>(
+              <Fragment key={ii}>
+                <tr style={{background:C.infoBg}}>
+                  <td colSpan={quotations.length+1} style={{padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>
+                    {String(item.no).padStart(3,"0")} · {item.desc}<span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span>
+                  </td>
+                </tr>
+                <Row label="Unit Price (IDR)" vals={quotations.map(q=>q.items?.[ii]?.unitPrice||0)} fmt={v=>idr(v)} bestVal={itemBestPrice[ii]} bold sub/>
+                <Row label="Item Total (IDR)" vals={quotations.map(q=>q.items?.[ii]?.total||0)} fmt={v=>idr(v)} sub/>
+              </Fragment>
+            ))}
+            <SectionHdr title="Price Conditions & Summary"/>
+            <Row label="Subtotal" vals={quotations.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
+            <Row label="Discount (%)" vals={quotations.map(q=>`${q.priceConditions?.discount||0}%`)}/>
+            <Row label="Freight Cost" vals={quotations.map(q=>q.priceConditions?.freight||0)} fmt={v=>v>0?idr(v):"—"}/>
+            <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
+              <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
+              {quotations.map((qt,i)=>{
+                const net=nets[i]; const isBest=net===bestNet&&quotations.length>1;
+                return (
+                  <td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"right" as const,color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+                    {idr(net)}{isBest&&<div style={{fontSize:10,color:C.ok,fontWeight:700,marginTop:2}}>★ Recommended</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {/* Award Decision section */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",marginBottom:16}}>
+        <div style={{padding:"10px 16px",background:"#e8f0fb",borderBottom:`1px solid ${C.border}`,fontWeight:700,fontSize:12,color:"#0a3d6b"}}>
+          Award Allocation per Vendor — Buyer's Proposal
+        </div>
+        {isService ? (
+          <div style={{padding:"14px 16px"}}>
+            <div style={{fontSize:12,color:C.t2,marginBottom:10}}>Service RFQ: Select a single winner. Split award is not applicable for service contracts.</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap" as const,marginBottom:14}}>
+              {quotations.map((qt,i)=>(
+                <div key={qt.id} onClick={()=>setServiceWinner(qt.id)}
+                  style={{flex:1,minWidth:160,padding:"12px 16px",borderRadius:6,border:`2px solid ${serviceWinner===qt.id?VDR_COLORS[i%VDR_COLORS.length]:C.border}`,background:serviceWinner===qt.id?C.infoBg:C.card,cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <input type="radio" checked={serviceWinner===qt.id} onChange={()=>setServiceWinner(qt.id)} style={{accentColor:VDR_COLORS[i%VDR_COLORS.length]}}/>
+                    <span style={{fontWeight:700,fontSize:13,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</span>
+                  </div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:4}}>{idr(calcNet(qt))}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6}}>Rationale (select all that apply):</div>
+              <div style={{display:"flex",flexWrap:"wrap" as const,gap:6}}>
+                {ratOpts.map(opt=>(
+                  <button key={opt} onClick={()=>toggleServiceRationale(opt)}
+                    style={{padding:"4px 10px",borderRadius:12,border:`1px solid ${serviceRationales.includes(opt)?C.primary:C.border}`,background:serviceRationales.includes(opt)?C.infoBg:C.card,color:serviceRationales.includes(opt)?C.primary:C.t2,fontSize:11,cursor:"pointer",fontWeight:serviceRationales.includes(opt)?700:400}}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:4}}>Additional Note:</div>
+              <TA value={serviceNote} onChange={setServiceNote} placeholder="Optional justification note…"/>
+            </div>
+          </div>
+        ) : (
+          <div style={{display:"flex",gap:0}}>
+            {quotations.map((qt,i)=>{
+              const a = allocations[qt.id];
+              return (
+                <div key={qt.id} style={{flex:1,padding:"14px 16px",borderRight:i<quotations.length-1?`1px solid ${C.border}`:"none"}}>
+                  <div style={{fontWeight:700,fontSize:12,color:VDR_COLORS[i%VDR_COLORS.length],marginBottom:10,paddingBottom:6,borderBottom:`2px solid ${VDR_COLORS[i%VDR_COLORS.length]}33`}}>{qt.vendorName}</div>
+                  {/* Segmented toggle */}
+                  <div style={{display:"flex",borderRadius:4,overflow:"hidden",border:`1px solid ${C.border}`,marginBottom:12}}>
+                    {(["Full","Partial","None"] as const).map(m=>(
+                      <button key={m} onClick={()=>setMode(qt.id,m)}
+                        style={{flex:1,padding:"5px 0",fontSize:11,fontFamily:"inherit",cursor:"pointer",fontWeight:a.mode===m?700:400,
+                          background:a.mode===m?(m==="None"?C.errBg:m==="Full"?C.okBg:C.infoBg):C.card,
+                          color:a.mode===m?(m==="None"?C.err:m==="Full"?C.ok:C.info):C.t2,
+                          border:"none",borderLeft:m!=="Full"?`1px solid ${C.border}`:"none"}}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Partial qty table */}
+                  {a.mode==="Partial"&&(
+                    <div style={{marginBottom:12}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                        <thead><tr style={{background:C.subtle}}>
+                          <th style={{padding:"5px 8px",textAlign:"left" as const,color:C.t2,fontWeight:700}}>Item</th>
+                          <th style={{padding:"5px 8px",textAlign:"right" as const,color:C.t2,fontWeight:700}}>Max Qty</th>
+                          <th style={{padding:"5px 8px",textAlign:"right" as const,color:C.t2,fontWeight:700}}>Award Qty</th>
+                        </tr></thead>
+                        <tbody>{(rfq.items||[]).map(it=>(
+                          <tr key={it.no} style={{borderBottom:`1px solid ${C.border}`}}>
+                            <td style={{padding:"4px 8px",color:C.t1,fontSize:11,maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}} title={it.desc}>{it.desc}</td>
+                            <td style={{padding:"4px 8px",textAlign:"right" as const,color:C.t2}}>{it.qty} {it.uom}</td>
+                            <td style={{padding:"3px 8px",textAlign:"right" as const}}>
+                              <input type="number" min={0} max={it.qty} value={a.qtys[it.no]||""} onChange={e=>setQty(qt.id,it.no,e.target.value)}
+                                style={{width:60,padding:"3px 5px",border:`1px solid ${C.border}`,borderRadius:3,background:C.field,color:C.t1,fontSize:11,textAlign:"right" as const}}/>
+                            </td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  )}
+                  {/* Rationale chips */}
+                  <div style={{marginBottom:8}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.t2,marginBottom:5,textTransform:"uppercase" as const,letterSpacing:.5}}>Rationale</div>
+                    <div style={{display:"flex",flexWrap:"wrap" as const,gap:4}}>
+                      {ratOpts.map(opt=>(
+                        <button key={opt} onClick={()=>toggleRationale(qt.id,opt)}
+                          style={{padding:"3px 8px",borderRadius:10,border:`1px solid ${a.rationales.includes(opt)?VDR_COLORS[i%VDR_COLORS.length]:C.border}`,background:a.rationales.includes(opt)?"rgba(10,110,209,0.08)":C.card,color:a.rationales.includes(opt)?VDR_COLORS[i%VDR_COLORS.length]:C.t2,fontSize:10,cursor:"pointer",fontWeight:a.rationales.includes(opt)?700:400}}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Preview sentence */}
+                  {a.mode!=="None"&&(
+                    <div style={{marginTop:8,padding:"7px 10px",background:C.subtle,borderRadius:4,fontSize:11,color:C.t2,fontStyle:"italic",lineHeight:1.5}}>
+                      {buildPreview(qt.id)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {/* Footer */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+        <a href="https://sap.example.com/F2238" target="_blank" rel="noreferrer"
+          style={{fontSize:12,color:C.primary,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>
+          <SapIcon name="action" size={12} color={C.primary}/> Open in SAP F2238 ↗
+        </a>
+        <div style={{display:"flex",gap:8}}>
+          <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+          <Btn v="ghost" onClick={()=>{
+            // Save draft — just close without transitioning status
+            onClose();
+          }}>Save draft</Btn>
+          <Btn v="primary" onClick={handleSubmit}>Submit for Approval →</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// ── Review Award Modal (approver view — read-only) ─────────────
+const ReviewAwardModal = ({rfq, quotations, user, onClose, onApprove, onReject}) => {
+  const isService = rfq.rfqType === "Service";
+  const proposal = rfq.awardProposal;
+  const calcNet = qt => {
+    const pc = qt.priceConditions||{};
+    const sub = qt.totalAmt;
+    return sub - sub*(pc.discount||0)/100 + sub*(pc.surcharge||0)/100 + (pc.freight||0) + (pc.insurance||0);
+  };
+  const nets = quotations.map(calcNet);
+  const bestNet = Math.min(...nets);
+  const LABEL_W = 220;
+  const COL_W = Math.max(190, Math.floor(880/quotations.length));
+  const itemBestPrice = (rfq.items||[]).map((_,ii)=>{
+    const prices = quotations.map(qt=>qt.items?.[ii]?.unitPrice??Infinity).filter(p=>isFinite(p));
+    return prices.length ? Math.min(...prices) : null;
+  });
+  const SectionHdr = ({title}) => (
+    <tr><td colSpan={quotations.length+1} style={{padding:"7px 14px",background:C.subtle,fontWeight:700,fontSize:10,color:C.t2,textTransform:"uppercase" as const,letterSpacing:.8,borderTop:`2px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>{title}</td></tr>
+  );
+  const Row = ({label, vals, fmt=null, bestVal=null, bold=false, sub=false}:any) => (
+    <tr style={{borderBottom:`1px solid ${C.border}`}}>
+      <td style={{padding:"7px 14px",fontSize:sub?11:12,color:sub?C.t2:C.t1,fontWeight:500,background:C.card,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W,whiteSpace:"nowrap" as const,paddingLeft:sub?24:14}}>{label}</td>
+      {vals.map((v,i)=>{
+        const isBest = bestVal!=null && v===bestVal && quotations.length>1;
+        return (
+          <td key={i} style={{padding:"7px 14px",fontSize:12,fontWeight:bold?700:400,textAlign:"right" as const,color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.card,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+            {fmt ? fmt(v) : (v||"—")}
+            {isBest && <span style={{fontSize:9,marginLeft:4,color:C.ok,fontWeight:700}}>★ BEST</span>}
+          </td>
+        );
+      })}
+    </tr>
+  );
+  const handleReject = () => {
+    if (!window.confirm("Reject this award proposal? It will be returned to the buyer.")) return;
+    onReject();
+  };
+  return (
+    <Modal title={`Review Award Proposal — ${rfq.id}`} onClose={onClose} width="92vw">
+      {/* Header */}
+      <div style={{marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <span style={{fontSize:15,fontWeight:700,color:C.t1}}>{rfq.title}</span>
+          <span style={{background:"#fff8e1",color:"#856404",border:"1px solid #f0d080",borderRadius:12,fontSize:11,fontWeight:700,padding:"2px 10px"}}>Award Proposed — Read Only</span>
+          <span style={{background:isService?"#f3eeff":"#e8f5fb",color:isService?"#6f2da8":"#0a6ed1",border:`1px solid ${isService?"#d0b8ff":"#a8d8f0"}`,borderRadius:12,fontSize:11,fontWeight:700,padding:"2px 10px"}}>{isService?"Service":"Material"}</span>
+        </div>
+        {/* Info banner */}
+        <div style={{background:"#f3eeff",border:"1px solid #d0b8ff",borderRadius:5,padding:"8px 14px",fontSize:12,display:"flex",gap:18,flexWrap:"wrap" as const,color:"#4a235a"}}>
+          <span><strong>Status:</strong> {rfq.status}</span>
+          <span><strong>Proposed by:</strong> {proposal?.proposedBy||"—"}</span>
+          <span><strong>Submitted:</strong> {fmtDate(proposal?.proposedAt)}</span>
+          <span><strong>Quotations:</strong> {quotations.length}</span>
+        </div>
+      </div>
+      {/* Vendor header cards */}
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const}}>
+        {quotations.map((qt,i)=>(
+          <div key={qt.id} style={{flex:1,minWidth:160,padding:"10px 14px",background:C.subtle,borderRadius:6,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,border:`1px solid ${C.border}`}}>
+            <div style={{fontSize:13,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</div>
+            <div style={{fontSize:10,color:C.t2,marginTop:2}}>{qt.vendorId} · {qt.id}</div>
+            <div style={{marginTop:5,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap" as const}}>
+              <Badge s={qt.status}/>
+              <span style={{fontSize:11,fontWeight:700,color:calcNet(qt)===bestNet&&quotations.length>1?C.ok:C.t1}}>{idr(calcNet(qt))}</span>
+              {calcNet(qt)===bestNet&&quotations.length>1&&<span style={{fontSize:10,color:C.ok,fontWeight:700}}>★ Lowest</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Comparison table */}
+      <div style={{overflow:"auto",border:`1px solid ${C.border}`,borderRadius:6,maxHeight:"40vh",marginBottom:16}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:LABEL_W+COL_W*quotations.length}}>
+          <thead><tr style={{position:"sticky" as const,top:0,zIndex:2}}>
+            <th style={{padding:"9px 14px",fontSize:11,fontWeight:700,color:C.t2,textAlign:"left" as const,background:C.subtle,borderRight:`1px solid ${C.border}`,borderBottom:`2px solid ${C.border}`,minWidth:LABEL_W}}>Parameter</th>
+            {quotations.map((qt,i)=>(
+              <th key={qt.id} style={{padding:"9px 14px",fontSize:11,fontWeight:700,textAlign:"center" as const,color:VDR_COLORS[i%VDR_COLORS.length],background:C.subtle,borderBottom:`2px solid ${C.border}`,borderRight:`1px solid ${C.border}`,borderTop:`3px solid ${VDR_COLORS[i%VDR_COLORS.length]}`,minWidth:COL_W}}>{qt.vendorName}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            <SectionHdr title="Vendor Information"/>
+            <Row label="Vendor Number" vals={quotations.map(q=>q.vendorId)}/>
+            <Row label="Vendor Name" vals={quotations.map(q=>q.vendorName)}/>
+            <Row label="Submitted Date" vals={quotations.map(q=>fmtDate(q.submittedDate))}/>
+            <Row label="Valid Until" vals={quotations.map(q=>fmtDate(q.validUntil))}/>
+            <SectionHdr title="Commercial Terms"/>
+            <Row label="Terms of Payment" vals={quotations.map(q=>q.termsOfPayment||"—")}/>
+            <Row label="Delivery Terms" vals={quotations.map(q=>q.deliveryTerms||"—")}/>
+            <Row label="Lead Time" vals={quotations.map(q=>q.leadTime||"—")}/>
+            <SectionHdr title="Line Items — Price Comparison"/>
+            {(rfq.items||[]).map((item,ii)=>(
+              <Fragment key={ii}>
+                <tr style={{background:C.infoBg}}>
+                  <td colSpan={quotations.length+1} style={{padding:"5px 14px 5px 28px",fontSize:11,fontWeight:700,color:C.info,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>
+                    {String(item.no).padStart(3,"0")} · {item.desc}<span style={{fontWeight:400,color:C.t2,marginLeft:8}}>({item.qty} {item.uom})</span>
+                  </td>
+                </tr>
+                <Row label="Unit Price (IDR)" vals={quotations.map(q=>q.items?.[ii]?.unitPrice||0)} fmt={v=>idr(v)} bestVal={itemBestPrice[ii]} bold sub/>
+                <Row label="Item Total (IDR)" vals={quotations.map(q=>q.items?.[ii]?.total||0)} fmt={v=>idr(v)} sub/>
+              </Fragment>
+            ))}
+            <SectionHdr title="Price Conditions & Summary"/>
+            <Row label="Subtotal" vals={quotations.map(q=>q.totalAmt)} fmt={v=>idr(v)}/>
+            <Row label="Discount (%)" vals={quotations.map(q=>`${q.priceConditions?.discount||0}%`)}/>
+            <tr style={{background:C.subtle,borderTop:`2px solid ${C.border}`}}>
+              <td style={{padding:"11px 14px",fontSize:13,fontWeight:700,color:C.t1,borderRight:`1px solid ${C.border}`,minWidth:LABEL_W}}>NET TOTAL (IDR)</td>
+              {quotations.map((qt,i)=>{
+                const net=nets[i]; const isBest=net===bestNet&&quotations.length>1;
+                return (
+                  <td key={qt.id} style={{padding:"11px 14px",fontSize:14,fontWeight:700,textAlign:"right" as const,color:isBest?C.ok:C.t1,background:isBest?C.okBg:C.subtle,borderRight:`1px solid ${C.border}`,minWidth:COL_W}}>
+                    {idr(net)}{isBest&&<div style={{fontSize:10,color:C.ok,fontWeight:700,marginTop:2}}>★ Recommended</div>}
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {/* Award proposal read-only section */}
+      <div style={{border:`1px solid ${C.border}`,borderRadius:6,overflow:"hidden",marginBottom:16,pointerEvents:"none",opacity:0.9}}>
+        <div style={{padding:"10px 16px",background:"#fff8e1",borderBottom:`1px solid #f0d080`,fontWeight:700,fontSize:12,color:"#856404"}}>
+          Buyer's Award Proposal (Read Only)
+        </div>
+        {proposal ? (
+          <div style={{padding:"14px 16px"}}>
+            {isService && proposal.type==="Service" ? (
+              <div>
+                <div style={{fontSize:12,color:C.t2,marginBottom:8}}><strong>Winner:</strong> {quotations.find(q=>q.id===proposal.winnerId)?.vendorName||proposal.winnerId}</div>
+                {proposal.rationales?.length>0&&<div style={{fontSize:12,color:C.t2,marginBottom:8}}><strong>Rationale:</strong> {proposal.rationales.join(", ")}</div>}
+                {proposal.note&&<div style={{fontSize:12,color:C.t2}}><strong>Note:</strong> {proposal.note}</div>}
+              </div>
+            ) : (
+              <div style={{display:"flex",gap:0}}>
+                {quotations.map((qt,i)=>{
+                  const a = proposal.allocations?.[qt.id];
+                  return (
+                    <div key={qt.id} style={{flex:1,padding:"12px 14px",borderRight:i<quotations.length-1?`1px solid ${C.border}`:"none"}}>
+                      <div style={{fontWeight:700,fontSize:12,color:VDR_COLORS[i%VDR_COLORS.length],marginBottom:8}}>{qt.vendorName}</div>
+                      <div style={{padding:"5px 10px",borderRadius:4,display:"inline-block",fontSize:12,fontWeight:700,marginBottom:8,
+                        background:a?.mode==="None"?C.errBg:a?.mode==="Full"?C.okBg:C.infoBg,
+                        color:a?.mode==="None"?C.err:a?.mode==="Full"?C.ok:C.info}}>
+                        {a?.mode||"None"}
+                      </div>
+                      {a?.rationales?.length>0&&<div style={{fontSize:11,color:C.t2,marginBottom:6}}>{a.rationales.join(", ")}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{padding:"14px 16px",color:C.t2,fontSize:12,fontStyle:"italic"}}>No proposal data available.</div>
+        )}
+      </div>
+      {/* Footer */}
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+        <Btn v="neutral" onClick={onClose}>Cancel</Btn>
+        <Btn v="danger" onClick={handleReject}>Reject</Btn>
+        <Btn v="success" onClick={onApprove}>Approve Award</Btn>
+      </div>
+    </Modal>
+  );
+};
+
 const QuotationCompareModal = ({rfq, quotations, onClose}) => {
   const calcNet = qt => {
     const pc = qt.priceConditions||{};
@@ -1165,6 +1633,146 @@ const RfqStatusIcon = ({s}) => {
   );
 };
 
+const RfqDocumentFlow = ({rfq, quotations}) => {
+  const ap = rfq.awardProposal;
+  const isService = rfq.rfqType==="Service";
+
+  const getWinnerVendorId = () => {
+    if(!ap) return null;
+    if(isService) return ap.serviceWinner;
+    if(!ap.allocations) return null;
+    for(const [qtId, alloc] of Object.entries(ap.allocations as any)) {
+      if((alloc as any).mode==="Full"||(alloc as any).mode==="Partial") {
+        const qt = quotations.find(q=>q.id===qtId);
+        return qt?.vendorId || null;
+      }
+    }
+    return null;
+  };
+  const winVendorId = getWinnerVendorId();
+
+  const sapNo = rfq.sapRfqNo||(`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
+
+  const l1Done = !!ap?.l1Approved;
+  const l2Done = !!ap?.l2Approved || rfq.status==="Award Approved" || rfq.status==="Closed";
+  const awardDone = rfq.status==="Closed";
+
+  const phaseLabel = (txt) => (
+    <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase" as const,letterSpacing:1,marginBottom:8,textAlign:"center" as const}}>{txt}</div>
+  );
+
+  const docCard = ({title,sub,status,statusColor,borderColor,faded=false}:{title:string,sub?:string,status:string,statusColor:string,borderColor:string,faded?:boolean}) => (
+    <div style={{position:"relative",width:140,background:faded?"#f8f9fa":C.card,border:`1px solid ${borderColor}`,borderRadius:4,padding:"10px 10px 8px 10px",opacity:faded?0.55:1,overflow:"hidden",boxShadow:faded?"none":"0 1px 3px rgba(0,0,0,0.08)"}}>
+      <div style={{position:"absolute",top:0,right:0,width:0,height:0,borderStyle:"solid",borderWidth:"12px 12px 0 0",borderColor:`${borderColor} transparent transparent transparent`}}/>
+      <div style={{fontSize:11,fontWeight:700,color:faded?C.t2:C.t1,marginBottom:3,paddingRight:14,lineHeight:1.3}}>{title}</div>
+      {sub&&<div style={{fontSize:10,color:C.t2,marginBottom:6,lineHeight:1.3}}>{sub}</div>}
+      <div style={{display:"inline-block",fontSize:10,fontWeight:700,color:statusColor,background:`${statusColor}18`,padding:"1px 7px",borderRadius:8,border:`1px solid ${statusColor}40`}}>{status}</div>
+    </div>
+  );
+
+  const arrow = (active:boolean, idx:number) => (
+    <div style={{display:"flex",alignItems:"center",flexShrink:0,padding:"0 4px"}}>
+      <svg width={40} height={20} viewBox="0 0 40 20">
+        <defs>
+          <marker id={`arrhd-${idx}-${active?1:0}`} markerWidth={6} markerHeight={6} refX={5} refY={3} orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill={active?"#107e3e":"#c8cdd0"}/>
+          </marker>
+        </defs>
+        <line x1={2} y1={10} x2={33} y2={10} stroke={active?"#107e3e":"#c8cdd0"} strokeWidth={1.5} strokeDasharray={active?"none":"4 3"} markerEnd={`url(#arrhd-${idx}-${active?1:0})`}/>
+      </svg>
+    </div>
+  );
+
+  const targets = rfq.targets || [];
+
+  return (
+    <div style={{overflowX:"auto",paddingBottom:8}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:0,minWidth:"fit-content",padding:"8px 4px"}}>
+
+        {/* Phase 1: Sourcing */}
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center"}}>
+          {phaseLabel("Sourcing")}
+          {docCard({title:rfq.id,sub:sapNo,status:"In SAP",statusColor:"#0070f2",borderColor:"#b3c8f5"})}
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",paddingTop:26}}>{arrow(true,0)}</div>
+
+        {/* Phase 2: Evaluation */}
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center"}}>
+          {phaseLabel("Evaluation")}
+          <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+            {targets.map((vid,vi)=>{
+              const qt = quotations.find(q=>q.rfqId===rfq.id&&q.vendorId===vid);
+              const isWinner = vid===winVendorId && !!ap;
+              const isRejected = qt?.status==="Rejected";
+              const isLost = qt?.status==="Lost";
+              const vendorName = qt?.vendorName || VENDORS[vid]?.name || vid;
+              const shortName = vendorName.length>22 ? vendorName.substring(0,20)+"…" : vendorName;
+              const statusTxt = isWinner?"Win":isRejected?"Rejected":isLost?"Lost":qt?"Submitted":"Pending";
+              const statusColor = isWinner?"#107e3e":isRejected?"#bb0000":isLost?"#6a6d70":"#0070f2";
+              const borderColor = isWinner?"#9FE1CB":isRejected?"#f5c2c2":C.border;
+              return(
+                <div key={vid} style={{position:"relative",width:140,background:C.card,border:`1px solid ${borderColor}`,borderLeft:`3px solid ${statusColor}`,borderRadius:4,padding:"8px 10px 6px 10px",overflow:"hidden",boxShadow:isWinner?"0 1px 4px rgba(16,126,62,0.2)":"0 1px 2px rgba(0,0,0,0.05)"}}>
+                  <div style={{position:"absolute",top:0,right:0,width:0,height:0,borderStyle:"solid",borderWidth:"10px 10px 0 0",borderColor:`${borderColor} transparent transparent transparent`}}/>
+                  <div style={{fontSize:11,fontWeight:700,color:C.t1,paddingRight:12,lineHeight:1.3,marginBottom:2}}>{shortName}</div>
+                  {qt&&<div style={{fontSize:10,color:C.t2,marginBottom:4}}>{qt.id}</div>}
+                  <div style={{display:"inline-block",fontSize:10,fontWeight:700,color:statusColor,background:`${statusColor}18`,padding:"1px 6px",borderRadius:8,border:`1px solid ${statusColor}40`}}>{statusTxt}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",paddingTop:26}}>{arrow(!!ap,1)}</div>
+
+        {/* Phase 3: Approval L1 */}
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center"}}>
+          {phaseLabel("Approval L1")}
+          {docCard({
+            title:"Finance Approver",
+            sub:"Budi Santoso",
+            status:l1Done?"Approved":rfq.status==="Award Proposed"&&!l1Done?"Pending":"Not Yet",
+            statusColor:l1Done?"#107e3e":rfq.status==="Award Proposed"&&!l1Done?"#856404":"#6a6d70",
+            borderColor:l1Done?"#9FE1CB":rfq.status==="Award Proposed"&&!l1Done?"#f0d080":C.border,
+            faded:!ap,
+          })}
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",paddingTop:26}}>{arrow(l1Done,2)}</div>
+
+        {/* Phase 4: Approval L2 */}
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center"}}>
+          {phaseLabel("Approval L2")}
+          {docCard({
+            title:"Director",
+            sub:"Arief Budiman",
+            status:l2Done?"Approved":l1Done&&rfq.status==="Award Proposed"?"Pending":"Not Yet",
+            statusColor:l2Done?"#107e3e":l1Done&&rfq.status==="Award Proposed"?"#856404":"#6a6d70",
+            borderColor:l2Done?"#9FE1CB":l1Done&&rfq.status==="Award Proposed"?"#f0d080":C.border,
+            faded:!l1Done,
+          })}
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",paddingTop:26}}>{arrow(l2Done,3)}</div>
+
+        {/* Phase 5: Award */}
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center"}}>
+          {phaseLabel("Award")}
+          {docCard({
+            title:"Purchase Order",
+            sub:rfq.poNo||"—",
+            status:awardDone?"PO Created":"Pending",
+            statusColor:awardDone?"#107e3e":"#6a6d70",
+            borderColor:awardDone?"#9FE1CB":C.border,
+            faded:!l2Done,
+          })}
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
@@ -1172,6 +1780,26 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const [compareData,setCompareData]=useState<any>(null);
   const [allExpanded,setAllExpanded]=useState(false);
   const [detailRfq,setDetailRfq]=useState<any>(null);
+  const [awardModal,setAwardModal]=useState<{rfq:any,qts:any[]}|null>(null);
+  const [reviewModal,setReviewModal]=useState<{rfq:any,qts:any[]}|null>(null);
+  const getQtsForRfq = (rfqId) => quotations.filter(q=>q.rfqId===rfqId&&(q.status==="Submitted"||q.status==="Accepted"));
+  const openAwardModal = (rfq) => { const qts=getQtsForRfq(rfq.id); setAwardModal({rfq,qts}); };
+  const openReviewModal = (rfq) => { const qts=getQtsForRfq(rfq.id); setReviewModal({rfq,qts}); };
+  const submitAwardProposal = (rfqId, proposal) => {
+    setRfqs(p=>p.map(r=>r.id===rfqId?{...r,status:"Award Proposed",awardProposal:proposal}:r));
+    setAwardModal(null);
+  };
+  const approveAward = (rfqId) => {
+    const today = new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>r.id===rfqId?{...r,status:"Award Approved",approvedBy:user?.name||user?.username||"Approver",approvedAt:today,awardProposal:{...r.awardProposal,status:"Approved"}}:r));
+    setReviewModal(null);
+  };
+  const rejectAward = (rfqId) => {
+    if(!window.confirm("Reject this award proposal? The RFQ will return to Scored status so the buyer can revise."))return;
+    const today = new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>r.id===rfqId?{...r,status:"Scored",awardProposal:{...r.awardProposal,status:"Rejected",rejectedBy:user.username,rejectedAt:today}}:r));
+    setReviewModal(null);
+  };
   const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
   const [rfqTab,setRfqTab]=useState("general");
   const [split,setSplit]=useState(52);
@@ -1201,7 +1829,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
 
-  const ALL_RFQ_STATUSES=["Created","Open","Scored","Closed"];
+  const ALL_RFQ_STATUSES=["Created","Open","Scored","Award Proposed","Award Approved","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
   const POSTED_BY_ROWS=[...new Set(rfqs.map(r=>r.postedBy).filter(Boolean))].sort().map(n=>({v:n,l:n}));
 
@@ -1431,7 +2059,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Created","Open","Scored","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Created","Open","Scored","Award Proposed","Award Approved","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
@@ -1441,8 +2069,8 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
           {(()=>{
             const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
             const allCreated=selList.length>0&&selList.every(r=>r.status==="Created");
-            const canSendApproval=selList.length>0&&selList.every(r=>r.status==="Scored");
             const selRfq=selList.length===1?selList[0]:null;
+            const canSendApproval=selList.length===1&&selRfq?.status==="Scored"&&(user?.username==="buyer1"||user?.username==="brm.user");
             const selRfqQts=selRfq?getQts(selRfq.id):[];
             const canEvaluate=!!selRfq&&selRfq.status==="Open"&&selRfqQts.length>=2&&selRfqQts.every(q=>q.status==="Accepted");
             const evaluateTitle=selIds.size===0?"Select 1 RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Open"?"RFQ must be Open to evaluate":selRfqQts.length===0?"No quotations received":selRfqQts.length<2?"At least 2 quotations required to evaluate":!selRfqQts.every(q=>q.status==="Accepted")?"All quotations must be Accepted before scoring":"";
@@ -1452,16 +2080,24 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
                 title={selIds.size===0?"Select RFQ(s) first":!allCreated?"Only 'Created' RFQs can be published to vendors":""}>
                 <SapIcon name="paper-plane" size={13} color={allCreated?"#fff":C.t2}/> Publish{selList.length>0&&allCreated?` (${selList.length})`:""}
               </button>
-              <button onClick={()=>canSendApproval&&setShowApproval(true)} disabled={!canSendApproval}
-                style={{background:canSendApproval?C.primary:C.subtle,border:`1px solid ${canSendApproval?"transparent":C.border}`,color:canSendApproval?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canSendApproval?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canSendApproval?1:0.6,transition:"all .15s"}}
-                title={selIds.size===0?"Select RFQ(s) first":!canSendApproval?"Only 'Scored' RFQs can be sent for approval":""}>
-                <SapIcon name="workflow-tasks" size={13} color={canSendApproval?"#fff":C.t2}/> Send for Approval{selList.length>0&&canSendApproval?` (${selList.length})`:""}
+              <button onClick={()=>{if(!canSendApproval||!selRfq)return;openAwardModal(selRfq);}} disabled={!canSendApproval}
+                style={{background:canSendApproval?"#0a6ed1":C.subtle,border:`1px solid ${canSendApproval?"transparent":C.border}`,color:canSendApproval?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canSendApproval?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canSendApproval?1:0.6,transition:"all .15s"}}
+                title={selIds.size===0?"Select RFQ(s) first":selList.length>1?"Select only 1 RFQ":user?.username!=="buyer1"&&user?.username!=="brm.user"?"Only buyers can make award decisions":!selRfq||selRfq.status!=="Scored"?"RFQ must be in Scored status":""}>
+                <SapIcon name="checklist" size={13} color={canSendApproval?"#fff":C.t2}/> Award Decision
               </button>
               <button onClick={()=>{if(!canEvaluate||!selRfq)return;setScoreModal({rfq:selRfq,qts:selRfqQts});setScores(initScores(selRfqQts));setScoreNotes("");}} disabled={!canEvaluate}
                 style={{background:canEvaluate?"#6f2da8":C.subtle,border:`1px solid ${canEvaluate?"transparent":C.border}`,color:canEvaluate?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canEvaluate?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canEvaluate?1:0.6,transition:"all .15s"}}
                 title={evaluateTitle}>
                 <SapIcon name="quality-issue" size={13} color={canEvaluate?"#fff":C.t2}/> Evaluate &amp; Score
               </button>
+              {/* Proceed to SAP button — always visible, lights up: buyers only + 1 Award Approved RFQ checked */}
+              {(()=>{const canProceed=(user?.username==="buyer1"||user?.username==="brm.user")&&!!selRfq&&selRfq.status==="Award Approved";const proceedTitle=selIds.size===0?"Check an Award Approved RFQ first":selList.length>1?"Select only 1 RFQ":user?.username!=="buyer1"&&user?.username!=="brm.user"?"Only buyers can proceed to SAP":!selRfq||selRfq.status!=="Award Approved"?"RFQ must be Award Approved":"";return(
+                <button onClick={()=>{if(!canProceed||!selRfq)return;const today=new Date().toISOString().split("T")[0];const poNo=`4500${String(Math.floor(Math.random()*1000000)).padStart(6,"0")}`;setRfqs(p=>p.map(r=>r.id===selRfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.username,poNo}:r));setSelIds(new Set());alert(`Award finalized. SAP Purchase Order ${poNo} created. RFQ ${selRfq.id} is now Closed.`);}} disabled={!canProceed}
+                  style={{background:canProceed?"#107e3e":C.subtle,border:`1px solid ${canProceed?"transparent":C.border}`,color:canProceed?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canProceed?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canProceed?1:0.6,transition:"all .15s"}}
+                  title={proceedTitle}>
+                  <SapIcon name="sys-enter" size={13} color={canProceed?"#fff":C.t2}/> Proceed to SAP ↗
+                </button>
+              );})()}
             </>);
           })()}
         </div>
@@ -1474,7 +2110,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             if(list.length===0){alert("No RFQs to export.");return;}
             const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
             const hdr=["SAP RFQ No","RFQ Number","Description","Status","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant"];
-            const data=list.map(r=>{const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,r.id,r.title,r.status,fmtDate(r.postedDate),fmtDate(r.postedDate),fmtDate(r.closingDate),r.postedBy,r.estVal,r.companyCode,r.plant].map(esc).join(",");});
+            const data=list.map(r=>{const sapNo=r.sapRfqNo||(r.status!=="Created"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,r.id,r.title,r.status,fmtDate(r.postedDate),fmtDate(r.postedDate),fmtDate(r.closingDate),r.postedBy,r.estVal,r.companyCode,r.plant].map(esc).join(",");});
             const csv=[hdr.join(","),...data].join("\r\n");
             const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download=`rfqs_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
           }} title="Export all filtered RFQs"
@@ -1521,7 +2157,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
                   <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
                 </div>
                 <div style={cell({justifyContent:"flex-start"})}><Badge s={rfq.status}/></div>
-                {(()=>{const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");return(
+                {(()=>{const sapNo=rfq.sapRfqNo||(`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);return(
                 <div style={cell({overflow:"hidden"})}>
                   {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<a href="#" target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:13,fontWeight:600,color:C.primary,textDecoration:"none",borderBottom:`1px solid ${C.primary}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{sapNo}</a>}
                 </div>);})()}
@@ -1971,10 +2607,12 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
         <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:12,textTransform:"uppercase",letterSpacing:.6}}>RFQ Status Legend</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"10px 28px",marginBottom:14}}>
           {[
-            {s:"Created",    desc:"RFQ created in SAP – not yet published to vendors"},
-            {s:"Open",       desc:"Published to vendors – collecting and evaluating quotations"},
-            {s:"Scored",     desc:"Scoring session completed – submitted to Tender Committee for approval"},
-            {s:"Closed",     desc:"Approved by Tender Committee – winner determined, PO in progress"},
+            {s:"Created",        desc:"RFQ created in SAP – not yet published to vendors"},
+            {s:"Open",           desc:"Published to vendors – collecting and evaluating quotations"},
+            {s:"Scored",         desc:"Scoring session completed – submitted to Tender Committee for approval"},
+            {s:"Award Proposed", desc:"Buyer submitted split/full award proposal – pending Procurement Manager approval"},
+            {s:"Award Approved", desc:"Award approved – buyer can proceed to SAP to generate Purchase Order"},
+            {s:"Closed",         desc:"PO issued – procurement process complete"},
           ].map(({s,desc})=>(
             <div key={s} style={{display:"flex",alignItems:"center",gap:7,minWidth:300}}>
               <Badge s={s}/>
@@ -1982,9 +2620,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             </div>
           ))}
         </div>
-        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,display:"flex",alignItems:"center",gap:8}}>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Status Flow:</span>
-          {["Created","Open","Scored","Closed"].map((s,i,arr)=>(
+          {["Created","Open","Scored","Award Proposed","Award Approved","Closed"].map((s,i,arr)=>(
             <span key={s} style={{display:"flex",alignItems:"center",gap:6}}>
               <Badge s={s}/>
               {i<arr.length-1&&<span style={{color:C.t2,fontSize:12}}>→</span>}
@@ -2007,9 +2645,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
       {(()=>{
         const r=detailRfq;
         const qts=getQts(r.id);
-        const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
-        const TABS=["general","items","quotations","notes","discussion"];
-        const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`};
+        const sapNo=r.sapRfqNo||(`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
+        const TABS=["general","items","quotations","notes","discussion","docflow"];
+        const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`,"docflow":"Document Flow"};
         const field=(label,val)=>(
           <div style={{marginBottom:12}}>
             <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
@@ -2042,6 +2680,14 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             </div>
           </div>
 
+          {/* Award Approved banner — visible to buyer1 */}
+          {r.status==="Award Approved"&&user?.username==="buyer1"&&(
+            <div style={{padding:"8px 16px",background:C.okBg,borderBottom:`1px solid ${C.ok}`,fontSize:12,color:C.ok,display:"flex",alignItems:"center",gap:8}}>
+              <SapIcon name="accept" size={13} color={C.ok}/>
+              <span>Award approved by <strong>{r.approvedBy||"Approver"}</strong> on {fmtDate(r.approvedAt)}. Click 'Proceed to SAP' to finalize.</span>
+            </div>
+          )}
+
           {/* Tabs */}
           <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0,overflowX:"auto"}}>
             {TABS.map(t=>(
@@ -2051,6 +2697,12 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             ))}
           </div>
 
+          {r.status==="Award Approved"&&user?.username==="buyer1"&&r.awardProposal&&(
+            <div style={{padding:"10px 16px",background:"#e8f5e9",borderTop:`1px solid #9FE1CB`,display:"flex",gap:8,alignItems:"center",fontSize:12,color:"#107e3e",fontWeight:600,flexShrink:0}}>
+              <SapIcon name="accept" size={14} color="#107e3e"/>
+              Award approved by <strong style={{marginLeft:4,marginRight:4}}>{r.awardProposal.approvedBy}</strong> on <strong style={{marginLeft:4}}>{r.awardProposal.approvedAt}</strong>. Click &apos;Proceed to SAP&apos; to finalize.
+            </div>
+          )}
           {/* Tab Content */}
           <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
 
@@ -2125,7 +2777,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               <div>
                 {qts.length===0&&<div style={{color:C.t2,fontSize:13}}>No quotations received yet.</div>}
                 {qts.map(qt=>{
-                  const sapQtNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+                  const sapQtNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
                   return(
                   <div key={qt.id} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:8,background:C.card}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
@@ -2164,6 +2816,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
 
             {rfqTab==="discussion"&&(
               <DiscussionBox rfqId={r.id} discussions={r.discussions||[]} onPost={postDiscussion} user={user}/>
+            )}
+
+            {rfqTab==="docflow"&&(
+              <RfqDocumentFlow rfq={r} quotations={qts}/>
             )}
 
           </div>
@@ -2322,13 +2978,15 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
       </Modal>
       );
     })()}
+    {awardModal&&<AwardDecisionModal rfq={awardModal.rfq} quotations={awardModal.qts} user={user} onClose={()=>setAwardModal(null)} onSubmit={(p)=>submitAwardProposal(awardModal.rfq.id,p)}/>}
+    {reviewModal&&<ReviewAwardModal rfq={reviewModal.rfq} quotations={reviewModal.qts} user={user} onClose={()=>setReviewModal(null)} onApprove={()=>approveAward(reviewModal.rfq.id)} onReject={()=>rejectAward(reviewModal.rfq.id)}/>}
   </div>
   );
 };
 
 // ── Approver RFQ ──────────────────────────────────────────────
 export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) => {
-  const [flt,setFlt]=useState("Scored");
+  const [flt,setFlt]=useState("Award Proposed");
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
   const [adaptOpen2,setAdaptOpen2]=useState(false);
@@ -2341,7 +2999,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   const resetFilters=()=>{setDraft2(EMPTY_FLT2);setApplied(EMPTY_FLT2);};
   const [vhOpen2,setVhOpen2]=useState<string|null>(null);
   const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
-  const ALL_RFQ_STATUSES=["Open","Scored","Closed"];
+  const ALL_RFQ_STATUSES=["Award Proposed","Award Approved","Closed"];
   const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
 
   const [selIds,setSelIds]=useState(new Set<string>());
@@ -2355,6 +3013,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
   // Approve/Reject modal state
   const [actionModal,setActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
+  const [reviewModal,setReviewModal]=useState<{rfq:any,qts:any[]}|null>(null);
   const [winnerVendorId,setWinnerVendorId]=useState("");
   const [actionNotes,setActionNotes]=useState("");
 
@@ -2380,7 +3039,10 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
   ].filter(Boolean);
 
   const list=rfqs
-    .filter(r=>flt==="All"||r.status===flt)
+    .filter(r=>{
+      if(flt==="All") return r.status==="Award Proposed"&&!r.awardProposal?.l1Approved;
+      return r.status===flt&&!r.awardProposal?.l1Approved;
+    })
     .filter(r=>applied.companyCodes.length===0||applied.companyCodes.includes(r.companyCode))
     .filter(r=>applied.statuses.length===0||applied.statuses.includes(r.status))
     .filter(r=>!applied.rfqNo    ||r.id?.toLowerCase().includes(applied.rfqNo.toLowerCase()))
@@ -2412,19 +3074,12 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
     const {rfq}=actionModal;
     const today=new Date().toISOString().split("T")[0];
     if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
-    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Open",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
-    setQuotations(p=>p.map(q=>q.rfqId===rfq.id&&["Accepted","Submitted"].includes(q.status)?{...q,status:"Revised"}:q));
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Scored",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
     setActionModal(null);setActionNotes("");
   };
   const approveRfq=(rfq)=>{
-    const qts=getQts(rfq.id).filter(q=>q.status==="Accepted");
-    if(!qts.length){alert("No Accepted quotations to award for this RFQ.");return;}
-    const ranked=[...qts].sort((a,b)=>(getWeightedTotal(b)||0)-(getWeightedTotal(a)||0));
-    const winnerVendorId=ranked[0]?.vendorId||"";
-    if(!window.confirm(`Approve and close RFQ ${rfq.id}?\nWinner: ${ranked[0]?.vendorName} (weighted ${getWeightedTotal(ranked[0])??"—"}).`))return;
     const today=new Date().toISOString().split("T")[0];
-    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.name||"Approver",winnerVendorId,approvalNotes:`Approved by Tender Committee. Winner: ${ranked[0]?.vendorName}.`}:r));
-    setQuotations(p=>p.map(q=>q.rfqId===rfq.id?{...q,status:q.vendorId===winnerVendorId?"Win":"Lost"}:q));
+    setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,awardProposal:{...r.awardProposal,l1Approved:true,l1ApprovedBy:user?.username,l1ApprovedAt:today}}:r));
   };
 
   return (
@@ -2439,7 +3094,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
       {/* Info banner */}
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f3eeff",border:`1px solid #6f2da840`,borderRadius:6,marginBottom:16,fontSize:13,color:"#6f2da8"}}>
         <SapIcon name="approvals" size={16} color="#6f2da8"/>
-        <span>Showing RFQs pending your approval. Expand an RFQ to compare vendor quotations side-by-side before deciding.</span>
+        <span>Showing RFQs pending your Level 1 approval. Expand an RFQ to compare vendor quotations side-by-side before deciding.</span>
       </div>
 
       {/* Action Modal (Reject only) */}
@@ -2502,13 +3157,26 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
 
-      <FilterBar opts={["All","Scored","Closed"]} val={flt} onChange={setFlt}/>
+      <FilterBar opts={["All","Award Proposed","Award Approved","Closed"]} val={flt} onChange={setFlt}/>
 
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
           <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+          {(()=>{
+            const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
+            const selRfq=selList.length===1?selList[0]:null;
+            const canReviewAward=!!selRfq&&selRfq.status==="Award Proposed";
+            const reviewTitle=selIds.size===0?"Check an Award Proposed RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Award Proposed"?"RFQ must be in Award Proposed status":"";
+            return(
+              <button onClick={()=>{if(!canReviewAward||!selRfq)return;const qts=quotations.filter(q=>q.rfqId===selRfq.id);setReviewModal({rfq:selRfq,qts});}} disabled={!canReviewAward}
+                style={{background:canReviewAward?"#6f2da8":C.subtle,border:`1px solid ${canReviewAward?"transparent":C.border}`,color:canReviewAward?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canReviewAward?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canReviewAward?1:0.6,transition:"all .15s"}}
+                title={reviewTitle}>
+                <SapIcon name="process" size={13} color={canReviewAward?"#fff":C.t2}/> Review Award
+              </button>
+            );
+          })()}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
@@ -2540,7 +3208,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
           const sel=selIds.has(rfq.id);
           const rowBg=sel?C.selection:C.card;
           const cell=(extra?:any)=>({padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap" as const,...extra});
-          const sapNo=rfq.sapRfqNo||(rfq.status!=="Open"?`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+          const sapNo=rfq.sapRfqNo||(`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
           return (
             <div key={rfq.id} style={{borderBottom:`1px solid ${C.border}`}}>
               <div onClick={()=>toggle(rfq.id)} style={{display:"grid",gridTemplateColumns:gridCols,background:rowBg,cursor:"pointer",transition:"background .12s"}}
@@ -2633,20 +3301,20 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                       <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
                     )}
 
-                    {/* Action buttons for Scored RFQs pending approval */}
-                    {rfq.status==="Scored"&&(
+                    {/* Action buttons for Award Proposed RFQs pending L1 approval */}
+                    {rfq.status==="Award Proposed"&&!rfq.awardProposal?.l1Approved&&(
                       <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
-                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>Scored by <strong style={{color:C.t1}}>{rfq.scoredBy||rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.scoredAt||rfq.submittedForApprovalAt)}</span>
+                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>Proposed by <strong style={{color:C.t1}}>{rfq.awardProposal?.submittedByName||rfq.submittedForApprovalBy||"Buyer"}</strong> on {fmtDate(rfq.awardProposal?.submittedAt||rfq.submittedForApprovalAt)}</span>
                         <div style={{flex:1}}/>
                         <Btn v="danger" sm onClick={()=>{setActionModal({rfq,action:"reject"});setActionNotes("");}}>
                           <SapIcon name="cancel" size={13} color="#fff"/> Reject – Return to Buyer
                         </Btn>
                         <Btn v="success" sm onClick={()=>approveRfq(rfq)}>
-                          <SapIcon name="accept" size={13} color="#fff"/> Approve & Close
+                          <SapIcon name="accept" size={13} color="#fff"/> Approve (L1)
                         </Btn>
                       </div>
                     )}
-                    {rfq.status!=="Scored"&&(
+                    {!(rfq.status==="Award Proposed"&&!rfq.awardProposal?.l1Approved)&&(
                       <div style={{padding:"8px 16px 10px"}}>
                         <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
                       </div>
@@ -2676,9 +3344,9 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
         {detailAprRfq&&(()=>{
           const r=detailAprRfq;
           const qts=getQts(r.id);
-          const sapNo=r.sapRfqNo||(r.status!=="Open"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
-          const TABS=["general","items","quotations","notes","discussion"];
-          const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`};
+          const sapNo=r.sapRfqNo||(`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
+          const TABS=["general","items","quotations","notes","discussion","docflow"];
+          const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`,"docflow":"Document Flow"};
           const field=(label,val)=>(
             <div style={{marginBottom:12}}>
               <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
@@ -2793,7 +3461,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                 <div>
                   {qts.length===0&&<div style={{color:C.t2,fontSize:13}}>No quotations received yet.</div>}
                   {qts.map(qt=>{
-                    const sapQtNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+                    const sapQtNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
                     return(
                     <div key={qt.id} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:8,background:C.card}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
@@ -2841,12 +3509,22 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
                 <DiscussionBox rfqId={r.id} discussions={r.discussions||[]} onPost={postDiscussion} user={user}/>
               )}
 
+              {aprDetailTab==="docflow"&&(
+                <RfqDocumentFlow rfq={r} quotations={qts}/>
+              )}
+
             </div>
           </div>
           );
         })()}
       </div>
       {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
+      {reviewModal&&<ReviewAwardModal rfq={reviewModal.rfq} quotations={reviewModal.qts} user={user}
+        onApprove={()=>{approveRfq(reviewModal.rfq);setReviewModal(null);}}
+        onReject={()=>{
+          setActionModal({rfq:reviewModal.rfq,action:"reject"});setActionNotes("");setReviewModal(null);
+        }}
+        onClose={()=>setReviewModal(null)}/>}
     </div>
   );
 };
@@ -2969,7 +3647,7 @@ export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
               <tr><Td colSpan={10} style={{textAlign:"center",padding:40,color:C.t2}}>No quotations found.</Td></tr>
             )}
             {list.map(qt=>{
-              const sapNo=qt.sapQtNo||(qt.submittedDate?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+              const sapNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
               const canAct=qt.status==="Win";
               return (
                 <tr key={qt.id} style={{borderBottom:`1px solid ${C.border}`}}
@@ -3180,256 +3858,527 @@ export const DirectorHome = ({user, rfqs, quotations, setSection}) => {
 
 // ── Director RFQ Management ────────────────────────────────────
 export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
-  const [flt, setFlt] = useState("All");
-  const [expanded, setExpanded] = useState<{[id:string]:boolean}>({});
-  const [tab, setTab] = useState<{[id:string]:string}>({});
-  const [dirMsg, setDirMsg] = useState<{[id:string]:string}>({});
-  const getTab = (id) => tab[id]||"overview";
-  const setRfqTab = (id,t) => setTab(p=>({...p,[id]:t}));
+  const [flt,setFlt]=useState("Award Proposed");
+  const [expanded,setExpanded]=useState({});
+  const [allExpanded,setAllExpanded]=useState(false);
+  const [adaptOpen2,setAdaptOpen2]=useState(false);
+  const [visibleFields2,setVisibleFields2]=useState<Set<string>>(new Set(ALL_RFQ_FILTER_FIELDS.filter(f=>f.defaultOn).map(f=>f.id)));
+  const EMPTY_FLT2={rfqNo:"",rfqTitle:"",companyCodes:[],statuses:[],postedBy:"",category:"",openFrom:"",openTo:"",closingFrom:"",closingTo:"",purchOrg:"",plant:"",estValMin:"",estValMax:""};
+  const [draft2,setDraft2]=useState(EMPTY_FLT2);
+  const [applied,setApplied]=useState(EMPTY_FLT2);
+  const sd2=(k,v)=>setDraft2(p=>({...p,[k]:v}));
+  const applyFilters=()=>setApplied({...draft2});
+  const resetFilters=()=>{setDraft2(EMPTY_FLT2);setApplied(EMPTY_FLT2);};
+  const [vhOpen2,setVhOpen2]=useState<string|null>(null);
+  const clrA2=(k)=>{setDraft2(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));setApplied(p=>({...p,[k]:Array.isArray(EMPTY_FLT2[k])?[]:EMPTY_FLT2[k]}));};
+  const ALL_RFQ_STATUSES=["Award Proposed","Award Approved","Closed"];
+  const ALL_CATEGORIES=[...new Set(rfqs.map(r=>r.cat).filter(Boolean))].sort();
 
-  const getQts = (rfqId) => quotations.filter(q=>q.rfqId===rfqId);
+  const [selIds,setSelIds]=useState(new Set<string>());
+  const [compareData,setCompareData]=useState<any>(null);
+  const [dirRfqTabs,setDirRfqTabs]=useState<{[id:string]:string}>({});
+  const dirTab=(rfqId)=>dirRfqTabs[rfqId]||"overview";
+  const setDirTab=(rfqId,tab)=>setDirRfqTabs(p=>({...p,[rfqId]:tab}));
+  const postDiscussion = (rfqId, entry) => setRfqs(p=>p.map(r=>r.id===rfqId?{...r,discussions:[...(r.discussions||[]),entry]}:r));
+  const [detailDirRfq,setDetailDirRfq]=useState<any>(null);
+  const [dirDetailTab,setDirDetailTab]=useState("general");
 
-  const list = flt==="All" ? rfqs : rfqs.filter(r=>r.status===flt);
+  const [dirActionModal,setDirActionModal]=useState<{rfq:any,action:"approve"|"reject"}|null>(null);
+  const [dirReviewModal,setDirReviewModal]=useState<{rfq:any,qts:any[]}|null>(null);
+  const [dirNotes,setDirNotes]=useState("");
 
-  // Score visibility: Director sees ALL scores
-  const calcNet = qt => {const pc=qt.priceConditions||{};const s=qt.totalAmt;return s-s*(pc.discount||0)/100+s*(pc.surcharge||0)/100+(pc.freight||0)+(pc.insurance||0);};
+  const getQts=(rfqId)=>quotations.filter(q=>q.rfqId===rfqId);
+  const toggle=id=>setExpanded(p=>({...p,[id]:!p[id]}));
 
-  const statusColor = (s) => {
-    if(s==="Created") return "#5b738b";
-    if(s==="Open") return "#0854a0";
-    if(s==="Scored") return "#6f2da8";
-    if(s==="Closed") return "#6a6d70";
-    return C.t2;
+  const activeTokens=[
+    applied.companyCodes.length>0&&{label:"Company Code",val:applied.companyCodes.length===1?`${applied.companyCodes[0]} – ${ccName(applied.companyCodes[0])}`:`${applied.companyCodes.length} selected`,onClear:()=>clrA2("companyCodes")},
+    applied.statuses.length>0&&{label:"Status",val:applied.statuses.length===1?applied.statuses[0]:`${applied.statuses.length} selected`,onClear:()=>clrA2("statuses")},
+    applied.rfqNo&&{label:"RFQ No",val:applied.rfqNo,onClear:()=>clrA2("rfqNo")},
+    applied.rfqTitle&&{label:"RFQ Title",val:applied.rfqTitle,onClear:()=>clrA2("rfqTitle")},
+    applied.postedBy&&{label:"Tender Admin",val:applied.postedBy,onClear:()=>clrA2("postedBy")},
+    applied.category&&{label:"Category",val:applied.category,onClear:()=>clrA2("category")},
+    (applied.openFrom||applied.openTo)&&{label:"Open Date",val:[applied.openFrom&&fmtDate(applied.openFrom),applied.openTo&&fmtDate(applied.openTo)].filter(Boolean).join(" – "),onClear:()=>{clrA2("openFrom");clrA2("openTo");}},
+    (applied.closingFrom||applied.closingTo)&&{label:"Closing Date",val:[applied.closingFrom&&fmtDate(applied.closingFrom),applied.closingTo&&fmtDate(applied.closingTo)].filter(Boolean).join(" – "),onClear:()=>{clrA2("closingFrom");clrA2("closingTo");}},
+    applied.estValMin&&{label:"Est. Value ≥",val:`IDR ${Number(applied.estValMin).toLocaleString()}`,onClear:()=>clrA2("estValMin")},
+    applied.estValMax&&{label:"Est. Value ≤",val:`IDR ${Number(applied.estValMax).toLocaleString()}`,onClear:()=>clrA2("estValMax")},
+  ].filter(Boolean);
+
+  const list=rfqs
+    .filter(r=>{
+      if(flt==="All") return (r.status==="Award Proposed"&&r.awardProposal?.l1Approved===true)||r.status==="Award Approved"||r.status==="Closed";
+      if(flt==="Award Proposed") return r.status==="Award Proposed"&&r.awardProposal?.l1Approved===true;
+      return r.status===flt;
+    })
+    .filter(r=>applied.companyCodes.length===0||applied.companyCodes.includes(r.companyCode))
+    .filter(r=>applied.statuses.length===0||applied.statuses.includes(r.status))
+    .filter(r=>!applied.rfqNo    ||r.id?.toLowerCase().includes(applied.rfqNo.toLowerCase()))
+    .filter(r=>!applied.rfqTitle ||r.title?.toLowerCase().includes(applied.rfqTitle.toLowerCase()))
+    .filter(r=>!applied.postedBy ||r.postedBy?.toLowerCase().includes(applied.postedBy.toLowerCase()))
+    .filter(r=>!applied.category ||r.cat===applied.category)
+    .filter(r=>!applied.openFrom   ||(r.postedDate&&r.postedDate>=applied.openFrom))
+    .filter(r=>!applied.openTo     ||(r.postedDate&&r.postedDate<=applied.openTo))
+    .filter(r=>!applied.closingFrom||(r.closingDate&&r.closingDate>=applied.closingFrom))
+    .filter(r=>!applied.closingTo  ||(r.closingDate&&r.closingDate<=applied.closingTo))
+    .filter(r=>!applied.estValMin  ||r.estVal>=Number(applied.estValMin))
+    .filter(r=>!applied.estValMax  ||r.estVal<=Number(applied.estValMax));
+
+  const HDR_COLS=["","","Status","SAP RFQ No","RFQ Number","Description","Created Date","Closing Date","Tender Admin","Budget","Co. Code","Quotations"];
+  const [colW,setColW]=useState([32,32,90,130,115,200,85,90,120,120,60,75]);
+  const _rfqTot=colW.reduce((a,b)=>a+b,0);
+  const rfqMinW=_rfqTot;
+  const gridCols=colW.map(w=>`${(w/_rfqTot*100).toFixed(3)}%`).join(" ");
+
+  const approveL2=(rfqId)=>{
+    const today=new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>r.id===rfqId?{...r,status:"Award Approved",awardProposal:{...r.awardProposal,l2Approved:true,l2ApprovedBy:user?.username,l2ApprovedAt:today}}:r));
+  };
+
+  const submitDirReject=()=>{
+    if(!dirActionModal)return;
+    if(!dirNotes.trim()){alert("Please provide rejection notes.");return;}
+    const today=new Date().toISOString().split("T")[0];
+    setRfqs(p=>p.map(r=>r.id===dirActionModal.rfq.id?{...r,status:"Scored",directorRejNotes:dirNotes,directorRejAt:today,awardProposal:{...r.awardProposal,l1Approved:false}}:r));
+    setDirActionModal(null);setDirNotes("");
   };
 
   return (
-    <div style={{padding:pg(),maxWidth:1400,margin:"0 auto"}}>
-      {/* Header */}
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Management</div>
-        <div style={{fontSize:13,color:C.t2,marginTop:2}}>Director view · Full RFQ oversight — discussions, evaluations, and scoring by PIC</div>
+    <div style={{padding:pg()}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:700,color:C.t1}}>RFQ Approval (L2)</div>
+          <div style={{fontSize:12,color:C.t2,marginTop:4}}>Director review · Final award decision after Finance Approver endorsement</div>
+        </div>
       </div>
 
-      <FilterBar opts={["All","Created","Open","Scored","Closed"]} val={flt} onChange={setFlt}/>
+      {/* Info banner */}
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f3eeff",border:`1px solid #6f2da840`,borderRadius:6,marginBottom:16,fontSize:13,color:"#6f2da8"}}>
+        <SapIcon name="approvals" size={16} color="#6f2da8"/>
+        <span>Showing RFQs pending your Level 2 approval. L1 (Finance Approver) has already endorsed these.</span>
+      </div>
 
-      {/* Summary row */}
-      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const}}>
-        {[{l:"Showing",v:list.length,c:C.t1},{l:"Scored",v:list.filter(r=>r.status==="Scored").length,c:"#6f2da8"},{l:"Closed",v:list.filter(r=>r.status==="Closed").length,c:"#107e3e"},{l:"With Discussions",v:list.filter(r=>(r.discussions||[]).length>0).length,c:"#0070f2"}].map(s=>(
-          <div key={s.l} style={{padding:"4px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,fontSize:12,color:C.t2}}>
-            <strong style={{color:s.c}}>{s.v}</strong> {s.l}
+      {/* Action Modal (Reject only) */}
+      {dirActionModal&&(
+        <Modal title="Reject Award – Return to Buyer" onClose={()=>{setDirActionModal(null);setDirNotes("");}}>
+          <div style={{padding:20,minWidth:420,maxWidth:560}}>
+            <div style={{marginBottom:14,padding:"10px 14px",background:C.subtle,borderRadius:6,fontSize:13}}>
+              <span style={{fontWeight:700,color:C.t1}}>{dirActionModal.rfq.id}</span>
+              <span style={{color:C.t2,marginLeft:8}}>{dirActionModal.rfq.title}</span>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:12,fontWeight:700,color:C.t1,marginBottom:6}}>Rejection Reason <span style={{color:C.err}}>*</span></label>
+              <TA value={dirNotes} onChange={setDirNotes} rows={3} placeholder="Provide reason for rejection…"/>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <Btn v="ghost" onClick={()=>{setDirActionModal(null);setDirNotes("");}}>Cancel</Btn>
+              <Btn v="danger" onClick={submitDirReject}>Reject – Return to Buyer</Btn>
+            </div>
           </div>
-        ))}
+        </Modal>
+      )}
+
+      <FioriBar activeTokens={activeTokens} onGo={applyFilters} onReset={resetFilters} onAdaptFilters={()=>setAdaptOpen2(true)} adaptFiltersCount={visibleFields2.size}>
+        {visibleFields2.has("companyCodes")&&<FField label="Company Code"><ValueHelpInp selected={draft2.companyCodes} getLabel={k=>`${k} – ${ccName(k)}`} onOpen={()=>setVhOpen2("companyCode")} placeholder="All Company Codes"/></FField>}
+        {visibleFields2.has("statuses")&&<FField label="Status"><ValueHelpInp selected={draft2.statuses} getLabel={k=>k} onOpen={()=>setVhOpen2("status")} placeholder="All Statuses"/></FField>}
+        {visibleFields2.has("rfqNo")&&<FField label="RFQ Number"><Inp value={draft2.rfqNo} onChange={v=>sd2("rfqNo",v)} placeholder="e.g. RFQ-2025-0001"/></FField>}
+        {visibleFields2.has("rfqTitle")&&<FField label="RFQ Title"><Inp value={draft2.rfqTitle} onChange={v=>sd2("rfqTitle",v)} placeholder="e.g. Laptops"/></FField>}
+        {visibleFields2.has("postedBy")&&<FField label="Tender Administrator"><Inp value={draft2.postedBy} onChange={v=>sd2("postedBy",v)} placeholder="e.g. Ahmad Rizki"/></FField>}
+        {visibleFields2.has("category")&&<FField label="Category"><ValueHelpInp selected={draft2.category?[draft2.category]:[]} getLabel={k=>k} onOpen={()=>setVhOpen2("category")} placeholder="All Categories"/></FField>}
+        {visibleFields2.has("openDate")&&<FField label="Open Date Range"><DateRangePicker from={draft2.openFrom} to={draft2.openTo} onChange={(f,t)=>{sd2("openFrom",f);sd2("openTo",t);}}/></FField>}
+        {visibleFields2.has("closingDate")&&<FField label="Closing Date Range"><DateRangePicker from={draft2.closingFrom} to={draft2.closingTo} onChange={(f,t)=>{sd2("closingFrom",f);sd2("closingTo",t);}}/></FField>}
+        {visibleFields2.has("estValMin")&&<FField label="Est. Value (From)"><Inp type="number" value={draft2.estValMin} onChange={v=>sd2("estValMin",v)} placeholder="Min (IDR)"/></FField>}
+        {visibleFields2.has("estValMax")&&<FField label="Est. Value (To)"><Inp type="number" value={draft2.estValMax} onChange={v=>sd2("estValMax",v)} placeholder="Max (IDR)"/></FField>}
+      </FioriBar>
+
+      <AdaptFiltersDialog open={adaptOpen2} onClose={()=>setAdaptOpen2(false)} visibleFields={visibleFields2}
+        onSave={s=>setVisibleFields2(s)} draft={draft2} allFields={ALL_RFQ_FILTER_FIELDS}
+        hasValue={id=>{
+          if(id==="companyCodes")return draft2.companyCodes.length>0;
+          if(id==="statuses")return draft2.statuses.length>0;
+          if(id==="openDate")return !!(draft2.openFrom||draft2.openTo);
+          if(id==="closingDate")return !!(draft2.closingFrom||draft2.closingTo);
+          return !!(draft2 as any)[id];
+        }}/>
+
+      {vhOpen2==="companyCode"&&(
+        <ValueHelpDialog title="Company Code" cols={[{key:"v",label:"Code",width:80},{key:"l",label:"Company Name",width:220}]}
+          rows={COMPANY_CODES} keyField="v" labelField="l"
+          selected={draft2.companyCodes} onConfirm={s=>{sd2("companyCodes",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+      {vhOpen2==="status"&&(
+        <ValueHelpDialog title="Status" cols={[{key:"v",label:"Status",width:180}]}
+          rows={ALL_RFQ_STATUSES.map(s=>({v:s,l:s}))} keyField="v" labelField="l"
+          selected={draft2.statuses} onConfirm={s=>{sd2("statuses",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+      {vhOpen2==="category"&&(
+        <ValueHelpDialog title="Category" cols={[{key:"v",label:"Category",width:200}]}
+          rows={ALL_CATEGORIES.map(c=>({v:c,l:c}))} keyField="v" labelField="l"
+          selected={draft2.category?[draft2.category]:[]} multiSelect={false}
+          onConfirm={s=>{sd2("category",s[0]||"");setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
+      )}
+
+      <FilterBar opts={["All","Award Proposed","Award Approved","Closed"]} val={flt} onChange={setFlt}/>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0 12px",height:44,background:C.card,border:`1px solid ${C.border}`,borderBottom:"none",borderRadius:"8px 8px 0 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14,fontWeight:700,color:C.t1,marginRight:6}}>RFQs</span>
+          <span style={{fontSize:12,color:C.t2}}>({list.length})</span>
+          {(()=>{
+            const selList=[...selIds].map(id=>rfqs.find(r=>r.id===id)).filter(Boolean);
+            const selRfq=selList.length===1?selList[0]:null;
+            const canReviewAward=!!selRfq&&selRfq.status==="Award Proposed"&&selRfq.awardProposal?.l1Approved===true;
+            const reviewTitle=selIds.size===0?"Check an Award Proposed RFQ first":selList.length>1?"Select only 1 RFQ":!selRfq||selRfq.status!=="Award Proposed"?"RFQ must be in Award Proposed status (L1 approved)":"";
+            return(
+              <button onClick={()=>{if(!canReviewAward||!selRfq)return;const qts=quotations.filter(q=>q.rfqId===selRfq.id);setDirReviewModal({rfq:selRfq,qts});}} disabled={!canReviewAward}
+                style={{background:canReviewAward?"#6f2da8":C.subtle,border:`1px solid ${canReviewAward?"transparent":C.border}`,color:canReviewAward?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canReviewAward?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canReviewAward?1:0.6,transition:"all .15s"}}
+                title={reviewTitle}>
+                <SapIcon name="process" size={13} color={canReviewAward?"#fff":C.t2}/> Review Award (L2)
+              </button>
+            );
+          })()}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>{if(allExpanded){setExpanded({});setAllExpanded(false);}else{const m={};list.forEach(r=>{m[r.id]=true;});setExpanded(m);setAllExpanded(true);}}}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.t1,borderRadius:4,padding:"0 0.75rem",fontSize:12,fontFamily:"inherit",cursor:"pointer",height:28,display:"flex",alignItems:"center",gap:4}}>
+            <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/>{allExpanded?"Collapse All":"Expand All"}
+          </button>
+        </div>
       </div>
 
-      {/* RFQ List */}
-      <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
-        {list.map(rfq=>{
-          const qts = getQts(rfq.id);
-          const isOpen = expanded[rfq.id];
-          const t = getTab(rfq.id);
-          const isScored = rfq.status==="Scored"||!!rfq.scoredAt;
-          const discussions = rfq.discussions||[];
+      <div style={{display:"flex",alignItems:"flex-start",gap:0,position:"relative"}}>
+        <div style={{flex:detailDirRfq?"0 0 52%":"1 1 100%",overflowX:"auto",borderRadius:"0 0 8px 8px",border:`1px solid ${C.border}`,transition:"flex .2s"}}>
+        <div style={{minWidth:rfqMinW,background:C.card}}>
+        <div style={{display:"grid",gridTemplateColumns:gridCols,background:C.subtle,borderBottom:`2px solid ${C.border}`}}>
+          <div style={{padding:"8px 10px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <input type="checkbox" checked={list.length>0&&list.every(r=>selIds.has(r.id))}
+              onChange={e=>{const s=new Set(selIds);if(e.target.checked)list.forEach(r=>s.add(r.id));else list.forEach(r=>s.delete(r.id));setSelIds(s);}}
+              style={{accentColor:C.primary,cursor:"pointer"}}/>
+          </div>
+          {HDR_COLS.slice(1).map((h,i)=>(
+            <div key={i} style={{padding:"8px 10px",fontSize:12,fontWeight:700,color:C.t2,whiteSpace:"nowrap",overflow:"hidden",userSelect:"none",display:"flex",alignItems:"center"}}>{h}</div>
+          ))}
+        </div>
 
+        {list.length===0&&<div style={{padding:"28px 16px",textAlign:"center",color:C.t2,fontSize:13}}>No RFQs found.</div>}
+
+        {list.map(rfq=>{
+          const open=!!expanded[rfq.id];
+          const qts=getQts(rfq.id);
+          const sel=selIds.has(rfq.id);
+          const rowBg=sel?C.selection:C.card;
+          const cell=(extra?:any)=>({padding:"8px 10px",display:"flex",alignItems:"center",overflow:"hidden",whiteSpace:"nowrap" as const,...extra});
+          const sapNo=rfq.sapRfqNo||(`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
           return (
-            <div key={rfq.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,overflow:"hidden"}}>
-              {/* Row header */}
-              <div onClick={()=>setExpanded(p=>({...p,[rfq.id]:!p[rfq.id]}))}
-                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",cursor:"pointer",userSelect:"none" as const}}
-                onMouseEnter={e=>e.currentTarget.style.background=C.subtle}
-                onMouseLeave={e=>e.currentTarget.style.background=C.card}>
-                <span style={{fontSize:13,color:C.t2,transform:isOpen?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>{isOpen?"▼":"▶"}</span>
-                <div style={{width:10,height:10,borderRadius:"50%",background:statusColor(rfq.status),flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap" as const}}>
-                    <span style={{fontSize:13,fontWeight:700,color:C.primary}}>{rfq.id}</span>
-                    <span style={{fontSize:13,fontWeight:600,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{rfq.title}</span>
-                  </div>
-                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>
-                    {rfq.cat} · {rfq.companyCode} · {idr(rfq.estVal)} · {rfq.postedBy||rfq.submittedForApprovalBy||"—"}
-                  </div>
+            <div key={rfq.id} style={{borderBottom:`1px solid ${C.border}`}}>
+              <div onClick={()=>toggle(rfq.id)} style={{display:"grid",gridTemplateColumns:gridCols,background:rowBg,cursor:"pointer",transition:"background .12s"}}
+                onMouseEnter={e=>e.currentTarget.style.background=sel?C.selection:C.infoBg}
+                onMouseLeave={e=>e.currentTarget.style.background=rowBg}>
+                <div onClick={e=>{e.stopPropagation();const s=new Set(selIds);sel?s.delete(rfq.id):s.add(rfq.id);setSelIds(s);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
+                  <input type="checkbox" checked={sel} onChange={()=>{}} style={{accentColor:C.primary,cursor:"pointer"}}/>
                 </div>
-                <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0,flexWrap:"wrap" as const}}>
-                  <Badge s={rfq.status}/>
-                  {qts.length>0&&<span style={{fontSize:10,background:C.infoBg,color:C.info,padding:"1px 6px",borderRadius:8,fontWeight:700}}>{qts.length} quote{qts.length!==1?"s":""}</span>}
-                  {discussions.length>0&&<span style={{fontSize:10,background:"#fff3e6",color:"#e76500",padding:"1px 6px",borderRadius:8,fontWeight:700}}>💬 {discussions.length}</span>}
-                  {isScored&&<span style={{fontSize:10,background:"#e8f5e9",color:"#107e3e",padding:"1px 6px",borderRadius:8,fontWeight:700}}>✓ Scored</span>}
+                <div onClick={e=>{e.stopPropagation();toggle(rfq.id);}} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:"10px 6px",flexShrink:0}}>
+                  <span style={{fontSize:10,color:C.primary,transition:"transform .2s",display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                </div>
+                <div style={cell({justifyContent:"flex-start"})}><Badge s={rfq.status}/></div>
+                <div style={cell({overflow:"hidden"})}>
+                  {sapNo==="—"?<span style={{fontSize:13,color:C.t2}}>—</span>:<span style={{fontSize:13,fontWeight:600,color:C.primary,overflow:"hidden",textOverflow:"ellipsis"}}>{sapNo}</span>}
+                </div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.primary})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.id}</span></div>
+                <div style={cell({fontSize:13,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.title}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{fmtDate(rfq.postedDate)}</div>
+                <div style={cell({fontSize:13,fontWeight:600,color:C.t1})}>{fmtDate(rfq.closingDate)}</div>
+                <div style={cell({fontSize:13,color:C.t2})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{rfq.postedBy}</span></div>
+                <div style={cell({fontSize:13,fontWeight:700,color:C.t1})}><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{idr(rfq.estVal)}</span></div>
+                <div style={cell({fontSize:13,color:C.t2})}>{rfq.companyCode||"—"}</div>
+                <div onClick={e=>{e.stopPropagation();setDetailDirRfq(rfq);setDirDetailTab("general");}} style={{...cell({cursor:"pointer",justifyContent:"space-between"})}}>
+                  <span>
+                    {qts.length>0&&<span style={{background:C.primary,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 6px",fontWeight:700}}>{qts.length}</span>}
+                    {qts.length===0&&<span style={{color:C.t2}}>0</span>}
+                  </span>
+                  <span style={{fontSize:16,color:detailDirRfq?.id===rfq.id?C.primary:"#32363a",fontWeight:detailDirRfq?.id===rfq.id?700:300}}>›</span>
                 </div>
               </div>
 
-              {/* Expanded detail */}
-              {isOpen&&(
-                <div style={{borderTop:`1px solid ${C.border}`}}>
+              {open&&(
+                <div style={{background:C.infoBg,borderTop:`1px solid ${C.border}`}}>
                   {/* Tab bar */}
-                  <div style={{display:"flex",gap:0,padding:"0 16px",borderBottom:`1px solid ${C.border}`,background:C.subtle}}>
-                    {[
-                      {k:"overview",label:"Overview"},
-                      {k:"scores",label:`Quotations & Scores (${qts.length})`},
-                      {k:"discussion",label:`Discussion (${discussions.length})`},
-                      {k:"evaluation",label:"Evaluation Notes"},
-                    ].map(tb=>(
-                      <button key={tb.k} onClick={()=>setRfqTab(rfq.id,tb.k)}
-                        style={{padding:"8px 16px",fontSize:12,fontWeight:t===tb.k?700:400,color:t===tb.k?C.primary:C.t2,background:"none",border:"none",borderBottom:t===tb.k?`2px solid ${C.primary}`:"2px solid transparent",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" as const}}>
-                        {tb.label}
+                  <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,overflowX:"auto"}}>
+                    {[{k:"overview",label:"Overview"},{k:"notes",label:"Notes"},{k:"discussion",label:`Discussion (${(rfq.discussions||[]).length})`}].map(t=>(
+                      <button key={t.k} onClick={()=>setDirTab(rfq.id,t.k)} style={{background:"none",border:"none",borderBottom:dirTab(rfq.id)===t.k?`2px solid ${C.primary}`:"2px solid transparent",color:dirTab(rfq.id)===t.k?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:dirTab(rfq.id)===t.k?700:400,cursor:"pointer",padding:"9px 14px",whiteSpace:"nowrap",transition:"color .15s",marginBottom:-1}}>
+                        {t.label}
                       </button>
                     ))}
                   </div>
 
-                  <div style={{padding:"16px"}}>
-                    {/* Overview tab */}
-                    {t==="overview"&&(
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                        {[
-                          ["RFQ ID",rfq.id],["Title",rfq.title],["Category",rfq.cat||"—"],["Company Code",rfq.companyCode||"—"],
-                          ["Purch. Org",rfq.purchOrg||"—"],["Plant",rfq.plant||"—"],["Est. Budget",idr(rfq.estVal)],["Status",rfq.status],
-                          ["Posted By",rfq.postedBy||"—"],["Posted Date",fmtDate(rfq.postedDate)],["Closing Date",fmtDate(rfq.closingDate)],
-                          ["Submitted By",rfq.submittedForApprovalBy||"—"],
-                          ...(rfq.winnerVendorId?[["Winner Vendor ID",rfq.winnerVendorId],["Closed At",fmtDate(rfq.closedAt)]]:[] as any),
-                        ].map(([l,v])=>(
-                          <div key={l} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:8}}>
-                            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>{l}</div>
-                            <div style={{fontSize:13,color:C.t1,fontWeight:l==="Est. Budget"||l==="Status"?700:400}}>{v||"—"}</div>
-                          </div>
-                        ))}
-                        {rfq.desc&&<div style={{gridColumn:"1/-1",borderBottom:`1px solid ${C.border}`,paddingBottom:8}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Description / Scope</div><div style={{fontSize:13,color:C.t1,lineHeight:1.6}}>{rfq.desc}</div></div>}
-                      </div>
-                    )}
+                  {/* Overview tab */}
+                  {dirTab(rfq.id)==="overview"&&(<>
+                    <div style={{padding:"8px 16px",borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5}}>Scope: </span>
+                      <span style={{fontSize:12,color:C.t2}}>{rfq.desc}</span>
+                    </div>
 
-                    {/* Scores tab — Director sees ALL scores */}
-                    {t==="scores"&&(
-                      qts.length===0
-                        ?<div style={{fontSize:13,color:C.t2,fontStyle:"italic"}}>No quotations received for this RFQ.</div>
-                        :<div style={{overflow:"auto"}}>
-                          <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
+                    {qts.length>0&&(
+                      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Quotation Comparison</div>
+                        <div style={{overflowX:"auto"}}>
+                          <table style={{borderCollapse:"collapse",minWidth:500,width:"100%",fontSize:12}}>
                             <thead>
-                              <tr style={{background:C.subtle}}>
-                                {["Vendor","Quotation ID","Status","Total Amount","Tech Score (40%)","Commercial (40%)","HSE (20%)","Weighted Total","Recommended"].map(h=>(
-                                  <th key={h} style={{padding:"8px 12px",fontSize:10,fontWeight:700,color:C.t2,textAlign:"left",borderBottom:`2px solid ${C.border}`,whiteSpace:"nowrap" as const,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>
+                              <tr style={{background:"rgba(0,112,242,0.07)"}}>
+                                <th style={{padding:"7px 10px",textAlign:"left",fontWeight:700,color:C.t2,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>Criteria</th>
+                                {qts.map(qt=>(
+                                  <th key={qt.id} style={{padding:"7px 10px",textAlign:"center",fontWeight:700,color:C.primary,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",borderLeft:`1px solid ${C.border}`}}>
+                                    <div>{qt.vendorName}</div>
+                                    <div style={{fontWeight:400,fontSize:11,color:C.t2}}>{qt.id}</div>
+                                    <Badge s={qt.status}/>
+                                  </th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
-                              {qts.map((qt,i)=>{
-                                const sc=qt.scores||{};
-                                const hasScores=sc.technical!=null||sc.commercial!=null||sc.hse!=null;
-                                const weighted=hasScores?Math.round((sc.technical||0)*0.4+(sc.commercial||0)*0.4+(sc.hse||0)*0.2):null;
-                                const maxW = Math.max(0,...qts.map(q=>{const s=q.scores||{};return Math.round((s.technical||0)*0.4+(s.commercial||0)*0.4+(s.hse||0)*0.2);}));
-                                const isWinner=qt.status==="Win"||(weighted!==null&&weighted===maxW&&maxW>0&&qts.length>1);
-                                return(
-                                  <tr key={qt.id} style={{borderBottom:`1px solid ${C.border}`,background:isWinner?"#e8f5e9":i%2===0?C.card:C.subtle}}>
-                                    <td style={{padding:"10px 12px",fontSize:12,fontWeight:700,color:VDR_COLORS[i%VDR_COLORS.length]}}>{qt.vendorName}</td>
-                                    <td style={{padding:"10px 12px",fontSize:11,color:C.t2}}>{qt.id}</td>
-                                    <td style={{padding:"10px 12px"}}><Badge s={qt.status}/></td>
-                                    <td style={{padding:"10px 12px",fontSize:12,fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</td>
-                                    {hasScores?<>
-                                      <td style={{padding:"10px 12px",fontSize:14,fontWeight:700,color:C.primary,textAlign:"center" as const}}>{sc.technical??"-"}</td>
-                                      <td style={{padding:"10px 12px",fontSize:14,fontWeight:700,color:C.primary,textAlign:"center" as const}}>{sc.commercial??"-"}</td>
-                                      <td style={{padding:"10px 12px",fontSize:14,fontWeight:700,color:C.primary,textAlign:"center" as const}}>{sc.hse??"-"}</td>
-                                      <td style={{padding:"10px 12px",fontSize:18,fontWeight:700,color:isWinner?"#107e3e":C.t1,textAlign:"center" as const}}>{weighted}</td>
-                                      <td style={{padding:"10px 12px",textAlign:"center" as const}}>{isWinner&&<span style={{fontSize:11,background:"#e8f5e9",color:"#107e3e",padding:"2px 8px",borderRadius:10,fontWeight:700}}>★ Winner</span>}</td>
-                                    </>:<>
-                                      {[0,1,2,3,4].map(n=><td key={n} style={{padding:"10px 12px",color:C.t2,fontSize:12,textAlign:"center" as const}}>—</td>)}
-                                    </>}
-                                  </tr>
-                                );
-                              })}
+                              {[
+                                {label:"Total Amount",render:(qt)=><strong style={{color:C.t1}}>{idr(qt.totalAmt)}</strong>},
+                                {label:"Validity Date",render:(qt)=><span style={{color:C.t2}}>{fmtDate(qt.validUntil)||"—"}</span>},
+                                {label:"Delivery Terms",render:(qt)=><span style={{color:C.t2}}>{qt.deliveryTerms||"—"}</span>},
+                                {label:"Payment Terms",render:(qt)=><span style={{color:C.t2}}>{qt.paymentTerms||"—"}</span>},
+                                {label:"Notes",render:(qt)=><span style={{color:C.t2}}>{qt.notes||"—"}</span>},
+                              ].map((row,ri)=>(
+                                <tr key={ri} style={{background:ri%2===0?"transparent":"rgba(0,0,0,0.02)"}}>
+                                  <td style={{padding:"7px 10px",fontWeight:600,color:C.t1,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{row.label}</td>
+                                  {qts.map(qt=>(
+                                    <td key={qt.id} style={{padding:"7px 10px",textAlign:"center",borderBottom:`1px solid ${C.border}`,borderLeft:`1px solid ${C.border}`}}>{row.render(qt)}</td>
+                                  ))}
+                                </tr>
+                              ))}
                             </tbody>
                           </table>
-                          {!rfq.scored&&<div style={{marginTop:10,fontSize:12,color:"#6f2da8",padding:"8px 12px",background:"#f3e8ff",borderRadius:4,border:"1px solid #d8b4fe"}}>⏳ Evaluation scoring not yet submitted by Finance Approver.</div>}
-                        </div>
-                    )}
-
-                    {/* Discussion tab */}
-                    {t==="discussion"&&(
-                      <div>
-                        {discussions.length===0&&<div style={{fontSize:13,color:C.t2,fontStyle:"italic",marginBottom:12}}>No discussion activity for this RFQ yet.</div>}
-                        {discussions.length>0&&(
-                          <div style={{display:"flex",flexDirection:"column" as const,gap:10,maxHeight:320,overflowY:"auto" as const,marginBottom:12}}>
-                            {discussions.map((d,i)=>{
-                              const isDir=d.role==="Director";
-                              const roleColor=isDir?"#1a1a2e":d.role==="Finance Approver"?"#6f2da8":d.role==="Senior Buyer"?"#107e3e":"#0a6ed1";
-                              return(
-                                <div key={d.id||i} style={{display:"flex",gap:10,alignItems:"flex-start",flexDirection:isDir?"row-reverse" as const:"row" as const}}>
-                                  <div style={{width:32,height:32,borderRadius:"50%",background:roleColor,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}}>
-                                    {avatarInitials(d.userName)}
-                                  </div>
-                                  <div style={{flex:1,background:isDir?"#e8f0fe":C.subtle,borderRadius:8,padding:"8px 12px",border:`1px solid ${isDir?"#c7d7f9":C.border}`}}>
-                                    <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap" as const,marginBottom:4,flexDirection:isDir?"row-reverse" as const:"row" as const}}>
-                                      <span style={{fontWeight:700,fontSize:12,color:roleColor}}>{d.userName}</span>
-                                      <span style={{fontSize:11,color:C.t2,background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"0 6px"}}>{d.role}</span>
-                                      <span style={{fontSize:11,color:C.t2,marginLeft:isDir?0:"auto",marginRight:isDir?"auto":0}}>{d.postedAt}</span>
-                                    </div>
-                                    <div style={{fontSize:13,color:C.t1,lineHeight:1.55,textAlign:isDir?"right" as const:"left" as const}}>{d.message}</div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {/* Director message composer */}
-                        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
-                          <div style={{fontSize:11,fontWeight:700,color:"#1a1a2e",marginBottom:6}}>Leave a message as Director</div>
-                          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-                            <textarea
-                              value={dirMsg[rfq.id]||""}
-                              onChange={e=>setDirMsg(p=>({...p,[rfq.id]:e.target.value}))}
-                              placeholder="Type your message or directive…"
-                              rows={2}
-                              style={{flex:1,padding:"8px 10px",fontSize:13,fontFamily:"inherit",borderRadius:4,border:`1px solid ${C.border}`,resize:"vertical" as const,outline:"none",color:C.t1,background:C.card}}
-                              onFocus={e=>e.target.style.borderColor=C.primary}
-                              onBlur={e=>e.target.style.borderColor=C.border}
-                            />
-                            <button
-                              onClick={()=>{
-                                const msg=(dirMsg[rfq.id]||"").trim();
-                                if(!msg) return;
-                                const now=new Date();
-                                const newMsg={id:`disc-${Date.now()}`,userName:user.name,role:"Director",message:msg,postedAt:now.toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})};
-                                setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,discussions:[...(r.discussions||[]),newMsg]}:r));
-                                setDirMsg(p=>({...p,[rfq.id]:""}));
-                              }}
-                              style={{padding:"8px 16px",background:"#1a1a2e",color:"#fff",border:"none",borderRadius:4,fontSize:12,fontWeight:700,fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap" as const,flexShrink:0}}
-                            >
-                              Send
-                            </button>
-                          </div>
                         </div>
                       </div>
                     )}
+                    {qts.length===0&&(
+                      <div style={{padding:"12px 16px",color:C.t2,fontSize:13,fontStyle:"italic",borderBottom:`1px solid ${C.border}`}}>No quotations received for this RFQ.</div>
+                    )}
 
-                    {/* Evaluation Notes tab */}
-                    {t==="evaluation"&&(
-                      <div>
-                        {rfq.scored?(
-                          <div>
-                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-                              <div><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Scored By</div><div style={{fontSize:13,fontWeight:700,color:C.t1}}>{rfq.closedBy||"Finance Approver"}</div></div>
-                              <div><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Scored At</div><div style={{fontSize:13,color:C.t1}}>{fmtDate(rfq.closedAt)||"—"}</div></div>
-                              {rfq.winnerVendorId&&<div style={{gridColumn:"1/-1"}}><div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Recommended Winner</div><div style={{fontSize:13,fontWeight:700,color:"#107e3e"}}>Vendor ID: {rfq.winnerVendorId}</div></div>}
-                            </div>
-                            {rfq.approvalNotes?(
-                              <div style={{padding:"12px 16px",background:C.infoBg,border:`1px solid ${C.border}`,borderRadius:6,borderLeft:`4px solid ${C.primary}`}}>
-                                <div style={{fontSize:11,fontWeight:700,color:C.primary,marginBottom:6}}>Evaluation Notes / Remarks by PIC</div>
-                                <div style={{fontSize:13,color:C.t1,lineHeight:1.6,whiteSpace:"pre-wrap" as const}}>{rfq.approvalNotes}</div>
-                              </div>
-                            ):<div style={{fontSize:12,color:C.t2,fontStyle:"italic"}}>No evaluation notes provided.</div>}
-                          </div>
-                        ):(
-                          <div style={{padding:"16px",background:C.subtle,borderRadius:6,border:`1px solid ${C.border}`,textAlign:"center" as const}}>
-                            <SapIcon name="pending" size={24} color={C.t2}/>
-                            <div style={{fontSize:13,color:C.t2,marginTop:8}}>Evaluation score not yet submitted by Finance Approver.</div>
-                            <div style={{fontSize:11,color:C.t2,marginTop:4}}>Once the Approver submits their score, evaluation notes will appear here.</div>
-                          </div>
-                        )}
+                    {/* Inline action for L2 decision */}
+                    {rfq.status==="Award Proposed"&&rfq.awardProposal?.l1Approved===true&&(
+                      <div style={{padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
+                        <span style={{fontSize:12,color:C.t2,marginRight:4}}>L1 approved by <strong style={{color:C.t1}}>{rfq.awardProposal?.l1ApprovedBy||"Finance Approver"}</strong>. Your L2 decision:</span>
+                        <div style={{flex:1}}/>
+                        <Btn v="danger" sm onClick={()=>{setDirActionModal({rfq,action:"reject"});setDirNotes("");}}>
+                          <SapIcon name="cancel" size={13} color="#fff"/> Reject – Return to Buyer
+                        </Btn>
+                        <Btn v="success" sm onClick={()=>approveL2(rfq.id)}>
+                          <SapIcon name="accept" size={13} color="#fff"/> Approve Award (L2)
+                        </Btn>
                       </div>
                     )}
-                  </div>
+                    {!(rfq.status==="Award Proposed"&&rfq.awardProposal?.l1Approved===true)&&(
+                      <div style={{padding:"8px 16px 10px"}}>
+                        <span style={{fontSize:11,color:C.t2,fontStyle:"italic"}}>This RFQ is {rfq.status.toLowerCase()} — no action required.</span>
+                      </div>
+                    )}
+                  </>)}
+
+                  {/* Notes tab */}
+                  {dirTab(rfq.id)==="notes"&&(
+                    <div style={{padding:"16px"}}>
+                      <div style={{fontSize:13,color:C.t1,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{rfq.desc||"No notes."}</div>
+                    </div>
+                  )}
+
+                  {/* Discussion tab */}
+                  {dirTab(rfq.id)==="discussion"&&(
+                    <DiscussionBox rfqId={rfq.id} discussions={rfq.discussions||[]} onPost={postDiscussion} user={user}/>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
-        {list.length===0&&<div style={{padding:"40px",textAlign:"center" as const,color:C.t2,fontSize:13,fontStyle:"italic"}}>No RFQs match the selected filter.</div>}
       </div>
+        </div>
+
+        {/* Detail panel */}
+        {detailDirRfq&&(()=>{
+          const r=detailDirRfq;
+          const qts=getQts(r.id);
+          const sapNo=r.sapRfqNo||(`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
+          const TABS=["general","items","quotations","notes","discussion","docflow"];
+          const TAB_LABELS={"general":"General Information","items":`Items (${r.items?.length||0})`,"quotations":`Quotations (${qts.length})`,"notes":"Notes","discussion":`Discussion (${(r.discussions||[]).length})`,"docflow":"Document Flow"};
+          const field=(label,val)=>(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:C.t2,marginBottom:2}}>{label}:</div>
+              <div style={{fontSize:13,color:C.t1,fontWeight:500}}>{val||"—"}</div>
+            </div>
+          );
+          const sectionHdr=(title)=><div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:12,paddingBottom:6,borderBottom:`1px solid ${C.border}`}}>{title}</div>;
+          return(
+          <div style={{flex:"0 0 48%",position:"sticky",top:0,maxHeight:"100vh",display:"flex",flexDirection:"column",background:C.card,overflow:"hidden",boxShadow:"-2px 0 10px rgba(0,0,0,0.08)"}}>
+            <div style={{padding:"14px 16px 10px",borderBottom:`1px solid ${C.border}`,background:C.subtle,flexShrink:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:700,color:C.t1,lineHeight:1.3}}>{r.title}</div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:3,fontFamily:"monospace"}}>{sapNo}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                  <Badge s={r.status}/>
+                  <button onClick={()=>setDetailDirRfq(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:C.t2,lineHeight:1,padding:"0 2px",marginLeft:4}}>×</button>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px",fontSize:11}}>
+                <div><span style={{color:C.t2}}>Created By: </span><span style={{color:C.t1,fontWeight:600}}>{r.postedBy}</span></div>
+                <div><span style={{color:C.t2}}>Status: </span><span style={{color:C.t1,fontWeight:600}}>{r.status}</span></div>
+                <div><span style={{color:C.t2}}>Created On: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+                <div><span style={{color:C.t2}}>Target Value: </span><span style={{color:C.t1,fontWeight:600}}>{idr(r.estVal)}</span></div>
+                <div><span style={{color:C.t2}}>Publishing Date: </span><span style={{color:C.t1}}>{fmtDate(r.postedDate)}</span></div>
+                <div><span style={{color:C.t2}}>Quotation Deadline: </span><span style={{color:C.t1,fontWeight:600}}>{fmtDate(r.closingDate)}</span></div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.card,flexShrink:0,overflowX:"auto"}}>
+              {TABS.map(t=>(
+                <button key={t} onClick={()=>setDirDetailTab(t)} style={{background:"none",border:"none",borderBottom:dirDetailTab===t?`2px solid ${C.primary}`:"2px solid transparent",color:dirDetailTab===t?C.primary:C.t2,fontFamily:"inherit",fontSize:12,fontWeight:dirDetailTab===t?700:400,cursor:"pointer",padding:"10px 14px",whiteSpace:"nowrap",transition:"color .15s",marginBottom:-1}}>
+                  {TAB_LABELS[t]}
+                </button>
+              ))}
+            </div>
+
+            <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
+
+              {dirDetailTab==="general"&&(
+                <div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                    <div>
+                      {sectionHdr("Basic Data")}
+                      {field("RFQ Number",r.id)}
+                      {field("RFQ Type","Int. Sourcing Req. (RQ)")}
+                      {field("RFQ Description",r.title)}
+                      {field("Category",r.cat)}
+                      {field("Language Key","English (EN)")}
+                    </div>
+                    <div>
+                      {sectionHdr("Organization")}
+                      {field("Purchasing Organization",r.purchOrg)}
+                      {field("Company Code",r.companyCode)}
+                      {field("Plant",r.plant)}
+                      {field("Tender Admin",r.postedBy)}
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 24px",marginBottom:16}}>
+                    <div>
+                      {sectionHdr("Important Dates")}
+                      {field("Apply By",fmtDate(r.closingDate))}
+                      {field("Quotation Deadline",fmtDate(r.closingDate))}
+                      {field("Binding Period",fmtDate(r.closingDate))}
+                      {field("Publishing Date",fmtDate(r.postedDate))}
+                    </div>
+                    <div>
+                      {sectionHdr("Delivery & Payment")}
+                      {field("Payment Terms","Due within 14 Days (Z014)")}
+                      {field("Currency","Indonesian Rupiah (IDR)")}
+                      {field("Incoterms","Ex Works (EXW)")}
+                      {field("Target Value",idr(r.estVal))}
+                    </div>
+                  </div>
+                  <div>
+                    {sectionHdr("Scope")}
+                    <div style={{fontSize:13,color:C.t2,lineHeight:1.6}}>{r.desc||"—"}</div>
+                  </div>
+                </div>
+              )}
+
+              {dirDetailTab==="items"&&(
+                <div>
+                  {(r.items||[]).length===0&&<div style={{color:C.t2,fontSize:13}}>No items.</div>}
+                  {(r.items||[]).map((it,i)=>(
+                    <div key={i} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:10,background:C.subtle}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                        <span style={{fontSize:12,fontWeight:700,color:C.t2,minWidth:28}}>#{String(it.no).padStart(3,"0")}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:C.t1}}>{it.desc}</span>
+                        <span style={{marginLeft:"auto",background:it.type==="Service"?C.warnBg:C.okBg,color:it.type==="Service"?C.warn:C.ok,borderRadius:3,padding:"1px 7px",fontSize:11,fontWeight:700}}>{it.type}</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"6px 16px",fontSize:12}}>
+                        {it.materialNo&&<div><span style={{color:C.t2}}>Mat. No: </span><span style={{fontFamily:"monospace",color:C.t1}}>{it.materialNo}</span></div>}
+                        {it.materialGroup&&<div><span style={{color:C.t2}}>Mat. Group: </span><span style={{color:C.t1}}>{it.materialGroup}</span></div>}
+                        <div><span style={{color:C.t2}}>Plant: </span><span style={{color:C.t1}}>{it.plant||r.plant||"—"}</span></div>
+                        <div><span style={{color:C.t2}}>Qty: </span><span style={{fontWeight:600,color:C.t1}}>{it.qty} {it.uom}</span></div>
+                        {it.acctAssign&&<div><span style={{color:C.t2}}>Acct: </span><span style={{color:C.t1}}>{it.acctAssign}</span></div>}
+                        {it.type==="Material"
+                          ?<div><span style={{color:C.t2}}>Req. Date: </span><span style={{color:C.t1}}>{fmtDate(it.requirementDate)||"—"}</span></div>
+                          :<div><span style={{color:C.t2}}>Period: </span><span style={{color:C.t1}}>{fmtDate(it.startDate)||"—"} – {fmtDate(it.endDate)||"—"}</span></div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {dirDetailTab==="quotations"&&(
+                <div>
+                  {qts.length===0&&<div style={{color:C.t2,fontSize:13}}>No quotations received yet.</div>}
+                  {qts.map(qt=>{
+                    const sapQtNo=qt.sapQtNo||(["Accepted","Win","PO Ready"].includes(qt.status)?`80${qt.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"—");
+                    return(
+                    <div key={qt.id} style={{border:`1px solid ${C.border}`,borderRadius:6,padding:"12px 14px",marginBottom:8,background:C.card}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{qt.vendorName}</div>
+                          <div style={{fontSize:11,color:C.t2,fontFamily:"monospace",marginTop:1}}>{qt.id} · SAP {sapQtNo}</div>
+                        </div>
+                        <Badge s={qt.status}/>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px 12px",fontSize:12}}>
+                        <div><span style={{color:C.t2}}>Total: </span><span style={{fontWeight:700,color:C.t1}}>{idr(qt.totalAmt)}</span></div>
+                        <div><span style={{color:C.t2}}>Submitted: </span><span style={{color:C.t1}}>{fmtDate(qt.submittedDate)||"—"}</span></div>
+                        <div><span style={{color:C.t2}}>Valid Until: </span><span style={{color:C.t1}}>{fmtDate(qt.validUntil)||"—"}</span></div>
+                        {qt.deliveryTerms&&<div style={{gridColumn:"1/-1"}}><span style={{color:C.t2}}>Delivery: </span><span style={{color:C.t1}}>{qt.deliveryTerms}</span></div>}
+                        {qt.paymentTerms&&<div style={{gridColumn:"1/-1"}}><span style={{color:C.t2}}>Payment: </span><span style={{color:C.t1}}>{qt.paymentTerms}</span></div>}
+                        {qt.scores&&<div style={{gridColumn:"1/-1",marginTop:4,padding:"6px 10px",background:C.infoBg,borderRadius:4,fontSize:11}}>
+                          <span style={{fontWeight:700,color:C.t1}}>Score: </span>
+                          <span style={{color:C.t2}}>Tech {qt.scores.technical} · Com {qt.scores.commercial} · HSE {qt.scores.hse} · </span>
+                          <span style={{fontWeight:700,color:C.primary}}>Weighted {qt.scores.weighted}</span>
+                        </div>}
+                      </div>
+                      {qt.notes&&<div style={{marginTop:6,fontSize:11,color:C.t2,fontStyle:"italic"}}>{qt.notes}</div>}
+                    </div>
+                  );})}
+                </div>
+              )}
+
+              {dirDetailTab==="notes"&&(
+                <div>
+                  <div style={{fontSize:13,color:C.t1,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{r.desc||"No notes."}</div>
+                  {r.targets&&r.targets.length>0&&(
+                    <div style={{marginTop:16}}>
+                      {sectionHdr("Invited Vendors")}
+                      {r.targets.map(vid=>(
+                        <div key={vid} style={{fontSize:13,color:C.t1,padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                          {VENDORS[vid]?.name||vid} <span style={{color:C.t2,fontSize:11}}>· {vid}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {dirDetailTab==="discussion"&&(
+                <DiscussionBox rfqId={r.id} discussions={r.discussions||[]} onPost={postDiscussion} user={user}/>
+              )}
+
+              {dirDetailTab==="docflow"&&(
+                <RfqDocumentFlow rfq={r} quotations={qts}/>
+              )}
+
+            </div>
+          </div>
+          );
+        })()}
+      </div>
+      {compareData&&<QuotationCompareModal rfq={compareData.rfq} quotations={compareData.quotations} onClose={()=>setCompareData(null)}/>}
+      {dirReviewModal&&<ReviewAwardModal rfq={dirReviewModal.rfq} quotations={dirReviewModal.qts} user={user}
+        onApprove={()=>{approveL2(dirReviewModal.rfq.id);setDirReviewModal(null);}}
+        onReject={()=>{
+          setDirActionModal({rfq:dirReviewModal.rfq,action:"reject"});setDirNotes("");setDirReviewModal(null);
+        }}
+        onClose={()=>setDirReviewModal(null)}/>}
     </div>
   );
 };
