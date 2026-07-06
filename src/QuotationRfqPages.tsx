@@ -1653,7 +1653,7 @@ const RfqDocumentFlow = ({rfq, quotations}) => {
 
   const sapNo = rfq.sapRfqNo||(`70${rfq.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`);
 
-  const l1Done = !!ap?.l1Approved;
+  const l1Done = !!ap?.l1Approved || rfq.status==="Award Approved" || rfq.status==="Closed";
   const l2Done = !!ap?.l2Approved || rfq.status==="Award Approved" || rfq.status==="Closed";
   const awardDone = rfq.status==="Closed";
 
@@ -2091,7 +2091,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
                 <SapIcon name="quality-issue" size={13} color={canEvaluate?"#fff":C.t2}/> Evaluate &amp; Score
               </button>
               {/* Proceed to SAP button — always visible, lights up: buyers only + 1 Award Approved RFQ checked */}
-              {(()=>{const canProceed=(user?.username==="buyer1"||user?.username==="brm.user")&&!!selRfq&&selRfq.status==="Award Approved";const proceedTitle=selIds.size===0?"Check an Award Approved RFQ first":selList.length>1?"Select only 1 RFQ":user?.username!=="buyer1"&&user?.username!=="brm.user"?"Only buyers can proceed to SAP":!selRfq||selRfq.status!=="Award Approved"?"RFQ must be Award Approved":"";return(
+              {(()=>{const fullyApproved=!!selRfq?.awardProposal?.l1Approved&&!!selRfq?.awardProposal?.l2Approved;const canProceed=(user?.username==="buyer1"||user?.username==="brm.user")&&!!selRfq&&selRfq.status==="Award Approved"&&fullyApproved;const proceedTitle=selIds.size===0?"Check an Award Approved RFQ first":selList.length>1?"Select only 1 RFQ":user?.username!=="buyer1"&&user?.username!=="brm.user"?"Only buyers can proceed to SAP":!selRfq||selRfq.status!=="Award Approved"?"RFQ must be Award Approved":!fullyApproved?"Awaiting full approval from L1 and L2 before proceeding to SAP":"";return(
                 <button onClick={()=>{if(!canProceed||!selRfq)return;const today=new Date().toISOString().split("T")[0];const poNo=`4500${String(Math.floor(Math.random()*1000000)).padStart(6,"0")}`;setRfqs(p=>p.map(r=>r.id===selRfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.username,poNo}:r));setSelIds(new Set());alert(`Award finalized. SAP Purchase Order ${poNo} created. RFQ ${selRfq.id} is now Closed.`);}} disabled={!canProceed}
                   style={{background:canProceed?"#107e3e":C.subtle,border:`1px solid ${canProceed?"transparent":C.border}`,color:canProceed?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canProceed?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canProceed?1:0.6,transition:"all .15s"}}
                   title={proceedTitle}>
