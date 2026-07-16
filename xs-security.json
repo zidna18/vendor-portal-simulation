@@ -1,0 +1,26 @@
+{
+  "xsappname": "vendor-portal",
+  "tenant-mode": "dedicated",
+  "description": "BRM Vendor Portal security descriptor",
+  "scopes": [
+    { "name": "$XSAPPNAME.Vendor",   "description": "Vendor / Supplier" },
+    { "name": "$XSAPPNAME.BRM",      "description": "BRM Procurement Employee" },
+    { "name": "$XSAPPNAME.Buyer",    "description": "Senior Buyer" },
+    { "name": "$XSAPPNAME.Approver", "description": "Finance Approver" },
+    { "name": "$XSAPPNAME.Director", "description": "Director" }
+  ],
+  "role-templates": [
+    { "name": "Vendor",   "scope-references": ["$XSAPPNAME.Vendor"] },
+    { "name": "BRM",      "scope-references": ["$XSAPPNAME.BRM"] },
+    { "name": "Buyer",    "scope-references": ["$XSAPPNAME.Buyer"] },
+    { "name": "Approver", "scope-references": ["$XSAPPNAME.Approver"] },
+    { "name": "Director", "scope-references": ["$XSAPPNAME.Director"] }
+  ],
+  "role-collections": [
+    { "name": "VendorPortal_Vendor",   "role-template-references": ["$XSAPPNAME.Vendor"] },
+    { "name": "VendorPortal_BRM",      "role-template-references": ["$XSAPPNAME.BRM"] },
+    { "name": "VendorPortal_Buyer",    "role-template-references": ["$XSAPPNAME.Buyer"] },
+    { "name": "VendorPortal_Approver", "role-template-references": ["$XSAPPNAME.Approver"] },
+    { "name": "VendorPortal_Director", "role-template-references": ["$XSAPPNAME.Director"] }
+  ]
+}

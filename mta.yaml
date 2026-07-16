@@ -1,0 +1,107 @@
+_schema-version: "3.1"
+ID: vendor-portal
+version: 1.0.0
+description: BRM Vendor Portal on SAP BTP
+
+modules:
+
+  # ── AppRouter ──────────────────────────────────────────────────
+  - name: vendor-portal-approuter
+    type: approuter.nodejs
+    path: approuter
+    parameters:
+      disk-quota: 256M
+      memory: 128M
+    properties:
+      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
+    requires:
+      - name: vendor-portal-xsuaa
+      - name: vendor-portal-html5-repo-rt
+      - name: vendor-portal-destination
+      - name: vendor-portal-connectivity
+      - name: cap-backend-api
+        group: destinations
+        properties:
+          name: cap-backend
+          url: ~{url}
+          forwardAuthToken: true
+
+  # ── React Frontend (HTML5) ─────────────────────────────────────
+  - name: vendor-portal-ui
+    type: html5
+    path: .
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install
+        - npx cross-env VITE_USE_MOCK=false npm run build
+      build-result: dist
+    requires:
+      - name: vendor-portal-html5-repo-host
+
+  # ── CAP Node.js Service ────────────────────────────────────────
+  - name: vendor-portal-cap
+    type: nodejs
+    path: cap
+    build-parameters:
+      builder: npm
+      build-result: gen/srv
+    parameters:
+      disk-quota: 512M
+      memory: 512M
+    provides:
+      - name: cap-backend-api
+        properties:
+          url: ${default-url}
+    requires:
+      - name: vendor-portal-xsuaa
+      - name: vendor-portal-hana
+      - name: vendor-portal-destination
+
+  # ── HANA DB Deployer ───────────────────────────────────────────
+  - name: vendor-portal-db-deployer
+    type: hdb
+    path: cap/gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    requires:
+      - name: vendor-portal-hana
+
+resources:
+
+  - name: vendor-portal-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+
+  - name: vendor-portal-hana
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+
+  - name: vendor-portal-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: vendor-portal-html5-repo-rt
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-runtime
+
+  - name: vendor-portal-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+
+  - name: vendor-portal-connectivity
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: connectivity
+      service-plan: lite

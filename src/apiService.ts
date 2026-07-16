@@ -1,0 +1,117 @@
+import { INIT_INV, INIT_QT, INIT_RFQS } from './shared';
+
+// VITE_USE_MOCK=false → BTP (real CAP backend)
+// anything else     → mock mode (Vercel / local dev)
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+const API_BASE = '/api';
+
+export const isMockMode = USE_MOCK;
+
+// ── HTTP helpers ──────────────────────────────────────────────────
+async function odataGet(path: string) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  const json = await res.json();
+  return json.value ?? json;
+}
+
+async function odataPost(path: string, body: any) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API POST ${res.status}: ${path}`);
+  return res.json();
+}
+
+async function odataPatch(path: string, body: any) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API PATCH ${res.status}: ${path}`);
+  return res.status === 204 ? null : res.json();
+}
+
+// ── JSON field helpers ────────────────────────────────────────────
+function parseJson(s: any, fallback: any) {
+  if (s == null) return fallback;
+  try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return fallback; }
+}
+
+function parseInvoice(r: any) {
+  return { ...r, poNumbers: parseJson(r.poNumbers, []), items: parseJson(r.items, []), files: parseJson(r.files, []) };
+}
+function parseQuotation(r: any) {
+  return { ...r, items: parseJson(r.items, []), files: parseJson(r.files, []), priceConditions: parseJson(r.priceConditions, {}), scores: parseJson(r.scores, null), awardProposal: parseJson(r.awardProposal, null) };
+}
+function parseRfq(r: any) {
+  return { ...r, targets: parseJson(r.targets, []), items: parseJson(r.items, []), discussions: parseJson(r.discussions, []), awardProposal: parseJson(r.awardProposal, null) };
+}
+
+function serializeInvoice(inv: any) {
+  return { ...inv, poNumbers: JSON.stringify(inv.poNumbers || []), items: JSON.stringify(inv.items || []), files: JSON.stringify(inv.files || []) };
+}
+function serializeQuotation(qt: any) {
+  return { ...qt, items: JSON.stringify(qt.items || []), files: JSON.stringify(qt.files || []), priceConditions: JSON.stringify(qt.priceConditions || {}), scores: qt.scores ? JSON.stringify(qt.scores) : null, awardProposal: qt.awardProposal ? JSON.stringify(qt.awardProposal) : null };
+}
+function serializeRfq(rfq: any) {
+  return { ...rfq, targets: JSON.stringify(rfq.targets || []), items: JSON.stringify(rfq.items || []), discussions: JSON.stringify(rfq.discussions || []), awardProposal: rfq.awardProposal ? JSON.stringify(rfq.awardProposal) : null };
+}
+
+// ── Loaders ───────────────────────────────────────────────────────
+export async function loadInvoices() {
+  if (USE_MOCK) return [...INIT_INV];
+  const rows = await odataGet('/VendorPortal/Invoices?$orderby=submittedAt desc');
+  return rows.map(parseInvoice);
+}
+
+export async function loadQuotations() {
+  if (USE_MOCK) return [...INIT_QT];
+  const rows = await odataGet('/VendorPortal/Quotations?$orderby=submittedDate desc');
+  return rows.map(parseQuotation);
+}
+
+export async function loadRfqs() {
+  if (USE_MOCK) return [...INIT_RFQS];
+  const rows = await odataGet('/VendorPortal/RFQs?$orderby=postedDate desc');
+  return rows.map(parseRfq);
+}
+
+// ── Savers (BTP only — mock mode returns input unchanged) ─────────
+export async function saveInvoice(invoice: any) {
+  if (USE_MOCK) return invoice;
+  const payload = serializeInvoice(invoice);
+  if (invoice.id) {
+    await odataPatch(`/VendorPortal/Invoices(${invoice.id})`, payload);
+    return invoice;
+  }
+  return parseInvoice(await odataPost('/VendorPortal/Invoices', payload));
+}
+
+export async function saveQuotation(qt: any) {
+  if (USE_MOCK) return qt;
+  const payload = serializeQuotation(qt);
+  if (qt.id) {
+    await odataPatch(`/VendorPortal/Quotations(${qt.id})`, payload);
+    return qt;
+  }
+  return parseQuotation(await odataPost('/VendorPortal/Quotations', payload));
+}
+
+export async function saveRfq(rfq: any) {
+  if (USE_MOCK) return rfq;
+  const payload = serializeRfq(rfq);
+  if (rfq.id) {
+    await odataPatch(`/VendorPortal/RFQs(${rfq.id})`, payload);
+    return rfq;
+  }
+  return parseRfq(await odataPost('/VendorPortal/RFQs', payload));
+}

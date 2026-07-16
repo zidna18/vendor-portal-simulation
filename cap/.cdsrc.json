@@ -1,0 +1,14 @@
+{
+  "build": {
+    "tasks": [
+      { "for": "hana",   "src": "db",  "options": { "model": ["db","srv"] } },
+      { "for": "nodejs", "src": "srv", "options": { "model": ["db","srv"] } }
+    ]
+  },
+  "requires": {
+    "auth": {
+      "kind": "xsuaa",
+      "[development]": { "kind": "dummy" }
+    }
+  }
+}

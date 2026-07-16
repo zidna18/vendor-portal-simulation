@@ -1,0 +1,31 @@
+{
+  "name": "vendor-portal-cap",
+  "version": "1.0.0",
+  "description": "CAP backend for BRM Vendor Portal",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@sap/cds": "^7",
+    "express": "^4",
+    "hdb": "^0.19"
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^7",
+    "sqlite3": "^5"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "dev": "cds watch",
+    "build": "cds build"
+  },
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "hana-cloud",
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": { "url": ":memory:" }
+        }
+      }
+    }
+  }
+}

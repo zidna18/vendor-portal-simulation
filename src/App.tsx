@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Component } from "react";
+import { loadInvoices, loadQuotations, loadRfqs } from "./apiService";
 import {
   C, USERS, INIT_INV, INIT_QT, INIT_RFQS,
   VP, applyTheme, applySettings,
@@ -516,9 +517,16 @@ export default function App() {
   const [settings,setSettings]=useState({numFmt:"comma",dateFmt:"YYYY-MM-DD"});
   const [showSettings,setShowSettings]=useState(false);
   const updateSettings=s=>{const n={...settings,...s};applySettings(n);setSettings(n);};
-  const [invoices,setInvoices]=useState(INIT_INV);
-  const [quotations,setQuotations]=useState(INIT_QT);
-  const [rfqs,setRfqs]=useState(INIT_RFQS);
+  const [invoices,setInvoices]=useState<any[]>([]);
+  const [quotations,setQuotations]=useState<any[]>([]);
+  const [rfqs,setRfqs]=useState<any[]>([]);
+  const [dataLoading,setDataLoading]=useState(true);
+  useEffect(()=>{
+    Promise.all([loadInvoices(),loadQuotations(),loadRfqs()])
+      .then(([inv,qt,rfq])=>{setInvoices(inv);setQuotations(qt);setRfqs(rfq);})
+      .catch(e=>console.error('Data load failed:',e))
+      .finally(()=>setDataLoading(false));
+  },[]);
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
@@ -526,6 +534,7 @@ export default function App() {
   const logout=()=>{setUser(null);setSection("dashboard");};
   const drillInvoice=(no:string,sec:string)=>{setDrillInvoiceNo(no);setSection(sec);};
   if(!user) return <ErrorBoundary><Login onLogin={login}/></ErrorBoundary>;
+  if(dataLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Loading portal data…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
