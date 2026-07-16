@@ -36,6 +36,7 @@ modules:
         - npm install
         - npx cross-env VITE_USE_MOCK=false npm run build
       build-result: dist
+      supported-platforms: []
     requires:
       - name: vendor-portal-html5-repo-host
 
