@@ -51,6 +51,11 @@ modules:
   - name: vendor-portal-db-deployer
     type: hdb
     path: cap/gen/db
+    build-parameters:
+      builder: custom
+      commands:
+        - npm pkg set engines.node=">=16"
+      build-result: .
     parameters:
       buildpack: nodejs_buildpack
     requires:
