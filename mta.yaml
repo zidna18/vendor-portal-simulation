@@ -55,7 +55,7 @@ modules:
           url: ${default-url}
     requires:
       - name: vendor-portal-xsuaa
-      - name: vendor-portal-hana
+      - name: vendor-portal-hdi
       - name: vendor-portal-destination
 
   # ── HANA DB Deployer ───────────────────────────────────────────
@@ -65,7 +65,7 @@ modules:
     parameters:
       buildpack: nodejs_buildpack
     requires:
-      - name: vendor-portal-hana
+      - name: vendor-portal-hdi
 
 resources:
 
@@ -76,7 +76,7 @@ resources:
       service-plan: application
       path: ./xs-security.json
 
-  - name: vendor-portal-hana
+  - name: vendor-portal-hdi
     type: org.cloudfoundry.managed-service
     parameters:
       service: hana
