@@ -1,18 +1,18 @@
 {
-  "authenticationMethod": "route",
+  "welcomeFile": "index.html",
+  "authenticationMethod": "none",
   "sessionTimeout": 30,
   "routes": [
     {
       "source": "^/api/(.*)$",
       "destination": "cap-backend",
-      "authenticationType": "xsuaa",
+      "authenticationType": "none",
       "csrfProtection": false
     },
     {
-      "source": "^/(.*)$",
-      "target": "$1",
-      "service": "html5-apps-repo-rt",
-      "authenticationType": "xsuaa"
+      "source": "^(.*)$",
+      "localDir": "resources",
+      "authenticationType": "none"
     }
   ]
 }

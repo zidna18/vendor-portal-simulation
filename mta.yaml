@@ -5,20 +5,22 @@ description: BRM Vendor Portal on SAP BTP
 
 modules:
 
-  # ── AppRouter ──────────────────────────────────────────────────
+  # ── AppRouter (serves React SPA + proxies CAP API) ────────────────
   - name: vendor-portal-approuter
     type: approuter.nodejs
     path: approuter
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install
+        - npm run build-ui
+      build-result: .
     parameters:
-      disk-quota: 256M
-      memory: 128M
-    properties:
-      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
+      disk-quota: 512M
+      memory: 256M
     requires:
       - name: vendor-portal-xsuaa
-      - name: vendor-portal-html5-repo-rt
       - name: vendor-portal-destination
-      - name: vendor-portal-connectivity
       - name: cap-backend-api
         group: destinations
         properties:
@@ -26,21 +28,7 @@ modules:
           url: ~{url}
           forwardAuthToken: true
 
-  # ── React Frontend (HTML5) ─────────────────────────────────────
-  - name: vendor-portal-ui
-    type: html5
-    path: .
-    build-parameters:
-      builder: custom
-      commands:
-        - npm install
-        - npx cross-env VITE_USE_MOCK=false npm run build
-      build-result: dist
-      supported-platforms: []
-    requires:
-      - name: vendor-portal-html5-repo-host
-
-  # ── CAP Node.js Service ────────────────────────────────────────
+  # ── CAP Node.js Service ────────────────────────────────────────────
   - name: vendor-portal-cap
     type: nodejs
     path: cap
@@ -59,7 +47,7 @@ modules:
       - name: vendor-portal-hdi
       - name: vendor-portal-destination
 
-  # ── HANA DB Deployer ───────────────────────────────────────────
+  # ── HANA DB Deployer ───────────────────────────────────────────────
   - name: vendor-portal-db-deployer
     type: hdb
     path: cap/gen/db
@@ -83,26 +71,8 @@ resources:
       service: hana
       service-plan: hdi-shared
 
-  - name: vendor-portal-html5-repo-host
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: html5-apps-repo
-      service-plan: app-host
-
-  - name: vendor-portal-html5-repo-rt
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: html5-apps-repo
-      service-plan: app-runtime
-
   - name: vendor-portal-destination
     type: org.cloudfoundry.managed-service
     parameters:
       service: destination
-      service-plan: lite
-
-  - name: vendor-portal-connectivity
-    type: org.cloudfoundry.managed-service
-    parameters:
-      service: connectivity
       service-plan: lite

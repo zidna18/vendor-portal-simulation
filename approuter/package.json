@@ -2,9 +2,10 @@
   "name": "vendor-portal-approuter",
   "version": "1.0.0",
   "dependencies": {
-    "@sap/approuter": "^14"
+    "@sap/approuter": "^22.0.3"
   },
   "scripts": {
-    "start": "node node_modules/@sap/approuter/approuter.js"
+    "start": "node node_modules/@sap/approuter/approuter.js",
+    "build-ui": "cd .. && npm install && npx cross-env VITE_USE_MOCK=false npm run build && cp -r dist ../approuter/resources"
   }
 }
