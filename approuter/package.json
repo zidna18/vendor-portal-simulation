@@ -6,6 +6,6 @@
   },
   "scripts": {
     "start": "node node_modules/@sap/approuter/approuter.js",
-    "build-ui": "cd .. && npm install && npx cross-env VITE_USE_MOCK=false npm run build && cp -r dist ../approuter/resources"
+    "build-ui": "cd .. && npm install && npx cross-env VITE_USE_MOCK=false npm run build && mkdir -p ../approuter/resources && cp -r dist/. ../approuter/resources"
   }
 }
