@@ -39,7 +39,7 @@ module.exports = cds.service.impl(async function (srv) {
     const baseUrl = `/sap/opu/odata/SAP/API_BUSINESS_PARTNER`;
     const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
 
-    let bp = {}, sup = {};
+    let bp = {}, sup = {}, bankData = [];
     try {
       const [bpRes, supRes, bankRes] = await Promise.all([
         executeHttpRequest(dest, {
@@ -60,7 +60,7 @@ module.exports = cds.service.impl(async function (srv) {
       ]);
       bp = bpRes.data?.d || bpRes.data || {};
       sup = supRes.data?.d || supRes.data || {};
-      const bankData = bankRes ? (bankRes.data?.d?.results || bankRes.data?.value || []) : [];
+      bankData = bankRes ? (bankRes.data?.d?.results || bankRes.data?.value || []) : [];
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 500) || '';
