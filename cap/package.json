@@ -6,6 +6,7 @@
   "dependencies": {
     "@sap/cds": "^7",
     "@sap/xssec": "^3",
+    "@sap-cloud-sdk/http-client": "^3",
     "express": "^4",
     "hdb": "^0.19"
   },

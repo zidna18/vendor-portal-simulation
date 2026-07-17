@@ -4,6 +4,7 @@ import {
   fmtDate, pg,
   Badge, SapIcon,
 } from "./shared";
+import { isMockMode, fetchVendorMaster } from "./apiService";
 
 const Section = ({title,icon,children}:{title:string,icon:string,children:any}) => (
   <div style={{marginBottom:24}}>
@@ -23,17 +24,36 @@ const Row = ({label,value,mono=false}:{label:string,value:any,mono?:boolean}) =>
 );
 
 export const VendorProfile = ({user}) => {
+  const [v,setV]=useState<any>(isMockMode ? VENDORS[user.vendorId] : null);
   const [loading,setL]=useState(true);
+  const [apiErr,setApiErr]=useState<string|null>(null);
   const [tab,setTab]=useState<"info"|"bank"|"tax"|"cc">("info");
-  useEffect(()=>{setTimeout(()=>setL(false),700);},[]);
-  const v=VENDORS[user.vendorId] as any;
-  if(!v) return null;
+
+  useEffect(()=>{
+    if(isMockMode){
+      setTimeout(()=>setL(false),700);
+    } else {
+      setL(true); setApiErr(null);
+      fetchVendorMaster(user.vendorId)
+        .then(data=>{ setV(data); setL(false); })
+        .catch(e=>{ setApiErr(e.message); setL(false); });
+    }
+  },[user.vendorId]);
+
   if(loading) return(
     <div style={{padding:60,textAlign:"center",color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
       <SapIcon name="time-entry-request" size={16} color={C.t2}/>
       Fetching data from SAP Business Partner API…
     </div>
   );
+  if(apiErr) return(
+    <div style={{padding:40,margin:24,borderRadius:6,background:"#fff4f4",border:"1px solid #e8a0a0",color:"#aa1111",fontSize:14}}>
+      <strong>SAP API Error</strong><br/>
+      {apiErr}<br/>
+      <span style={{fontSize:12,color:"#888",marginTop:8,display:"block"}}>Check that BTP Destination <code>S4HC</code> is configured correctly.</span>
+    </div>
+  );
+  if(!v) return null;
 
   const TK={hdrBg:"#f2f2f2",hdrBorder:"#e5e5e5",hdrText:"#6a6d70",rowBg:"#ffffff",rowBorder:"#e5e5e5"};
 

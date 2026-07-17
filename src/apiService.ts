@@ -40,7 +40,22 @@ async function odataPatch(path: string, body: any) {
   return res.status === 204 ? null : res.json();
 }
 
+// ── Vendor Master (BTP only — SAP API_BUSINESS_PARTNER via Destination 'S4HC') ──
+export async function fetchVendorMaster(vendorId: string) {
+  const raw = await odataGet(`/VendorPortal/vendorMaster(vendorId='${vendorId}')`);
+  return {
+    ...raw,
+    banks: parseJsonStr(raw.banks, []),
+    lfb1:  parseJsonStr(raw.lfb1,  []),
+    lfm1:  parseJsonStr(raw.lfm1,  []),
+  };
+}
+
 // ── JSON field helpers ────────────────────────────────────────────
+function parseJsonStr(s: any, fallback: any) {
+  if (s == null) return fallback;
+  try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return fallback; }
+}
 function parseJson(s: any, fallback: any) {
   if (s == null) return fallback;
   try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return fallback; }
