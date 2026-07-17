@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "./lib/useToast";
 import {
-  C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
+  C, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
-  mob, g2, g4, pg,
-  Badge, StatusTag, Btn, Inp, AmtInp, DateInp, Ui5DatePicker, Sel, TA, Lbl, Val, Sep, Modal,
+  mob,
+  Badge, StatusTag, Btn, Inp, AmtInp, DateInp, Ui5DatePicker, Sel, TA, Lbl, Sep, Modal,
   FioriBar, FField, DateRangePicker, SapIcon, Card, Th, Td,
   ValueHelpDialog, ValueHelpInp, InvTypeMultiComboBox, FilterMultiComboBox,
 } from "./shared";

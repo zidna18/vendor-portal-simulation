@@ -216,7 +216,7 @@ const SettingsModal = ({settings,onUpdate,onClose,theme,onThemeChange,user}) => 
       <div style={{padding:"28px 32px"}}>
         <div style={{fontSize:20,fontWeight:600,color:C.t1,marginBottom:24}}>User Account</div>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,padding:"18px 20px",background:C.subtle,borderRadius:6,border:`1px solid ${C.border}`}}>
-          {(()=>{const {avtColor,avtIni}=({avtColor:(id)=>({bg:"#354a5f",fg:"#fff"}),avtIni:(n)=>n?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"??"});const ac={bg:"#354a5f",fg:"#fff"};const ini=user?.name?.split(" ").map((w:string)=>w[0]).join("").slice(0,2).toUpperCase()||"??";return(<div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg,flexShrink:0}}>{ini}</div>);})()}
+          {(()=>{const ac=avtColor(user?.id||'');const ini=avtIni(user?.name||'');return(<div style={{width:56,height:56,borderRadius:"50%",background:ac.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:ac.fg,flexShrink:0}}>{ini}</div>);})()}
           <div>
             <div style={{fontSize:16,fontWeight:700,color:C.t1}}>{user?.name}</div>
             <div style={{fontSize:13,color:C.t2,marginTop:3}}>{user?.role==="vendor"?"Supplier":user?.role==="approver"?"Finance Approver":"BRM Employee"}</div>
@@ -383,13 +383,13 @@ export default function App() {
         const d=u.value??u;
         setUser({id:d.email||'user',name:d.name||d.email||'User',email:d.email||'',role:d.role||'brm',vendorId:d.vendorId||null,username:d.email||'user'});
       })
-      .catch(e=>console.error('BTP auth failed:',e))
+      .catch(()=>{})
       .finally(()=>setBtpLoading(false));
   },[]);
   useEffect(()=>{
     Promise.all([loadInvoices(),loadQuotations(),loadRfqs()])
       .then(([inv,qt,rfq])=>{setInvoices(inv);setQuotations(qt);setRfqs(rfq);})
-      .catch(e=>console.error('Data load failed:',e))
+      .catch(()=>{})
       .finally(()=>setDataLoading(false));
     if(isMockMode){
       import('./data/mockData').then(m=>setMockNotifs(m.MOCK_NOTIFS));

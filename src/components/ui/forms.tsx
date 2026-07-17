@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef } from "react";
 import { C } from "../../theme";
-import { SETTINGS } from "../../lib/format";
+import { SETTINGS, fmtDate, parseToISO } from "../../lib/format";
 import { SapIcon } from "./SapIcon";
 
 export const Card = ({children,style={}}) => (

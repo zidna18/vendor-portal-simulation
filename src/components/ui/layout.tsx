@@ -1,4 +1,5 @@
 ﻿import { C } from "../../theme";
+import { mob } from "../../lib/responsive";
 import { SapIcon } from "./SapIcon";
 
 export const Lbl = ({children}) => <div style={{fontSize:12,color:C.t2,marginBottom:4,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>{children}</div>;

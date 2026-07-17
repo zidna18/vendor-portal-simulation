@@ -1,5 +1,5 @@
-﻿import { useState, useRef } from "react";
-import { C, STC } from "../../theme";
+﻿import { useState, useEffect, useRef } from "react";
+import { C } from "../../theme";
 import { SapIcon } from "./SapIcon";
 import { Btn } from "./forms";
 

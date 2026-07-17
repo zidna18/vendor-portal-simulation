@@ -9,7 +9,7 @@ import {
   ValueHelpInp, ValueHelpDialog, DateRangePicker, DatePickerInp,
 } from "./shared";
 
-const PAYMENT_TERMS = [
+const QUOTATION_PAYMENT_TERMS = [
   {v:"Net 14 Days",l:"Net 14 Days"},{v:"Net 30 Days",l:"Net 30 Days"},{v:"Net 45 Days",l:"Net 45 Days"},
   {v:"Net 60 Days",l:"Net 60 Days"},{v:"Net 90 Days",l:"Net 90 Days"},{v:"30/2 Net 60",l:"30/2 Net 60 (2% Early Pay)"},
   {v:"COD",l:"Cash on Delivery"},{v:"Advance 50%",l:"50% Advance, 50% on Delivery"},{v:"Advance 100%",l:"100% Advance Payment"},
@@ -85,7 +85,7 @@ export const QtFormModal = ({rfq,qt,onSave,onClose,vendorId,vendorName}) => {
         <div style={{display:"grid",gridTemplateColumns:g2(),gap:10,marginBottom:10}}>
           <div><Lbl>Sales Person / Contact</Lbl><Inp value={f.salesPerson||""} onChange={v=>s("salesPerson",v)} placeholder="Contact name"/></div>
           <div><Lbl>Purchasing Group</Lbl><Sel value={f.purchGroup||""} onChange={v=>s("purchGroup",v)} opts={[{v:"",l:"— Select —"},...PURCHASING_GROUPS.map(p=>({v:p.v,l:`${p.v} – ${p.l}`}))]}/></div>
-          <div><Lbl>Terms of Payment</Lbl><Sel value={f.termsOfPayment||""} onChange={v=>s("termsOfPayment",v)} opts={[{v:"",l:"— Select —"},...PAYMENT_TERMS]}/></div>
+          <div><Lbl>Terms of Payment</Lbl><Sel value={f.termsOfPayment||""} onChange={v=>s("termsOfPayment",v)} opts={[{v:"",l:"— Select —"},...QUOTATION_PAYMENT_TERMS]}/></div>
           <div><Lbl>Delivery Terms (Incoterms)</Lbl><Sel value={f.deliveryTerms||""} onChange={v=>s("deliveryTerms",v)} opts={[{v:"",l:"— Select —"},...INCOTERMS]}/></div>
           <div><Lbl>Lead Time</Lbl><Inp value={f.leadTime||""} onChange={v=>s("leadTime",v)} placeholder="e.g. 14 days"/></div>
           <div><Lbl>Warranty Period</Lbl><Inp value={f.warrantyPeriod||""} onChange={v=>s("warrantyPeriod",v)} placeholder="e.g. 1 year"/></div>
