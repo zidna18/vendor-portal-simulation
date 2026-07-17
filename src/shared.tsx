@@ -71,6 +71,23 @@ export const VENDORS = {
       { ekorg:"LMRS", bukrs:"LMRS", waers:"IDR", zterm:"Z045", inco1:"FCA", inco2:"Aceh",      minbw:2000000,  verkf:"Dewi Kusuma", telf1:"+62 21 5555-5678", autom:false },
     ],
   },
+  "2100000010":{ id:"2100000010", name:"PT Accenture Indonesia", tax:"04.567.890.1-234.000", addr:"Treasury Tower Lt. 50, District 8, SCBD Lot 28, Jakarta Selatan 12190", phone:"+62 21 3973-3000", email:"ap@accenture.com",
+    banks:[
+      {no:1, name:"Bank Mandiri", branch:"KCP Jakarta SCBD", acc:"1110-0022-3344", aname:"PT ACCENTURE INDONESIA", currency:"IDR", swift:"BMRIIDJA", primary:true},
+      {no:2, name:"Citibank N.A.", branch:"Jakarta Branch", acc:"5500-6677-8899-00", aname:"PT ACCENTURE INDONESIA", currency:"USD", swift:"CITIIDJX", primary:false},
+    ],
+    cat:"Professional Services", since:"2015-01-01", rep:"Zidna Q Tsaqila", status:"Active",
+    npwpAddress:"Treasury Tower Lt. 50, District 8, SCBD Lot 28, Jakarta Selatan 12190", pkp:"PKP", taxStatus:"Active",
+    certExpiry:"2028-01-01", website:"www.accenture.com/id-en", fax:"+62 21 3973-3001",
+    lfb1:[
+      { bukrs:"BRMS", akont:"160001", zterm:"Z030", zwels:"T", reprf:true,  busab:"BRM210", fdgrp:"01", reconcAcct:"Accounts Payable - Services" },
+      { bukrs:"CPMS", akont:"160001", zterm:"Z030", zwels:"T", reprf:true,  busab:"CPM210", fdgrp:"01", reconcAcct:"Accounts Payable - Services" },
+    ],
+    lfm1:[
+      { ekorg:"BRMS", bukrs:"BRMS", waers:"IDR", zterm:"Z030", inco1:"DAP", inco2:"Jakarta", minbw:0, verkf:"Zidna Q Tsaqila", telf1:"+62 21 3973-3000", autom:true },
+      { ekorg:"CPMS", bukrs:"CPMS", waers:"IDR", zterm:"Z030", inco1:"DAP", inco2:"Jakarta", minbw:0, verkf:"Zidna Q Tsaqila", telf1:"+62 21 3973-3000", autom:true },
+    ],
+  },
 };
 // SAP I_CompanyCode – five legal entities
 export const COMPANY_CODES = [
