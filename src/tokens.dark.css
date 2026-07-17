@@ -1,0 +1,74 @@
+/* SAP Fiori Horizon Dark — overrides for dark theme.
+ * Applied when <html data-theme="dark"> is set by applyTheme("dark").
+ * All values mirror the DARK palette in src/theme.ts. */
+
+:root[data-theme="dark"] {
+  /* Shell / navigation */
+  --color-shell:         #1b2534;
+  --color-shell-hov:     rgba(255,255,255,0.14);
+
+  /* Brand / interactive */
+  --color-primary:       #64b5f6;
+  --color-primary-dk:    #4da3ff;
+
+  /* Surface */
+  --color-bg:            #16191d;
+  --color-card:          #1c2128;
+  --color-field:         #23292f;
+  --color-subtle:        #252c36;
+  --color-border:        #3d444d;
+  --color-field-border:  #56616d;
+
+  /* Text */
+  --color-t1:            #d1e4f4;
+  --color-t2:            #8696a9;
+
+  /* Semantic */
+  --color-ok:            #4cc15a;
+  --color-ok-bg:         #16301c;
+  --color-warn:          #f0913d;
+  --color-warn-bg:       #36281a;
+  --color-err:           #ff6b6b;
+  --color-err-bg:        #3a1e1e;
+  --color-info:          #64b5f6;
+  --color-info-bg:       #162338;
+
+  /* Status-specific */
+  --color-draft:         #8696a9;
+  --color-draft-bg:      #252c36;
+  --color-gold:          #d8945c;
+
+  /* Interaction */
+  --color-hover:         #2d3540;
+  --color-selection:     #1a2d42;
+
+  /* Status badge tokens — derived from dark semantic colors */
+  --status-draft-c:      #8696a9;
+  --status-draft-bg:     #252c36;
+  --status-submitted-c:  #64b5f6;
+  --status-submitted-bg: #162338;
+  --status-review-c:     #f0913d;
+  --status-review-bg:    #36281a;
+  --status-confirmed-c:  #4cc15a;
+  --status-confirmed-bg: #16301c;
+  --status-rejected-c:   #ff6b6b;
+  --status-rejected-bg:  #3a1e1e;
+  --status-created-c:    #8ba8c4;
+  --status-created-bg:   #232d3a;
+  --status-open-c:       #4da3ff;
+  --status-open-bg:      #1a2d42;
+  --status-scored-c:     #b07de8;
+  --status-scored-bg:    #2a1f40;
+  --status-closed-c:     #8696a9;
+  --status-closed-bg:    #252c36;
+  --status-posted-c:     #4cc15a;
+  --status-posted-bg:    #16301c;
+  --status-converted-c:  #64b5f6;
+  --status-converted-bg: #162338;
+  --status-cleared-c:    #8696a9;
+  --status-cleared-bg:   #252c36;
+  --status-award-p-bg:   #3a3010;
+  --status-award-p-c:    #e8c840;
+  --status-award-a-bg:   #16301c;
+  --status-award-a-c:    #4cc15a;
+}

@@ -1,0 +1,75 @@
+/* SAP Fiori Quartz Light — design tokens as CSS custom properties.
+ * Mirrors the LIGHT palette object in src/theme.ts.
+ * applyTheme() updates these variables on :root for the dark variant.
+ * Reference: quartzlight.css from SAP UI5 Fiori theme family. */
+
+:root {
+  /* Shell / navigation */
+  --color-shell:         #354a5f;
+  --color-shell-hov:     rgba(255,255,255,0.15);
+
+  /* Brand / interactive */
+  --color-primary:       #0a6ed1;
+  --color-primary-dk:    #0854a0;
+
+  /* Surface */
+  --color-bg:            #f7f7f7;
+  --color-card:          #ffffff;
+  --color-field:         #ffffff;
+  --color-subtle:        #f2f2f2;
+  --color-border:        #d9d9d9;
+  --color-field-border:  #89919a;
+
+  /* Text */
+  --color-t1:            #1d2d3e;
+  --color-t2:            #6a6d70;
+
+  /* Semantic */
+  --color-ok:            #107e3e;
+  --color-ok-bg:         #f1fdf6;
+  --color-warn:          #df6e0c;
+  --color-warn-bg:       #fef7f1;
+  --color-err:           #bb0000;
+  --color-err-bg:        #ffebeb;
+  --color-info:          #0a6ed1;
+  --color-info-bg:       #dff0fd;
+
+  /* Status-specific */
+  --color-draft:         #6a6d70;
+  --color-draft-bg:      #f4f4f4;
+  --color-gold:          #c87941;
+
+  /* Interaction */
+  --color-hover:         #ededed;
+  --color-selection:     #e8f2fb;
+
+  /* Status badge tokens */
+  --status-draft-c:      #6a6d70;
+  --status-draft-bg:     #f4f4f4;
+  --status-submitted-c:  #0a6ed1;
+  --status-submitted-bg: #dff0fd;
+  --status-review-c:     #df6e0c;
+  --status-review-bg:    #fef7f1;
+  --status-confirmed-c:  #107e3e;
+  --status-confirmed-bg: #f1fdf6;
+  --status-rejected-c:   #bb0000;
+  --status-rejected-bg:  #ffebeb;
+  --status-created-c:    #5b738b;
+  --status-created-bg:   #e8edf1;
+  --status-open-c:       #0854a0;
+  --status-open-bg:      #dbeeff;
+  --status-scored-c:     #6f2da8;
+  --status-scored-bg:    #f3eeff;
+  --status-closed-c:     #6a6d70;
+  --status-closed-bg:    #f4f4f4;
+  --status-posted-c:     #107e3e;
+  --status-posted-bg:    #f1fdf6;
+  --status-converted-c:  #0a6ed1;
+  --status-converted-bg: #dff0fd;
+  --status-cleared-c:    #6a6d70;
+  --status-cleared-bg:   #f4f4f4;
+  --status-award-p-bg:   #fff8e1;
+  --status-award-p-c:    #856404;
+  --status-award-a-bg:   #e8f5e9;
+  --status-award-a-c:    #107e3e;
+}
