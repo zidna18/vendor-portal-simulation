@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "./lib/useToast";
 import {
   C, STC, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -192,14 +193,14 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const updateFee=(i:number,k:string,v:any)=>{const fees=[...(f.otherFees||[])];fees[i]={...fees[i],[k]:v};s("otherFees",fees);};
   const removeFee=(i:number)=>s("otherFees",(f.otherFees||[]).filter((_:any,j:number)=>j!==i));
   const save=draft=>{
-    if(!draft&&!(f.poNumbers||[]).length){alert("Please add at least one PO Number before submitting.");return;}
-    if(!draft&&!f.companyCode){alert("Please select a Company Code before submitting.");return;}
-    if(!draft&&!f.taxDoc&&f.invoiceType==="Invoice"){alert("Please enter Faktur Pajak number before submitting.");return;}
-    if(!draft&&(f.files||[]).length<2){alert("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.");return;}
+    if(!draft&&!(f.poNumbers||[]).length){toast("Please add at least one PO Number before submitting.","err");return;}
+    if(!draft&&!f.companyCode){toast("Please select a Company Code before submitting.","err");return;}
+    if(!draft&&!f.taxDoc&&f.invoiceType==="Invoice"){toast("Please enter Faktur Pajak number before submitting.","err");return;}
+    if(!draft&&(f.files||[]).length<2){toast("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.","err");return;}
     const dupNo=allInvoices.find(i=>i.id!==f.id&&i.invoiceNo.trim().toLowerCase()===f.invoiceNo.trim().toLowerCase());
-    if(dupNo){alert(`Invoice number "${f.invoiceNo}" already exists (${dupNo.id}). Please use a unique invoice number.`);return;}
+    if(dupNo){toast(`Invoice number "${f.invoiceNo}" already exists (${dupNo.id}). Please use a unique invoice number.`,"err");return;}
     const usedPOs=(f.poNumbers||[]).filter(po=>allInvoices.some(i=>i.id!==f.id&&(i.poNumbers||[]).includes(po)&&i.status!=="Rejected"));
-    if(usedPOs.length>0){alert(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`);return;}
+    if(usedPOs.length>0){toast(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`,"err");return;}
     const fees=f.otherFees||[];
     const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
     const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
@@ -1597,7 +1598,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
   const v=VENDORS[user.vendorId]||{name:user.name,tax:"",lfb1:[]};
   const exportCSV=()=>{
     const rows=selRows.size>0?mine.filter(i=>selRows.has(i.id)):mine;
-    if(rows.length===0){alert("No invoices to export.");return;}
+    if(rows.length===0){toast("No invoices to export.","err");return;}
     const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
     const hdr=["Pre-Invoice ID","Invoice No.","Company Code","Invoice Date","Due Date","PO Numbers","Currency","Amount","VAT Base","VAT Amount","WHT Type","WHT Amount","Net Amount","Status","Description","Vendor ID","Vendor Name"];
     const data=rows.map(i=>[i.id,i.invoiceNo,i.companyCode,i.invoiceDate,i.dueDate,fmtPOs(i),i.currency,i.amount,i.vatBase,i.vatAmt,i.whtType,i.whtAmt,Number(i.amount||0)+Number(i.vatAmt||0)-Number(i.whtAmt||0),i.status,i.desc,i.vendorId,i.vendorName].map(esc).join(","));
@@ -2598,7 +2599,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
   ].filter(Boolean);
 
   const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
-  const reject=()=>{if(!rejR){alert("Provide a rejection reason.");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
+  const reject=()=>{if(!rejR){toast("Provide a rejection reason.","err");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
   const setUR=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});};
   const postToSAP=(inv)=>{
     const isInv=inv.invoiceType==="Invoice";
@@ -2628,7 +2629,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
   const toggleAll=()=>setSelRows(allSel?new Set():new Set(list.map(i=>i.id)));
   const exportCSV=()=>{
     const rows=selRows.size>0?list.filter(i=>selRows.has(i.id)):list;
-    if(rows.length===0){alert("No invoices to export.");return;}
+    if(rows.length===0){toast("No invoices to export.","err");return;}
     const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
     const hdr=["Pre-Invoice ID","Invoice No.","Vendor","Vendor ID","Company Code","Invoice Date","Due Date","PO Numbers","Currency","Amount","VAT Amount","WHT Amount","Net Amount","Status","Description"];
     const data=rows.map(i=>[i.id,i.invoiceNo,i.vendorName,i.vendorId,i.companyCode,i.invoiceDate,i.dueDate,fmtPOs(i),i.currency,i.amount,i.vatAmt,i.whtAmt,Number(i.amount||0)+Number(i.vatAmt||0)-Number(i.whtAmt||0),i.status,i.desc].map(esc).join(","));

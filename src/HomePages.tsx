@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "./lib/useToast";
 import {
   C, VENDORS,
   fmtAmt, fmtDate, idr, g2, g3, g4,
@@ -312,7 +313,7 @@ export const ApproverHome = ({user, quotations, setQuotations, rfqs, setRfqs, se
     ? Math.round(closedRfqs.length / (closedRfqs.length + pendingRfqs.length) * 100) : 0;
 
   const doReject = () => {
-    if (!notes.trim()) { alert("Please enter rejection notes."); return; }
+    if (!notes.trim()) { toast("Please enter rejection notes.", "err"); return; }
     const today = new Date().toISOString().split("T")[0];
     setRfqs((prev:any[]) => prev.map(r =>
       r.id === rejectModal.id ? {...r, status:"Open", rejectedByApprover:true, approverRejNotes:notes, approverRejAt:today} : r

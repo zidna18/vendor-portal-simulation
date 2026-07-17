@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, Fragment } from "react";
+import { toast } from "./lib/useToast";
 import {
   C, VENDORS, COMPANY_CODES, CURRENCIES, ccName, PURCHASING_GROUPS,
   fmtDate, idr, uid, pg, mob,
@@ -416,7 +417,7 @@ export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
 
   const exportQtCSV=()=>{
     const rows=selIds.size>0?list.filter(q=>selIds.has(q.id)):list;
-    if(rows.length===0){alert("No quotations to export.");return;}
+    if(rows.length===0){toast("No quotations to export.","err");return;}
     const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
     const hdr=["SAP Quotation No","Quotation ID","RFQ ID","RFQ Title","Vendor ID","Vendor Name","Submitted Date","Valid Until","Total Amount","Status","Notes"];
     const data=rows.map(q=>{const sapNo=q.sapQtNo||(["Accepted","Win","PO Ready"].includes(q.status)?`80${q.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,q.id,q.rfqId,q.rfqTitle,q.vendorId,q.vendorName,q.submittedDate,q.validUntil,q.totalAmt,q.status,q.notes].map(esc).join(",");});
@@ -967,11 +968,11 @@ const AwardDecisionModal = ({rfq, quotations, user, onClose, onSubmit}) => {
     const today = new Date().toISOString().split("T")[0];
     let proposal: any;
     if (isService) {
-      if (!serviceWinner) { alert("Please select a winner vendor for Service RFQ."); return; }
+      if (!serviceWinner) { toast("Please select a winner vendor for Service RFQ.","err"); return; }
       proposal = { type:"Service", winnerId: serviceWinner, rationales: serviceRationales, note: serviceNote, proposedBy: user?.name||"Buyer", proposedAt: today };
     } else {
       const awarded = Object.entries(allocations).filter(([,a])=>a.mode!=="None");
-      if (awarded.length === 0) { alert("Please assign at least one vendor an award allocation."); return; }
+      if (awarded.length === 0) { toast("Please assign at least one vendor an award allocation.","err"); return; }
       proposal = { type:"Material", allocations, proposedBy: user?.name||"Buyer", proposedAt: today };
     }
     onSubmit(proposal);
@@ -1912,7 +1913,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
 
   const submitPublish=()=>{
     const activeInvitees=pubForm.vendorInvitees.filter((v:any)=>v.include);
-    if(activeInvitees.length===0){alert("Please include at least one vendor.");return;}
+    if(activeInvitees.length===0){toast("Please include at least one vendor.","err");return;}
     const today=new Date().toISOString().split("T")[0];
     const sel=[...selIds];
     setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Open",publishedAt:today,invitationNo:pubForm.invitationNo,publishNotes:pubForm.notes}:r));
@@ -1932,9 +1933,9 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const COMMON_DOCS=["Technical Evaluation Report","Budget Approval Letter","Vendor Qualification Certificate","Scope of Work Document","Risk Assessment Report"];
   const toggleDoc=(doc)=>setApvForm(p=>({...p,attachments:p.attachments.includes(doc)?p.attachments.filter(d=>d!==doc):[...p.attachments,doc]}));
   const submitApproval=()=>{
-    if(!apvForm.committeeGroup){alert("Please select a Tender Committee Group.");return;}
-    if(!apvForm.justification){alert("Please provide approval justification.");return;}
-    if(!apvForm.targetDate){alert("Please set a target approval date.");return;}
+    if(!apvForm.committeeGroup){toast("Please select a Tender Committee Group.","err");return;}
+    if(!apvForm.justification){toast("Please provide approval justification.","err");return;}
+    if(!apvForm.targetDate){toast("Please set a target approval date.","err");return;}
     const sel=[...selIds];
     const today=new Date().toISOString().split("T")[0];
     setRfqs(p=>p.map(r=>sel.includes(r.id)?{...r,status:"Scored",submittedForApprovalAt:today,submittedForApprovalBy:"Ahmad Rizki",committeeGroup:apvForm.committeeGroup,approvalPriority:apvForm.priority,approvalTargetDate:apvForm.targetDate}:r));
@@ -1952,18 +1953,18 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const initScores=(qts)=>{const s={};qts.forEach(qt=>{const ex=qt.scores||{};s[qt.id]={technical:String(ex.technical||""),commercial:String(ex.commercial||""),hse:String(ex.hse||"")};});return s;};
   const getWeightedTotal=(qtId)=>{const s=scores[qtId]||{};const t=Number(s.technical)||0,c=Number(s.commercial)||0,h=Number(s.hse)||0;if(!s.technical&&!s.commercial&&!s.hse)return null;return Math.round(t*0.4+c*0.4+h*0.2);};
   const submitBuyerScores=()=>{
-    if(!scoreNotes.trim()){alert("Please enter evaluation notes before submitting.");return;}
+    if(!scoreNotes.trim()){toast("Please enter evaluation notes before submitting.","err");return;}
     const {rfq}=scoreModal;
     const today=new Date().toISOString().split("T")[0];
     setQuotations(p=>p.map(q=>{if(!scores[q.id])return q;const s=scores[q.id];return{...q,scores:{technical:Number(s.technical)||0,commercial:Number(s.commercial)||0,hse:Number(s.hse)||0,weighted:getWeightedTotal(q.id)||0}};}));
     setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Scored",scoredAt:today,scoredBy:user?.name||"Buyer",scoreNotes}:r));
     setScoreModal(null);setScores({});setScoreNotes("");
-    alert("Scoring submitted. RFQ is now in Scored status and ready for approval submission.");
+    toast("Scoring submitted. RFQ is now in Scored status and ready for approval submission.","info");
   };
   const addItem=()=>setF(p=>({...p,items:[...p.items,{no:p.items.length+1,desc:"",type:"Material",acctAssign:"",materialNo:"",materialGroup:"",plant:"",qty:1,uom:"Unit",estPrice:0,requirementDate:"",startDate:"",endDate:""}]}));
   const updItem=(i,k,v)=>setF(p=>({...p,items:p.items.map((it,j)=>j===i?{...it,[k]:v}:it)}));
   const publish=()=>{
-    if(!f.title||!f.closingDate||f.targets.length===0){alert("Please fill title, closing date, and select at least one vendor.");return;}
+    if(!f.title||!f.closingDate||f.targets.length===0){toast("Please fill title, closing date, and select at least one vendor.","err");return;}
     setRfqs(p=>[...p,{...f,id:`RFQ-${uid()}`,postedDate:new Date().toISOString().split("T")[0],postedBy:"Ahmad Rizki",status:"Created",estVal:Number(f.estVal),
       items:f.items.map(it=>({...it,qty:Number(it.qty),estPrice:Number(it.estPrice)}))}]);
     setForm(false);
@@ -2092,7 +2093,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               </button>
               {/* Proceed to SAP button — always visible, lights up: buyers only + 1 Award Approved RFQ checked */}
               {(()=>{const fullyApproved=!!selRfq?.awardProposal?.l1Approved&&!!selRfq?.awardProposal?.l2Approved;const canProceed=(user?.username==="buyer1"||user?.username==="brm.user")&&!!selRfq&&selRfq.status==="Award Approved"&&fullyApproved;const proceedTitle=selIds.size===0?"Check an Award Approved RFQ first":selList.length>1?"Select only 1 RFQ":user?.username!=="buyer1"&&user?.username!=="brm.user"?"Only buyers can proceed to SAP":!selRfq||selRfq.status!=="Award Approved"?"RFQ must be Award Approved":!fullyApproved?"Awaiting full approval from L1 and L2 before proceeding to SAP":"";return(
-                <button onClick={()=>{if(!canProceed||!selRfq)return;const today=new Date().toISOString().split("T")[0];const poNo=`4500${String(Math.floor(Math.random()*1000000)).padStart(6,"0")}`;setRfqs(p=>p.map(r=>r.id===selRfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.username,poNo}:r));setSelIds(new Set());alert(`Award finalized. SAP Purchase Order ${poNo} created. RFQ ${selRfq.id} is now Closed.`);}} disabled={!canProceed}
+                <button onClick={()=>{if(!canProceed||!selRfq)return;const today=new Date().toISOString().split("T")[0];const poNo=`4500${String(Math.floor(Math.random()*1000000)).padStart(6,"0")}`;setRfqs(p=>p.map(r=>r.id===selRfq.id?{...r,status:"Closed",closedAt:today,closedBy:user?.username,poNo}:r));setSelIds(new Set());toast(`Award finalized. SAP Purchase Order ${poNo} created. RFQ ${selRfq.id} is now Closed.`,"ok");}} disabled={!canProceed}
                   style={{background:canProceed?"#107e3e":C.subtle,border:`1px solid ${canProceed?"transparent":C.border}`,color:canProceed?"#fff":C.t2,borderRadius:4,padding:"0 0.9rem",fontSize:12,fontFamily:"inherit",cursor:canProceed?"pointer":"not-allowed",height:28,display:"flex",alignItems:"center",gap:5,fontWeight:600,opacity:canProceed?1:0.6,transition:"all .15s"}}
                   title={proceedTitle}>
                   <SapIcon name="sys-enter" size={13} color={canProceed?"#fff":C.t2}/> Proceed to SAP ↗
@@ -2107,7 +2108,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={13} color={C.t1}/>{allExpanded?"Collapse All":"Expand All"}
           </button>
           <button onClick={()=>{
-            if(list.length===0){alert("No RFQs to export.");return;}
+            if(list.length===0){toast("No RFQs to export.","err");return;}
             const esc=(s:any)=>{const t=String(s??'');return t.includes(',')||t.includes('"')||t.includes('\n')?`"${t.replace(/"/g,'""')}"`:t;};
             const hdr=["SAP RFQ No","RFQ Number","Description","Status","Created Date","Open Date","Closing Date","Tender Admin","Budget","Co. Code","Plant"];
             const data=list.map(r=>{const sapNo=r.sapRfqNo||(r.status!=="Created"?`70${r.id.replace(/\D/g,"").slice(-8).padStart(8,"0")}`:"");return[sapNo,r.id,r.title,r.status,fmtDate(r.postedDate),fmtDate(r.postedDate),fmtDate(r.closingDate),r.postedBy,r.estVal,r.companyCode,r.plant].map(esc).join(",");});
@@ -2969,7 +2970,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
           <Btn v="ghost" onClick={()=>{setScoreModal(null);setScores({});setScoreNotes("");}}>Cancel</Btn>
           <Btn v="success" onClick={()=>{
             const allFilled=qts.every(qt=>SCORE_CRITERIA.every(c=>(scores[qt.id]||{})[c.key]!==""));
-            if(!allFilled){alert("Please fill in all scores for all vendors before submitting.");return;}
+            if(!allFilled){toast("Please fill in all scores for all vendors before submitting.","err");return;}
             submitBuyerScores();
           }}>
             <SapIcon name="accept" size={13} color="#fff"/> Submit Scoring
@@ -3073,7 +3074,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
     if(!actionModal) return;
     const {rfq}=actionModal;
     const today=new Date().toISOString().split("T")[0];
-    if(!actionNotes.trim()){alert("Please provide rejection notes.");return;}
+    if(!actionNotes.trim()){toast("Please provide rejection notes.","err");return;}
     setRfqs(p=>p.map(r=>r.id===rfq.id?{...r,status:"Scored",rejectedByApprover:true,approverRejNotes:actionNotes,approverRejAt:today}:r));
     setActionModal(null);setActionNotes("");
   };
@@ -3935,7 +3936,7 @@ export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
 
   const submitDirReject=()=>{
     if(!dirActionModal)return;
-    if(!dirNotes.trim()){alert("Please provide rejection notes.");return;}
+    if(!dirNotes.trim()){toast("Please provide rejection notes.","err");return;}
     const today=new Date().toISOString().split("T")[0];
     setRfqs(p=>p.map(r=>r.id===dirActionModal.rfq.id?{...r,status:"Scored",directorRejNotes:dirNotes,directorRejAt:today,awardProposal:{...r.awardProposal,l1Approved:false}}:r));
     setDirActionModal(null);setDirNotes("");

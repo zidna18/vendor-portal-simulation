@@ -8,6 +8,7 @@ import {
   g2, pg,
 } from "./shared";
 
+import { ToastContainer } from "./components/ui/Toast";
 import { VendorInvoice, BrmInvoice } from "./InvoicePages";
 import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation, DirectorHome, DirectorRfq } from "./QuotationRfqPages";
 import { VendorHome, BrmHome, ApproverHome } from "./HomePages";
@@ -149,7 +150,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings,mockNotifs}) => 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 20px",borderTop:"1px solid rgba(255,255,255,0.12)",marginTop:4}}>
             <span style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{user.name} · {user.role==="vendor"?"Supplier":user.role==="approver"?"Approver":user.role==="director"?"Director":"BRM"}</span>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{onOpenSettings();setMenuOpen(false);}} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>
+              <button aria-label="Open settings" onClick={()=>{onOpenSettings();setMenuOpen(false);}} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,width:30,height:30,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}><SapIcon name="action-settings" size={14} color="#fff"/></button>
               <button onClick={onLogout} style={{background:"rgba(255,255,255,0.13)",color:"#fff",border:"none",cursor:"pointer",borderRadius:4,padding:"4px 12px",fontSize:12,fontFamily:"inherit"}}>Sign Out</button>
             </div>
           </div>
@@ -403,9 +404,9 @@ export default function App() {
     else window.location.href='/do/logout';
   };
   const drillInvoice=(no:string,sec:string)=>{setDrillInvoiceNo(no);setSection(sec);};
-  if(btpLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Signing you in…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if(btpLoading) return <div role="status" aria-label="Signing you in" style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div aria-hidden="true" style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Signing you in…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   if(!user) return isMockMode?<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh'}}/>}><LazyLogin onLogin={login}/></Suspense></ErrorBoundary>:<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:12,fontFamily:"'72',Arial,sans-serif"}}><div style={{fontSize:18,fontWeight:700,color:'#bb0000'}}>Access Denied</div><div style={{fontSize:14,color:'#6a6d70'}}>No role assigned. Contact your BTP administrator.</div></div>;
-  if(dataLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Loading portal data…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if(dataLoading) return <div role="status" aria-label="Loading portal data" style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div aria-hidden="true" style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Loading portal data…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   const render=()=>{
     if(user.role==="vendor") switch(section){
       case "profile":   return <VendorProfile user={user}/>;
@@ -439,6 +440,7 @@ export default function App() {
         BRM Vendor Portal · Powered by SAP BTP & Accenture · © 2025 BRM
       </div>
     </div>
+      <ToastContainer />
     </ErrorBoundary>
   );
 }
