@@ -524,19 +524,11 @@ export default function App() {
   const [btpLoading,setBtpLoading]=useState(!isMockMode);
   useEffect(()=>{
     if(isMockMode) return;
-    fetch('/user-api/currentUser',{credentials:'include'})
-      .then(r=>r.json())
+    fetch('/api/VendorPortal/whoami()',{credentials:'include',headers:{Accept:'application/json'}})
+      .then(r=>{if(!r.ok)throw new Error('whoami '+r.status);return r.json();})
       .then(u=>{
-        const scopes:string[]=u.scopes||[];
-        const has=(s:string)=>scopes.some(sc=>sc.endsWith('.'+s));
-        let role='brm';
-        if(has('Director')) role='director';
-        else if(has('Approver')) role='approver';
-        else if(has('Vendor')) role='vendor';
-        const attrs=u.userAttributes||{};
-        const vendorId=(attrs.vendorId||[])[0]||null;
-        const name=[u.firstname,u.lastname].filter(Boolean).join(' ')||u.email||u.name||'User';
-        setUser({id:u.email||u.name,name,email:u.email,role,vendorId,username:u.email});
+        const d=u.value??u;
+        setUser({id:d.email||'user',name:d.name||d.email||'User',email:d.email||'',role:d.role||'brm',vendorId:d.vendorId||null,username:d.email||'user'});
       })
       .catch(e=>console.error('BTP auth failed:',e))
       .finally(()=>setBtpLoading(false));

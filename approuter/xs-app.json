@@ -7,12 +7,6 @@
   },
   "routes": [
     {
-      "source": "^/user-api(.*)",
-      "service": "sap-approuter-userapi",
-      "endpoint": "userapi",
-      "authenticationType": "xsuaa"
-    },
-    {
       "source": "^/api/(.*)$",
       "destination": "cap-backend",
       "authenticationType": "xsuaa",
