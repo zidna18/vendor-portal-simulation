@@ -56,8 +56,10 @@ module.exports = cds.service.impl(async function (srv) {
       bp = bpRes.data?.d || bpRes.data || {};
       sup = supRes.data?.d || supRes.data || {};
     } catch (e) {
-      console.error('[vendorMaster] SAP API call failed:', e.message);
-      return req.error(502, `SAP API unavailable: ${e.message}. Check BTP Destination 'S4HC'.`);
+      const status = e.response?.status;
+      const body = JSON.stringify(e.response?.data)?.slice(0, 500) || '';
+      console.error(`[vendorMaster] SAP API failed: HTTP ${status} — ${e.message} — body: ${body}`);
+      return req.error(502, `SAP API HTTP ${status}: ${e.message}. Body: ${body}`);
     }
 
     // ── Address ──────────────────────────────────────────────────────
