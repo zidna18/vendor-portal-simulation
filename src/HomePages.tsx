@@ -23,7 +23,7 @@ export const VendorHome = ({user,invoices,quotations,rfqs,setSection,onDrillInvo
   const [showPages,setShowPages]     = useState(true);
   const [showActivity,setShowActivity] = useState(true);
 
-  const v  = VENDORS[user.vendorId];
+  const v  = VENDORS[user.vendorId] || { name: user.name, cat: "Supplier", status: "Active" };
   const mi = invoices.filter(i=>i.vendorId===user.vendorId);
   const mq = quotations.filter(q=>q.vendorId===user.vendorId);
   const mr = rfqs.filter(r=>r.targets.includes(user.vendorId));

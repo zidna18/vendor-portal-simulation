@@ -1594,7 +1594,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     else if(k==="invoiceNoConds"){setActive(p=>({...p,invoiceNoConds:[]}));setDraft(p=>({...p,invoiceNoConds:[]}));}
     else{setActive(p=>({...p,[k]:[]}));setDraft(p=>({...p,[k]:[]}));}
   };
-  const v=VENDORS[user.vendorId];
+  const v=VENDORS[user.vendorId]||{name:user.name,tax:"",lfb1:[]};
   const exportCSV=()=>{
     const rows=selRows.size>0?mine.filter(i=>selRows.has(i.id)):mine;
     if(rows.length===0){alert("No invoices to export.");return;}

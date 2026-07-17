@@ -225,7 +225,7 @@ export const VendorQuotation = ({user,quotations,setQuotations,rfqs}) => {
           {viewQt.notes&&<div><Lbl>Notes</Lbl><Val>{viewQt.notes}</Val></div>}
         </Modal>
       )}
-      {quotingRfq&&<QtFormModal rfq={quotingRfq} qt={editingQt} onSave={save} onClose={()=>{setQR(null);setEQ(null);}} vendorId={user.vendorId} vendorName={VENDORS[user.vendorId].name}/>}
+      {quotingRfq&&<QtFormModal rfq={quotingRfq} qt={editingQt} onSave={save} onClose={()=>{setQR(null);setEQ(null);}} vendorId={user.vendorId} vendorName={VENDORS[user.vendorId]?.name||user.name}/>}
     </div>
   );
 };
@@ -1875,10 +1875,10 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
   const toggleAll=()=>setSelIds(allSel?new Set():new Set(list.map(r=>r.id)));
   const [showApproval,setShowApproval]=useState(false);
   const [showPublish,setShowPublish]=useState(false);
-  const VENDOR_EMAILS:Record<string,{name:string,email:string,pic:string,phone:string}> = {
-    "10000001":{name:"PT Maju Bersama",     email:"ap@majubersama.co.id",        pic:"Bapak Andi Surya – Procurement Director",    phone:"+62 21 5555-1234"},
-    "10000002":{name:"CV Sukses Mandiri",   email:"finance@suksesmandiri.co.id", pic:"Ibu Rina Wati – Business Development Manager",phone:"+62 21 5555-5678"},
-  };
+  // Derive contact info from VENDORS (populated from mockData in mock mode; empty object in BTP mode)
+  const VENDOR_EMAILS:Record<string,{name:string,email:string,pic:string,phone:string}> = Object.fromEntries(
+    Object.values(VENDORS as any).map((v:any)=>([v.id,{name:v.name,email:v.email||"",pic:v.rep||"",phone:v.phone||""}]))
+  );
   const DEFAULT_REQ_DOCS=[
     {id:"doc1",label:"Company Profile",required:true,checked:true},
     {id:"doc2",label:"Proposal Teknis",required:true,checked:true},
@@ -2560,7 +2560,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
               {Object.keys(VENDORS).map(vid=>(
                 <label key={vid} style={{display:"flex",alignItems:"center",gap:6,fontSize:13,cursor:"pointer"}}>
                   <input type="checkbox" checked={f.targets.includes(vid)} onChange={e=>sf("targets",e.target.checked?[...f.targets,vid]:f.targets.filter(v=>v!==vid))}/>
-                  {VENDORS[vid].name}
+                  {VENDORS[vid]?.name||vid}
                 </label>
               ))}
             </div>

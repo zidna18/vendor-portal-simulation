@@ -4,6 +4,7 @@ import {
   fmtDate, pg,
   Badge, SapIcon,
 } from "./shared";
+// VENDORS is populated from mockData dynamically in mock mode (see apiService.ts getMockData)
 import { isMockMode, fetchVendorMaster } from "./apiService";
 
 const Section = ({title,icon,children}:{title:string,icon:string,children:any}) => (
@@ -24,13 +25,16 @@ const Row = ({label,value,mono=false}:{label:string,value:any,mono?:boolean}) =>
 );
 
 export const VendorProfile = ({user}) => {
-  const [v,setV]=useState<any>(isMockMode ? VENDORS[user.vendorId] : null);
+  const [v,setV]=useState<any>(null);
   const [loading,setL]=useState(true);
   const [apiErr,setApiErr]=useState<string|null>(null);
   const [tab,setTab]=useState<"info"|"bank"|"tax"|"cc">("info");
 
   useEffect(()=>{
     if(isMockMode){
+      // VENDORS is populated by getMockData() which resolves before dataLoading=false;
+      // by the time this component mounts the binding is already filled.
+      setV(VENDORS[user.vendorId]||null);
       setTimeout(()=>setL(false),700);
     } else {
       setL(true); setApiErr(null);

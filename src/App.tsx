@@ -1,68 +1,31 @@
-import { useState, useEffect, useRef, Component } from "react";
+﻿import { useState, useEffect, useRef, Component, lazy, Suspense } from "react";
 import { loadInvoices, loadQuotations, loadRfqs, isMockMode } from "./apiService";
 import {
-  C, USERS, INIT_INV, INIT_QT, INIT_RFQS,
+  C,
   VP, applyTheme, applySettings,
   mob, avtColor, avtIni,
   Btn, Inp, Sep, Modal, SapIcon,
   g2, pg,
 } from "./shared";
+
 import { VendorInvoice, BrmInvoice } from "./InvoicePages";
 import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation, DirectorHome, DirectorRfq } from "./QuotationRfqPages";
 import { VendorHome, BrmHome, ApproverHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
 
-// ── Notification mock data ──────────────────────────────────────
-const BRM_NOTIFS = [
-  {id:"n1", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Approved", msg:"PT Maju Bersama's quotation for RFQ-2025-0003 (Laptops & Workstations) has been approved.", time:"2 min ago", read:false},
-  {id:"n2", type:"quotation-rejected", icon:"decline", color:"#bb0000", title:"Quotation Rejected", msg:"CV Sukses Mandiri's quotation QT-2025-0002 for RFQ-2025-0001 was rejected due to price non-compliance.", time:"15 min ago", read:false},
-  {id:"n3", type:"quotation-submitted", icon:"add-document", color:"#0070f2", title:"New Quotation Submitted", msg:"PT Maju Bersama submitted a new quotation for RFQ-2025-0005 (HVAC Maintenance Contract).", time:"1 hr ago", read:false},
-  {id:"n3b", type:"quotation-sent-to-me", icon:"paper-plane", color:"#0070f2", title:"Quotation Sent to You", msg:"CV Sukses Mandiri sent quotation QT-2025-0009 (IDR 385,000,000) directly to you for RFQ-2025-0007 (Medical & Safety Supplies). Please review.", time:"45 min ago", read:false},
-  {id:"n3c", type:"quotation-sent-to-me", icon:"paper-plane", color:"#0070f2", title:"Quotation Sent to You", msg:"PT Maju Bersama sent quotation QT-2025-0010 (IDR 210,750,000) to you for RFQ-2025-0009 (Fuel & Lubricants). Awaiting your evaluation.", time:"1 hr ago", read:false},
-  {id:"n4", type:"change-request", icon:"pending", color:"#e76500", title:"Revision Request", msg:"CV Sukses Mandiri requested a revision on QT-2025-0007 — reason: updated material specs.", time:"2 hr ago", read:false},
-  {id:"n5", type:"rfq-closing", icon:"alert", color:"#e76500", title:"RFQ Closing Soon", msg:"RFQ-2025-0004 'Industrial Safety Equipment' is closing in 2 days. 1 vendor has not submitted.", time:"3 hr ago", read:true},
-  {id:"n6", type:"invoice-submitted", icon:"document", color:"#0070f2", title:"Invoice Submitted", msg:"New invoice INV/MJB/2025/009 (IDR 142,500,000) submitted by PT Maju Bersama — awaiting review.", time:"5 hr ago", read:true},
-  {id:"n7", type:"po-issued", icon:"sales-order", color:"#107e3e", title:"Purchase Order Issued", msg:"PO-2025-0018 issued to PT Maju Bersama for accepted quotation QT-2025-0003.", time:"Yesterday", read:true},
-  {id:"n8", type:"budget-approval", icon:"money-bills", color:"#6a2282", title:"Budget Approval Needed", msg:"RFQ-2025-0006 (Waste Management Services) is awaiting budget approval from Finance.", time:"Yesterday", read:true},
-  {id:"n9", type:"deadline-miss", icon:"warning2", color:"#bb0000", title:"Quotation Deadline Missed", msg:"2 target vendors did not submit quotations for RFQ-2025-0002 before the closing date.", time:"2 days ago", read:true},
-  {id:"n10", type:"report-ready", icon:"bar-chart", color:"#0070f2", title:"Monthly Report Ready", msg:"June 2025 procurement summary is ready. 34 RFQs closed, IDR 8.2B in quotations evaluated.", time:"3 days ago", read:true},
-];
-const APPROVER_NOTIFS = [
-  // Pending approval — what he should act on
-  {id:"a1", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0001 (IDR 490,000,000) — Procurement of Laptops & Workstations by PT Maju Bersama. Submitted 12 Jun 2025.", time:"Just now", read:false},
-  {id:"a2", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0029 (IDR 510,000,000) — Procurement of Laptops & Workstations by CV Sukses Mandiri. Submitted 14 Jun 2025.", time:"5 min ago", read:false},
-  {id:"a3", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0030 (IDR 90,500,000) — Medical & First Aid Supplies – All Sites by CV Sukses Mandiri. Submitted 08 Jun 2025.", time:"1 hr ago", read:false},
-  {id:"a4", type:"pending-approval", icon:"approvals", color:"#e76500", title:"Awaiting Your Approval", msg:"QT-2025-0031 (IDR 283,500,000) — Waste Management & Environmental Services by CV Sukses Mandiri. Submitted 10 Jun 2025.", time:"2 hr ago", read:false},
-  // Final approved — outcomes
-  {id:"a5", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0003 (IDR 350,000,000) — Security Services – HO Building by CV Sukses Mandiri has been fully approved and awarded.", time:"Yesterday", read:true},
-  {id:"a6", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0004 (IDR 228,000,000) — HVAC Maintenance Contract by PT Maju Bersama has been fully approved. PO in progress.", time:"Yesterday", read:true},
-  {id:"a7", type:"final-approved", icon:"accept", color:"#107e3e", title:"Quotation Finally Approved", msg:"QT-2025-0006 (IDR 175,000,000) — Industrial Safety Equipment by PT Maju Bersama has been fully approved and closed.", time:"2 days ago", read:true},
-  {id:"a8", type:"approval-rejected", icon:"decline", color:"#bb0000", title:"Approval Rejected", msg:"QT-2025-0008 (IDR 620,000,000) — IT Infrastructure Services by PT Maju Bersama was rejected by you. Reason: Exceeds budget ceiling.", time:"3 days ago", read:true},
-];
-const DIRECTOR_NOTIFS = [
-  {id:"d1", type:"pending-approval", icon:"approvals", color:"#e76500", title:"5 RFQs Awaiting Approval", msg:"RFQ-2025-0003, 0008, 0021, 0022, 0028 are pending Finance Approver decision. Total value IDR 6.13B.", time:"Just now", read:false},
-  {id:"d2", type:"score-submitted", icon:"performance", color:"#107e3e", title:"Evaluation Score Submitted", msg:"Budi Santoso submitted evaluation scores for RFQ-2025-0021 (Road Infrastructure). Winner: PT Maju Bersama (score: 86).", time:"2 hr ago", read:false},
-  {id:"d3", type:"rfq-closed", icon:"complete", color:"#107e3e", title:"RFQ Closed – Winner Selected", msg:"RFQ-2025-0001 (Laptops & Workstations) closed. Winner: PT Maju Bersama. Contract value IDR 490,000,000.", time:"Yesterday", read:true},
-  {id:"d4", type:"budget-alert", icon:"alert", color:"#e76500", title:"High-Value RFQ Submitted", msg:"RFQ-2025-0028 (IT Hardware Refresh – IDR 2.2B) submitted for approval. Requires Director awareness.", time:"2 days ago", read:true},
-  {id:"d5", type:"discussion-activity", icon:"discussion", color:"#0070f2", title:"Active Discussion", msg:"5 new messages in RFQ-2025-0021 discussion thread. Procurement Manager and Finance Approver are aligned on vendor selection.", time:"3 days ago", read:true},
-];
-const VENDOR_NOTIFS = [
-  {id:"v1", type:"rfq-invite", icon:"add-document", color:"#0070f2", title:"New RFQ Invitation", msg:"You have been invited to submit a quotation for RFQ-2025-0008 (IT Infrastructure Services). Deadline: 14 Jul 2025.", time:"10 min ago", read:false},
-  {id:"v2", type:"quotation-approved", icon:"accept", color:"#107e3e", title:"Quotation Accepted", msg:"Your quotation QT-2025-0003 for RFQ-2025-0001 (Laptops & Workstations) has been accepted. PO will follow.", time:"1 hr ago", read:false},
-  {id:"v3", type:"quotation-rejected", icon:"decline", color:"#bb0000", title:"Quotation Rejected", msg:"Your quotation QT-2025-0005 for RFQ-2025-0003 was rejected. Reason: price above budget ceiling.", time:"3 hr ago", read:false},
-  {id:"v4", type:"change-request", icon:"pending", color:"#e76500", title:"Revision Requested", msg:"BRM has requested a revision on your quotation QT-2025-0007. Please update and resubmit.", time:"5 hr ago", read:true},
-  {id:"v5", type:"invoice-confirmed", icon:"accept", color:"#107e3e", title:"Invoice Confirmed", msg:"Invoice INV/MJB/2025/006 (IDR 215,000,000) has been confirmed by BRM and is being processed.", time:"Yesterday", read:true},
-  {id:"v6", type:"rfq-closing", icon:"alert", color:"#e76500", title:"RFQ Deadline Reminder", msg:"RFQ-2025-0005 (HVAC Maintenance) closes in 1 day. Submit your quotation before the deadline.", time:"Yesterday", read:true},
-];
+// Conditional lazy — Rollup dead-code-eliminates the dynamic import when isMockMode=false
+const LazyLogin = isMockMode ? lazy(() => import("./LoginPage")) : (null as any);
+// BRM_NOTIFS / APPROVER_NOTIFS / DIRECTOR_NOTIFS / VENDOR_NOTIFS removed — see src/data/mockData.ts
 
 // ── Shell Bar ──────────────────────────────────────────────────
-const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
+const Shell = ({user,onLogout,section,setSection,onOpenSettings,mockNotifs}) => {
   const [menuOpen,setMenuOpen]=useState(false);
   const [avatarOpen,setAvatarOpen]=useState(false);
   const [notifOpen,setNotifOpen]=useState(false);
   const [readIds,setReadIds]=useState<Set<string>>(new Set());
   const notifRef=useRef<HTMLDivElement>(null);
-  const allNotifs=user.role==="vendor"?VENDOR_NOTIFS:user.role==="approver"?APPROVER_NOTIFS:user.role==="director"?DIRECTOR_NOTIFS:BRM_NOTIFS;
+  const nd=mockNotifs||{brm:[],approver:[],director:[],vendor:[]};
+  const allNotifs=user.role==="vendor"?nd.vendor:user.role==="approver"?nd.approver:user.role==="director"?nd.director:nd.brm;
   const notifs=allNotifs.map(n=>({...n,read:n.read||readIds.has(n.id)}));
   const unread=notifs.filter(n=>!n.read).length;
   useEffect(()=>{
@@ -196,119 +159,7 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings}) => {
   );
 };
 
-// ── Login ──────────────────────────────────────────────────────
-const Login = ({onLogin}) => {
-  const [username,setU]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [loading,setL]=useState(false); const [role,setRole]=useState("vendor"); const [showPw,setShowPw]=useState(false); const [keepMe,setKeep]=useState(false);
-  const go=()=>{
-    if(!username.trim()){setErr("Please enter a User ID or Login Name.");return;}
-    if(!pw){setErr("Please enter your password.");return;}
-    setL(true);setErr("");
-    setTimeout(()=>{
-      const u=USERS.find(x=>x.username===username&&x.password===pw);
-      u?onLogin(u):(setErr("The user name or password you entered is incorrect. Please try again."),setL(false));
-    },700);
-  };
-  const quickLogin=(uname)=>onLogin(USERS.find(x=>x.username===uname));
-  const F:any={fontFamily:"'72','72full',Arial,Helvetica,sans-serif"};
-  return (
-    <div style={{...F,minHeight:"100vh",background:"#f3f4f5",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 16px"}}>
-      {/* Card */}
-      <div style={{background:"#fff",borderRadius:4,width:"100%",maxWidth:380,boxShadow:"0 2px 16px rgba(0,0,0,0.12)",overflow:"hidden",display:"flex",flexDirection:"column"}}>
-        {/* Card body */}
-        <div style={{padding:"32px 40px 0 40px",flex:1}}>
-          {/* Logo row */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <img src="/tenant_logo.png" alt="BRM" style={{height:26,width:"auto"}} onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
-              <span style={{fontSize:11,color:"#6a6d70",fontWeight:400,letterSpacing:.2}}>SAP<sup style={{fontSize:8}}>®</sup> ID</span>
-            </div>
-          </div>
 
-          {/* Heading */}
-          <h1 style={{fontSize:28,fontWeight:700,color:"#1d2d3e",margin:"0 0 28px 0",lineHeight:1.2}}>Sign In</h1>
-
-          {/* Role selector — kept for demo, styled subtly */}
-          <div style={{marginBottom:20}}>
-            <div style={{display:"flex",gap:0,border:"1px solid #d9d9d9",borderRadius:4,overflow:"hidden"}}>
-              {[["vendor","Vendor / Supplier"],["brm","BRM Employee"]].map(([r,lbl],i)=>(
-                <button key={r} onClick={()=>setRole(r)} style={{flex:1,padding:"7px 0",border:"none",borderRight:i===0?"1px solid #d9d9d9":"none",background:role===r?"#0a6ed1":"#fff",color:role===r?"#fff":"#6a6d70",fontSize:12,fontWeight:role===r?700:400,fontFamily:"inherit",cursor:"pointer",transition:"background .15s"}}>{lbl}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Username field */}
-          <div style={{marginBottom:16}}>
-            <label style={{display:"block",fontSize:13,color:"#6a6d70",marginBottom:4}}>User ID or Login Name</label>
-            <div style={{position:"relative"}}>
-              <input
-                value={username} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}
-                placeholder="User ID or Login Name"
-                style={{width:"100%",boxSizing:"border-box",padding:"8px 0",fontSize:14,color:"#1d2d3e",background:"transparent",border:"none",borderBottom:"1px dotted #8c8c8c",outline:"none",fontFamily:"inherit"}}
-              />
-            </div>
-          </div>
-
-          {/* Password field */}
-          <div style={{marginBottom:16}}>
-            <label style={{display:"block",fontSize:13,color:"#6a6d70",marginBottom:4}}>Password</label>
-            <div style={{position:"relative",border:"1px solid #0a6ed1",borderRadius:4,display:"flex",alignItems:"center"}}>
-              <input
-                value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}
-                type={showPw?"text":"password"} placeholder="Password"
-                style={{flex:1,padding:"8px 10px",fontSize:14,color:"#1d2d3e",background:"transparent",border:"none",outline:"none",fontFamily:"inherit"}}
-              />
-              <button onClick={()=>setShowPw(p=>!p)} title={showPw?"Hide Password":"Show Password"}
-                style={{background:"none",border:"none",cursor:"pointer",padding:"0 10px",display:"flex",alignItems:"center",color:"#6a6d70"}}>
-                <SapIcon name={showPw?"hide":"show"} size={16} color="#6a6d70"/>
-              </button>
-            </div>
-          </div>
-
-          {/* Error */}
-          {err&&<div style={{fontSize:13,color:"#bb0000",marginBottom:12,padding:"8px 10px",background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:3}}>{err}</div>}
-
-          {/* Keep me signed in + Forgot password */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-            <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"#32363a",cursor:"pointer"}}>
-              <input type="checkbox" checked={keepMe} onChange={e=>setKeep(e.target.checked)} style={{width:13,height:13,cursor:"pointer",accentColor:"#0a6ed1"}}/>
-              Keep me signed in
-            </label>
-            <a style={{fontSize:13,color:"#0a6ed1",fontWeight:700,textDecoration:"none",cursor:"pointer"}}>Forgot password?</a>
-          </div>
-
-          {/* Quick demo access */}
-          <div style={{marginBottom:20,padding:"12px 0",borderTop:"1px solid #e5e5e5"}}>
-            <div style={{fontSize:11,color:"#6a6d70",fontWeight:700,marginBottom:8,letterSpacing:.6,textTransform:"uppercase"}}>Quick Demo Access</div>
-            <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {[["vendor1","PT Maju Bersama","Vendor"],["vendor2","CV Sukses Mandiri","Vendor"],["vendor3","PT Solusi Nusantara","Vendor"],["brm.user","Ahmad Rizki","BRM Employee"],["buyer1","Siti Rahma","BRM Employee"],["approver1","Budi Santoso","Approver"],["director1","Arief Budiman","Director"]].map(([u,name,roleLabel])=>(
-                <button key={u} onClick={()=>quickLogin(u)} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"7px 10px",borderRadius:3,border:"1px solid #e5e5e5",background:"#fafafa",cursor:"pointer",fontSize:12,fontFamily:"inherit",color:"#1d2d3e"}}>
-                  <SapIcon name={roleLabel==="Vendor"?"factory":roleLabel==="Approver"?"approvals":roleLabel==="Director"?"manager":"employee"} size={12} color="#6a6d70"/>
-                  <span style={{fontWeight:600}}>{name}</span>
-                  <span style={{color:"#8c8c8c",marginLeft:"auto",fontSize:11}}>{roleLabel}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Card footer with Continue button */}
-        <div style={{padding:"16px 40px 24px 40px",display:"flex",justifyContent:"flex-end",borderTop:"1px solid #f0f0f0"}}>
-          <button onClick={go} disabled={loading}
-            style={{background:loading?"#b3d3f5":"#0a6ed1",color:"#fff",border:"none",borderRadius:4,padding:"9px 24px",fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:loading?"not-allowed":"pointer",minWidth:110,transition:"background .15s"}}>
-            {loading?"Signing in…":"Continue"}
-          </button>
-        </div>
-      </div>
-
-      {/* Page footer */}
-      <div style={{marginTop:20,background:"#fff",borderRadius:24,padding:"10px 28px",display:"flex",gap:20,alignItems:"center"}}>
-        {["Privacy Policy","Legal Disclosure","Cookie Statement"].map(l=>(
-          <a key={l} style={{fontSize:12,color:"#0a6ed1",textDecoration:"none",cursor:"pointer"}}>{l}</a>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 // ── Settings Modal ─────────────────────────────────────────────
 const SettingsModal = ({settings,onUpdate,onClose,theme,onThemeChange,user}) => {
@@ -522,6 +373,7 @@ export default function App() {
   const [rfqs,setRfqs]=useState<any[]>([]);
   const [dataLoading,setDataLoading]=useState(true);
   const [btpLoading,setBtpLoading]=useState(!isMockMode);
+  const [mockNotifs,setMockNotifs]=useState<any>(null);
   useEffect(()=>{
     if(isMockMode) return;
     fetch('/api/VendorPortal/whoami()',{credentials:'include',headers:{Accept:'application/json'}})
@@ -538,6 +390,9 @@ export default function App() {
       .then(([inv,qt,rfq])=>{setInvoices(inv);setQuotations(qt);setRfqs(rfq);})
       .catch(e=>console.error('Data load failed:',e))
       .finally(()=>setDataLoading(false));
+    if(isMockMode){
+      import('./data/mockData').then(m=>setMockNotifs(m.MOCK_NOTIFS));
+    }
   },[]);
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -549,7 +404,7 @@ export default function App() {
   };
   const drillInvoice=(no:string,sec:string)=>{setDrillInvoiceNo(no);setSection(sec);};
   if(btpLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Signing you in…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
-  if(!user) return isMockMode?<ErrorBoundary><Login onLogin={login}/></ErrorBoundary>:<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:12,fontFamily:"'72',Arial,sans-serif"}}><div style={{fontSize:18,fontWeight:700,color:'#bb0000'}}>Access Denied</div><div style={{fontSize:14,color:'#6a6d70'}}>No role assigned. Contact your BTP administrator.</div></div>;
+  if(!user) return isMockMode?<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh'}}/>}><LazyLogin onLogin={login}/></Suspense></ErrorBoundary>:<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:12,fontFamily:"'72',Arial,sans-serif"}}><div style={{fontSize:18,fontWeight:700,color:'#bb0000'}}>Access Denied</div><div style={{fontSize:14,color:'#6a6d70'}}>No role assigned. Contact your BTP administrator.</div></div>;
   if(dataLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Loading portal data…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   const render=()=>{
     if(user.role==="vendor") switch(section){
@@ -577,7 +432,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'72','72full',Arial,Helvetica,sans-serif",fontSize:14,color:C.t1}}>
-      <Shell user={user} onLogout={logout} section={section} setSection={setSection} onOpenSettings={()=>setShowSettings(true)}/>
+      <Shell user={user} onLogout={logout} section={section} setSection={setSection} onOpenSettings={()=>setShowSettings(true)} mockNotifs={mockNotifs}/>
       {showSettings&&<SettingsModal settings={settings} onUpdate={updateSettings} onClose={()=>setShowSettings(false)} theme={theme} onThemeChange={changeTheme} user={user}/>}
       <div style={{minHeight:"calc(100vh - 46px)"}}>{render()}</div>
       <div style={{textAlign:"center",padding:"14px 0",fontSize:12,color:C.t2,borderTop:`1px solid ${C.border}`,background:C.card,marginTop:20}}>

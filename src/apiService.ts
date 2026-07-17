@@ -1,4 +1,4 @@
-import { INIT_INV, INIT_QT, INIT_RFQS } from './shared';
+import { VENDORS } from './shared';
 
 // VITE_USE_MOCK=false → BTP (real CAP backend)
 // anything else     → mock mode (Vercel / local dev)
@@ -6,6 +6,15 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 const API_BASE = '/api';
 
 export const isMockMode = USE_MOCK;
+
+// ── Dynamic mock data loader (tree-shaken out when VITE_USE_MOCK=false) ──────
+async function getMockData() {
+  if (!USE_MOCK) return null;
+  const m = await import('./data/mockData');
+  // Populate the mutable VENDORS binding in shared.tsx so all components see it
+  Object.assign(VENDORS, m.VENDORS);
+  return m;
+}
 
 // ── HTTP helpers ──────────────────────────────────────────────────
 async function odataGet(path: string) {
@@ -45,30 +54,26 @@ export async function fetchVendorMaster(vendorId: string) {
   const raw = await odataGet(`/VendorPortal/vendorMaster(vendorId='${vendorId}')`);
   return {
     ...raw,
-    banks: parseJsonStr(raw.banks, []),
-    lfb1:  parseJsonStr(raw.lfb1,  []),
-    lfm1:  parseJsonStr(raw.lfm1,  []),
+    banks: parseJsonField(raw.banks, []),
+    lfb1:  parseJsonField(raw.lfb1,  []),
+    lfm1:  parseJsonField(raw.lfm1,  []),
   };
 }
 
-// ── JSON field helpers ────────────────────────────────────────────
-function parseJsonStr(s: any, fallback: any) {
-  if (s == null) return fallback;
-  try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return fallback; }
-}
-function parseJson(s: any, fallback: any) {
+// ── JSON field helper ─────────────────────────────────────────────
+function parseJsonField(s: any, fallback: any) {
   if (s == null) return fallback;
   try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return fallback; }
 }
 
 function parseInvoice(r: any) {
-  return { ...r, poNumbers: parseJson(r.poNumbers, []), items: parseJson(r.items, []), files: parseJson(r.files, []) };
+  return { ...r, poNumbers: parseJsonField(r.poNumbers, []), items: parseJsonField(r.items, []), files: parseJsonField(r.files, []) };
 }
 function parseQuotation(r: any) {
-  return { ...r, items: parseJson(r.items, []), files: parseJson(r.files, []), priceConditions: parseJson(r.priceConditions, {}), scores: parseJson(r.scores, null), awardProposal: parseJson(r.awardProposal, null) };
+  return { ...r, items: parseJsonField(r.items, []), files: parseJsonField(r.files, []), priceConditions: parseJsonField(r.priceConditions, {}), scores: parseJsonField(r.scores, null), awardProposal: parseJsonField(r.awardProposal, null) };
 }
 function parseRfq(r: any) {
-  return { ...r, targets: parseJson(r.targets, []), items: parseJson(r.items, []), discussions: parseJson(r.discussions, []), awardProposal: parseJson(r.awardProposal, null) };
+  return { ...r, targets: parseJsonField(r.targets, []), items: parseJsonField(r.items, []), discussions: parseJsonField(r.discussions, []), awardProposal: parseJsonField(r.awardProposal, null) };
 }
 
 function serializeInvoice(inv: any) {
@@ -83,19 +88,28 @@ function serializeRfq(rfq: any) {
 
 // ── Loaders ───────────────────────────────────────────────────────
 export async function loadInvoices() {
-  if (USE_MOCK) return [...INIT_INV];
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return [...m!.INIT_INV];
+  }
   const rows = await odataGet('/VendorPortal/Invoices?$orderby=submittedAt desc');
   return rows.map(parseInvoice);
 }
 
 export async function loadQuotations() {
-  if (USE_MOCK) return [...INIT_QT];
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return [...m!.INIT_QT];
+  }
   const rows = await odataGet('/VendorPortal/Quotations?$orderby=submittedDate desc');
   return rows.map(parseQuotation);
 }
 
 export async function loadRfqs() {
-  if (USE_MOCK) return [...INIT_RFQS];
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return [...m!.INIT_RFQS];
+  }
   const rows = await odataGet('/VendorPortal/RFQs?$orderby=postedDate desc');
   return rows.map(parseRfq);
 }
