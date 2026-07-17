@@ -41,7 +41,7 @@ module.exports = cds.service.impl(async function (srv) {
 
     let bp = {}, sup = {};
     try {
-      const [bpRes, supRes] = await Promise.all([
+      const [bpRes, supRes, bankRes] = await Promise.all([
         executeHttpRequest(dest, {
           method: 'GET',
           url: `${baseUrl}/A_BusinessPartner('${vendorId}')?$expand=to_BusinessPartnerAddress`,
@@ -49,12 +49,18 @@ module.exports = cds.service.impl(async function (srv) {
         }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${baseUrl}/A_Supplier('${vendorId}')?$expand=to_SupplierCompany,to_SupplierPurchasingOrg,to_SupplierBankAccount`,
+          url: `${baseUrl}/A_Supplier('${vendorId}')?$expand=to_SupplierCompany,to_SupplierPurchasingOrg`,
           headers: hdrs,
         }),
+        executeHttpRequest(dest, {
+          method: 'GET',
+          url: `${baseUrl}/A_SupplierBankAccount?$filter=Supplier eq '${vendorId}'`,
+          headers: hdrs,
+        }).catch(e => { console.warn('[vendorMaster] bank accounts unavailable:', e.message); return null; }),
       ]);
       bp = bpRes.data?.d || bpRes.data || {};
       sup = supRes.data?.d || supRes.data || {};
+      const bankData = bankRes ? (bankRes.data?.d?.results || bankRes.data?.value || []) : [];
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 500) || '';
@@ -75,11 +81,7 @@ module.exports = cds.service.impl(async function (srv) {
     ].filter(Boolean).join(', ');
 
     // ── Bank accounts ─────────────────────────────────────────────────
-    const banks = (
-      sup.to_SupplierBankAccount?.results ||
-      sup.to_SupplierBankAccount?.value ||
-      []
-    ).map((b, i) => ({
+    const banks = bankData.map((b, i) => ({
       no: i + 1,
       name: b.BankName || b.BankNumber || '—',
       branch: b.BankBranch || '',
