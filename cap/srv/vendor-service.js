@@ -1,6 +1,11 @@
 const cds = require('@sap/cds');
 
 module.exports = cds.service.impl(async function (srv) {
+  // Temporary email→vendorId map until vendor master sync UI is built
+  const VENDOR_MAP = {
+    'zidna.q.tsaqila@accenture.com': '2100000010',
+  };
+
   srv.on('whoami', req => {
     const u = req.user;
     let role = 'brm';
@@ -8,8 +13,10 @@ module.exports = cds.service.impl(async function (srv) {
     else if (u.is('Approver')) role = 'approver';
     else if (u.is('Vendor')) role = 'vendor';
     const attrs = u.attr || {};
-    const vendorId = (Array.isArray(attrs.vendorId) ? attrs.vendorId[0] : attrs.vendorId) || null;
     const email = u.id || '';
+    const vendorId = (Array.isArray(attrs.vendorId) ? attrs.vendorId[0] : attrs.vendorId)
+      || VENDOR_MAP[email]
+      || null;
     return { id: email, email, name: email, role, vendorId };
   });
 
