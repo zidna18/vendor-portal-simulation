@@ -1,18 +1,21 @@
 {
   "welcomeFile": "index.html",
-  "authenticationMethod": "none",
+  "authenticationMethod": "route",
   "sessionTimeout": 30,
+  "logout": {
+    "logoutEndpoint": "/do/logout"
+  },
   "routes": [
     {
       "source": "^/api/(.*)$",
       "destination": "cap-backend",
-      "authenticationType": "none",
+      "authenticationType": "xsuaa",
       "csrfProtection": false
     },
     {
       "source": "^(.*)$",
       "localDir": "resources",
-      "authenticationType": "none"
+      "authenticationType": "xsuaa"
     }
   ]
 }

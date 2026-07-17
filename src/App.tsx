@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Component } from "react";
-import { loadInvoices, loadQuotations, loadRfqs } from "./apiService";
+import { loadInvoices, loadQuotations, loadRfqs, isMockMode } from "./apiService";
 import {
   C, USERS, INIT_INV, INIT_QT, INIT_RFQS,
   VP, applyTheme, applySettings,
@@ -521,6 +521,26 @@ export default function App() {
   const [quotations,setQuotations]=useState<any[]>([]);
   const [rfqs,setRfqs]=useState<any[]>([]);
   const [dataLoading,setDataLoading]=useState(true);
+  const [btpLoading,setBtpLoading]=useState(!isMockMode);
+  useEffect(()=>{
+    if(isMockMode) return;
+    fetch('/user-api/currentUser',{credentials:'include'})
+      .then(r=>r.json())
+      .then(u=>{
+        const scopes:string[]=u.scopes||[];
+        const has=(s:string)=>scopes.some(sc=>sc.endsWith('.'+s));
+        let role='brm';
+        if(has('Director')) role='director';
+        else if(has('Approver')) role='approver';
+        else if(has('Vendor')) role='vendor';
+        const attrs=u.userAttributes||{};
+        const vendorId=(attrs.vendorId||[])[0]||null;
+        const name=[u.firstname,u.lastname].filter(Boolean).join(' ')||u.email||u.name||'User';
+        setUser({id:u.email||u.name,name,email:u.email,role,vendorId,username:u.email});
+      })
+      .catch(e=>console.error('BTP auth failed:',e))
+      .finally(()=>setBtpLoading(false));
+  },[]);
   useEffect(()=>{
     Promise.all([loadInvoices(),loadQuotations(),loadRfqs()])
       .then(([inv,qt,rfq])=>{setInvoices(inv);setQuotations(qt);setRfqs(rfq);})
@@ -531,9 +551,13 @@ export default function App() {
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
   const login=u=>{setUser(u);setSection("dashboard");};
-  const logout=()=>{setUser(null);setSection("dashboard");};
+  const logout=()=>{
+    if(isMockMode){setUser(null);setSection("dashboard");}
+    else window.location.href='/do/logout';
+  };
   const drillInvoice=(no:string,sec:string)=>{setDrillInvoiceNo(no);setSection(sec);};
-  if(!user) return <ErrorBoundary><Login onLogin={login}/></ErrorBoundary>;
+  if(btpLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Signing you in…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  if(!user) return isMockMode?<ErrorBoundary><Login onLogin={login}/></ErrorBoundary>:<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:12,fontFamily:"'72',Arial,sans-serif"}}><div style={{fontSize:18,fontWeight:700,color:'#bb0000'}}>Access Denied</div><div style={{fontSize:14,color:'#6a6d70'}}>No role assigned. Contact your BTP administrator.</div></div>;
   if(dataLoading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,fontFamily:"'72',Arial,sans-serif",color:"#6a6d70"}}><div style={{width:40,height:40,border:"3px solid #e5e5e5",borderTop:"3px solid #0a6ed1",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/><span style={{fontSize:14}}>Loading portal data…</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
   const render=()=>{
     if(user.role==="vendor") switch(section){

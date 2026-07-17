@@ -2,6 +2,14 @@
   "xsappname": "vendor-portal",
   "tenant-mode": "dedicated",
   "description": "BRM Vendor Portal security descriptor",
+  "attributes": [
+    {
+      "name": "vendorId",
+      "description": "Vendor ID for supplier portal access (e.g. 10000001)",
+      "valueType": "string",
+      "valueRequired": false
+    }
+  ],
   "scopes": [
     { "name": "$XSAPPNAME.Vendor",   "description": "Vendor / Supplier" },
     { "name": "$XSAPPNAME.BRM",      "description": "BRM Procurement Employee" },
@@ -10,7 +18,7 @@
     { "name": "$XSAPPNAME.Director", "description": "Director" }
   ],
   "role-templates": [
-    { "name": "Vendor",   "scope-references": ["$XSAPPNAME.Vendor"] },
+    { "name": "Vendor",   "scope-references": ["$XSAPPNAME.Vendor"], "attribute-references": ["vendorId"] },
     { "name": "BRM",      "scope-references": ["$XSAPPNAME.BRM"] },
     { "name": "Buyer",    "scope-references": ["$XSAPPNAME.Buyer"] },
     { "name": "Approver", "scope-references": ["$XSAPPNAME.Approver"] },
