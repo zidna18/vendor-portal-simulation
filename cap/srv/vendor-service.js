@@ -36,8 +36,8 @@ module.exports = cds.service.impl(async function (srv) {
     }
 
     const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
-    const baseUrl = `/sap/opu/odata/sap/API_BUSINESS_PARTNER`;
-    const hdrs = { Accept: 'application/json' };
+    const baseUrl = `/sap/opu/odata/SAP/API_BUSINESS_PARTNER`;
+    const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
 
     let bp = {}, sup = {};
     try {

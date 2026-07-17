@@ -33,7 +33,10 @@ modules:
     type: nodejs
     path: cap
     build-parameters:
-      builder: npm
+      builder: custom
+      commands:
+        - npm install
+        - node_modules/.bin/cds build --production
       build-result: gen/srv
     parameters:
       disk-quota: 512M
