@@ -54,7 +54,7 @@ module.exports = cds.service.impl(async function (srv) {
         }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${baseUrl}/A_SupplierBankAccount?$filter=Supplier eq '${vendorId}'`,
+          url: `${baseUrl}/A_BusinessPartnerBank?$filter=BusinessPartner eq '${vendorId}'`,
           headers: hdrs,
         }).catch(e => { console.warn('[vendorMaster] bank accounts unavailable:', e.message); return null; }),
         executeHttpRequest(dest, {
