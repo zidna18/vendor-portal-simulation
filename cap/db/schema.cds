@@ -62,6 +62,17 @@ entity Quotations {
   awardProposal     : LargeString;  // JSON: object | null
 }
 
+entity InvoiceAttachments {
+  key id          : UUID;
+  invoiceId       : String(36);      // FK → Invoices.id
+  fileName        : String(255);
+  mimeType        : String(100);
+  fileSize        : Integer;
+  content         : LargeBinary;     // actual file bytes stored in HANA
+  uploadedAt      : DateTime;
+  uploadedBy      : String(100);
+}
+
 entity RFQs {
   key id                     : UUID;
   title                      : String(200);

@@ -145,3 +145,35 @@ export async function saveRfq(rfq: any) {
   }
   return parseRfq(await odataPost('/VendorPortal/RFQs', payload));
 }
+
+// ── Attachment helpers (BTP only) ─────────────────────────────────
+export async function uploadAttachment(invoiceId: string, file: File): Promise<{ id: string; fileName: string; fileSize: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64 = (reader.result as string).split(',')[1];
+        const res = await fetch(`${API_BASE}/VendorPortal/attach`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId, fileName: file.name, mimeType: file.type, content: base64 }),
+        });
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+        resolve(await res.json());
+      } catch (e) { reject(e); }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+export function attachmentDownloadUrl(id: string) {
+  return `${API_BASE}/VendorPortal/attach/${id}`;
+}
+
+export async function listAttachments(invoiceId: string): Promise<any[]> {
+  if (USE_MOCK) return [];
+  const rows = await odataGet(`/VendorPortal/InvoiceAttachments?$filter=invoiceId eq '${invoiceId}'`);
+  return Array.isArray(rows) ? rows : [];
+}

@@ -195,8 +195,50 @@ module.exports = cds.service.impl(async function (srv) {
     };
   });
 
-  // ── Startup: clear mock seed data on BTP ───────────────────────────
+  // ── Startup: register Express routes + clear mock seed data ────────
   cds.on('served', async () => {
+    // ── File attachment routes (binary — bypass OData) ───────────────
+    const express = require('express');
+
+    // Upload: POST /api/VendorPortal/attach
+    cds.app.post('/api/VendorPortal/attach', express.json({ limit: '20mb' }), async (req, res) => {
+      try {
+        const { invoiceId, fileName, mimeType, content } = req.body;
+        if (!invoiceId || !fileName || !content) return res.status(400).json({ error: 'invoiceId, fileName, content required' });
+        const db = await cds.connect.to('db');
+        const id = cds.utils.uuid();
+        const buf = Buffer.from(content, 'base64');
+        await db.run(INSERT.into('vendor.portal.InvoiceAttachments').entries({
+          id, invoiceId, fileName,
+          mimeType: mimeType || 'application/octet-stream',
+          fileSize: buf.length,
+          content: buf,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: req.user?.id || 'user',
+        }));
+        res.json({ id, fileName, fileSize: buf.length });
+      } catch (e) {
+        console.error('[attach upload]', e.message);
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    // Download: GET /api/VendorPortal/attach/:id
+    cds.app.get('/api/VendorPortal/attach/:id', async (req, res) => {
+      try {
+        const db = await cds.connect.to('db');
+        const row = await db.run(SELECT.one.from('vendor.portal.InvoiceAttachments').where({ id: req.params.id }));
+        if (!row) return res.status(404).send('Not found');
+        res.set('Content-Type', row.mimeType || 'application/octet-stream');
+        res.set('Content-Disposition', `attachment; filename="${row.fileName}"`);
+        res.send(row.content);
+      } catch (e) {
+        console.error('[attach download]', e.message);
+        res.status(500).send(e.message);
+      }
+    });
+
+    // ── Clear mock seed data ─────────────────────────────────────────
     try {
       const db = await cds.connect.to('db');
       const { Invoices, Quotations, RFQs } = db.entities('vendor.portal');

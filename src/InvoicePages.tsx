@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "./lib/useToast";
+import { isMockMode, uploadAttachment, attachmentDownloadUrl } from "./apiService";
 import {
   C, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -187,8 +188,37 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
   const netBalance=Number(f.amount||0)+Number(f.vatAmt||0)+totalOtherFee-Number(f.whtAmt||0);
   const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",placeholder:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",placeholder:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",placeholder:"50002103"}];
-  const addFile=(name:string)=>{if(!(f.files||[]).includes(name))s("files",[...(f.files||[]),name]);};
-  const rmFile=(name:string)=>s("files",(f.files||[]).filter((x:string)=>x!==name));
+  // files[] entries are either strings (mock) or {id,fileName,...} objects (BTP)
+  const fileKey=(entry:any)=>typeof entry==="string"?entry:entry?.fileName||entry?.id||"";
+  const addFile=(name:string)=>{if(!(f.files||[]).some((e:any)=>fileKey(e)===name))s("files",[...(f.files||[]),name]);};
+  const rmFile=(name:string)=>s("files",(f.files||[]).filter((e:any)=>fileKey(e)!==name));
+  const fileInputRef=useRef<HTMLInputElement|null>(null);
+  const [uploadingKey,setUploadingKey]=useState<string|null>(null);
+  const triggerUpload=(key:string)=>{
+    if(isMockMode){addFile(key);return;}
+    setUploadingKey(key);
+    if(fileInputRef.current){fileInputRef.current.accept="*/*";fileInputRef.current.click();}
+  };
+  const onFileChosen=async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const file=e.target.files?.[0];
+    if(!fileInputRef.current)fileInputRef.current=null;
+    e.target.value="";
+    if(!file||!uploadingKey)return;
+    const key=uploadingKey;setUploadingKey(null);
+    // Use invoice id if already assigned (edit); for new invoices generate now and persist
+    let invId=f.id;
+    if(!invId){invId=`PI-${uid()}`;s("id",invId);}
+    try{
+      toast(`Uploading ${file.name}…`,"info");
+      const meta=await uploadAttachment(invId,file);
+      // Replace fixed-slot entry or add new
+      const cur=(f.files||[]).filter((e:any)=>fileKey(e)!==key);
+      s("files",[...cur,{...meta,slot:key}]);
+      toast(`${file.name} uploaded.`,"ok");
+    }catch(err:any){
+      toast(`Upload failed: ${err.message}`,"err");
+    }
+  };
   const addFeeRow=()=>s("otherFees",[...(f.otherFees||[]),{category:"",amount:0}]);
   const updateFee=(i:number,k:string,v:any)=>{const fees=[...(f.otherFees||[])];fees[i]={...fees[i],[k]:v};s("otherFees",fees);};
   const removeFee=(i:number)=>s("otherFees",(f.otherFees||[]).filter((_:any,j:number)=>j!==i));
@@ -428,6 +458,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
 
       {/* ATTACHMENT */}
       <SHdr>Attachment</SHdr>
+      {/* Hidden file input — shared across all upload slots */}
+      <input ref={fileInputRef} type="file" style={{display:"none"}} onChange={onFileChosen}/>
       <table style={{width:"100%",borderCollapse:"collapse",marginBottom:8,border:`1px solid ${C.border}`,borderRadius:4,fontSize:13}}>
         <thead>
           <tr style={{background:C.subtle}}>
@@ -438,7 +470,10 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         </thead>
         <tbody>
           {FIXED_ATT.map(att=>{
-            const uploaded=(f.files||[]).includes(att.key);
+            const entry=(f.files||[]).find((e:any)=>fileKey(e)===att.key||(typeof e==="object"&&e?.slot===att.key));
+            const uploaded=!!entry;
+            const displayName=typeof entry==="object"&&entry?.fileName?entry.fileName:att.key;
+            const dlUrl=typeof entry==="object"&&entry?.id?attachmentDownloadUrl(entry.id):null;
             return(
               <tr key={att.key} style={{borderBottom:`1px solid ${C.border}`}}>
                 <td style={{padding:"6px 10px",fontWeight:600,color:C.t1,whiteSpace:"nowrap" as const}}>{att.label}</td>
@@ -448,21 +483,28 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                 <td style={{padding:"6px 10px",textAlign:"center",whiteSpace:"nowrap" as const}}>
                   {uploaded
                     ?<span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:C.ok}}>
-                        <SapIcon name="accept" size={12} color={C.ok}/>{att.key}
+                        <SapIcon name="accept" size={12} color={C.ok}/>
+                        {dlUrl
+                          ?<a href={dlUrl} target="_blank" rel="noreferrer" style={{color:C.ok,textDecoration:"none"}}>{displayName}</a>
+                          :<span>{displayName}</span>}
                         <button onClick={()=>rmFile(att.key)} style={{background:"none",border:"none",color:C.t2,cursor:"pointer",fontSize:11,padding:0}}>✕</button>
                       </span>
-                    :<Btn v="neutral" sm onClick={()=>addFile(att.key)}>Upload</Btn>}
+                    :<Btn v="neutral" sm onClick={()=>triggerUpload(att.key)}>{uploadingKey===att.key?"…":"Upload"}</Btn>}
                 </td>
               </tr>
             );
           })}
-          {(f.files||[]).filter((fn:string)=>!fixedKeys.includes(fn)).map((fn:string,i:number)=>(
-            <tr key={fn} style={{borderBottom:`1px solid ${C.border}`}}>
+          {(f.files||[]).filter((e:any)=>{const k=fileKey(e);return!fixedKeys.includes(k)&&!(typeof e==="object"&&e?.slot&&fixedKeys.includes(e.slot));}).map((e:any,i:number)=>{
+            const k=fileKey(e);const dlUrl=typeof e==="object"&&e?.id?attachmentDownloadUrl(e.id):null;
+            return(
+            <tr key={k||i} style={{borderBottom:`1px solid ${C.border}`}}>
               <td style={{padding:"6px 10px",color:C.t2,fontStyle:"italic"}}>Additional</td>
-              <td style={{padding:"6px 10px",color:C.t1,fontSize:12,fontFamily:"monospace"}}>{fn}</td>
-              <td style={{padding:"6px 10px",textAlign:"center"}}><button onClick={()=>rmFile(fn)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12}}>Remove</button></td>
-            </tr>
-          ))}
+              <td style={{padding:"6px 10px",color:C.t1,fontSize:12,fontFamily:"monospace"}}>
+                {dlUrl?<a href={dlUrl} target="_blank" rel="noreferrer" style={{color:C.primary}}>{k}</a>:<span>{k}</span>}
+              </td>
+              <td style={{padding:"6px 10px",textAlign:"center"}}><button onClick={()=>rmFile(k)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:12}}>Remove</button></td>
+            </tr>);
+          })}
         </tbody>
       </table>
 
@@ -1277,11 +1319,11 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
   });
 
   const files = view.files||[];
-  const FILE_META:Record<string,{size:string}> = {
-    "invoice.pdf":      {size:"124 KB"},
-    "faktur_pajak.pdf": {size:"87 KB"},
-  };
-  const getFileMeta = (f:string) => FILE_META[f]||{size:"—"};
+  const fEntryKey=(e:any)=>typeof e==="string"?e:e?.fileName||e?.id||"";
+  const fEntrySize=(e:any)=>typeof e==="object"&&e?.fileSize?`${Math.round(e.fileSize/1024)} KB`:"—";
+  const fEntryUrl=(e:any)=>typeof e==="object"&&e?.id?attachmentDownloadUrl(e.id):null;
+  const fEntryUploadedBy=(e:any)=>typeof e==="object"&&e?.uploadedBy?e.uploadedBy:(view.vendorName||"Vendor");
+  const fEntryDate=(e:any)=>typeof e==="object"&&e?.uploadedAt?e.uploadedAt:(view.submittedAt||view.invoiceDate||"");
   const uploadDate = view.submittedAt||view.invoiceDate||"";
 
   const VTABS = [
@@ -1502,21 +1544,24 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
               {canEdit&&<button style={{width:22,height:22,background:"none",border:`1px solid ${C.border}`,borderRadius:3,cursor:"pointer",fontSize:14,color:C.primary,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
             </div>
             {files.length===0&&<div style={{padding:"20px",textAlign:"center",color:C.t2,fontSize:12}}>No attachments uploaded.</div>}
-            {files.map((f:string,i:number)=>{
-              const m=getFileMeta(f);
+            {files.map((entry:any,i:number)=>{
+              const name=fEntryKey(entry);const dlUrl=fEntryUrl(entry);const sz=fEntrySize(entry);
+              const by=fEntryUploadedBy(entry);const dt=fEntryDate(entry);
               return(
-                <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
+                <div key={name||i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
                   onMouseLeave={e=>(e.currentTarget.style.background=C.card)}>
                   <div style={{flexShrink:0,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
                     <SapIcon name="pdf-attachment" size={18} color={C.primary}/>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
-                    <button onClick={()=>onPdf(f)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f}</button>
+                    {dlUrl
+                      ?<a href={dlUrl} target="_blank" rel="noreferrer" style={{color:C.primary,fontSize:13,fontWeight:600,display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</a>
+                      :<button onClick={()=>onPdf(name)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</button>}
                     <div style={{fontSize:11,color:C.t2,marginTop:1}}>
-                      Uploaded By: <span style={{color:C.t1}}>{view.vendorName||"Vendor"}</span>
-                      {uploadDate&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(uploadDate)}</span></>}
-                      {" "}· File Size: <span style={{color:C.t1}}>{m.size}</span>
+                      Uploaded By: <span style={{color:C.t1}}>{by}</span>
+                      {dt&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(dt)}</span></>}
+                      {" "}· File Size: <span style={{color:C.t1}}>{sz}</span>
                     </div>
                   </div>
                   {canEdit&&<button title="Remove" style={{width:22,height:22,background:"none",border:"none",cursor:"pointer",color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,borderRadius:3}}
@@ -2253,8 +2298,11 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   });
 
   const files = view.files||[];
-  const FILE_META:Record<string,{size:string}> = {"invoice.pdf":{size:"124 KB"},"faktur_pajak.pdf":{size:"87 KB"}};
-  const getFileMeta = (f:string) => FILE_META[f]||{size:"—"};
+  const fEntryKey=(e:any)=>typeof e==="string"?e:e?.fileName||e?.id||"";
+  const fEntrySize=(e:any)=>typeof e==="object"&&e?.fileSize?`${Math.round(e.fileSize/1024)} KB`:"—";
+  const fEntryUrl=(e:any)=>typeof e==="object"&&e?.id?attachmentDownloadUrl(e.id):null;
+  const fEntryUploadedBy=(e:any)=>typeof e==="object"&&e?.uploadedBy?e.uploadedBy:(view.vendorName||"Vendor");
+  const fEntryDate=(e:any)=>typeof e==="object"&&e?.uploadedAt?e.uploadedAt:(view.submittedAt||view.invoiceDate||"");
   const uploadDate = view.submittedAt||view.invoiceDate||"";
 
   return (
@@ -2462,21 +2510,24 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
               <span style={{flex:1}}/>
             </div>
             {files.length===0&&<div style={{padding:"20px",textAlign:"center",color:C.t2,fontSize:12}}>No attachments uploaded.</div>}
-            {files.map((f:string,i:number)=>{
-              const m=getFileMeta(f);
+            {files.map((entry:any,i:number)=>{
+              const name=fEntryKey(entry);const dlUrl=fEntryUrl(entry);const sz=fEntrySize(entry);
+              const by=fEntryUploadedBy(entry);const dt=fEntryDate(entry);
               return(
-                <div key={f} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
+                <div key={name||i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<files.length-1?`1px solid ${C.border}`:"none",background:C.card}}
                   onMouseEnter={e=>(e.currentTarget.style.background=C.hover)}
                   onMouseLeave={e=>(e.currentTarget.style.background=C.card)}>
                   <div style={{flexShrink:0,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:C.subtle,borderRadius:4,border:`1px solid ${C.border}`}}>
                     <SapIcon name="pdf-attachment" size={18} color={C.primary}/>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
-                    <button onClick={()=>onPdf(f)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f}</button>
+                    {dlUrl
+                      ?<a href={dlUrl} target="_blank" rel="noreferrer" style={{color:C.primary,fontSize:13,fontWeight:600,display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</a>
+                      :<button onClick={()=>onPdf(name)} style={{background:"none",border:"none",padding:0,cursor:"pointer",color:C.primary,fontSize:13,fontWeight:600,fontFamily:"inherit",textAlign:"left",display:"block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}</button>}
                     <div style={{fontSize:11,color:C.t2,marginTop:1}}>
-                      Uploaded By: <span style={{color:C.t1}}>{view.vendorName||"Vendor"}</span>
-                      {uploadDate&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(uploadDate)}</span></>}
-                      {" "}· File Size: <span style={{color:C.t1}}>{m.size}</span>
+                      Uploaded By: <span style={{color:C.t1}}>{by}</span>
+                      {dt&&<> · Uploaded On: <span style={{color:C.t1}}>{fmtDate(dt)}</span></>}
+                      {" "}· File Size: <span style={{color:C.t1}}>{sz}</span>
                     </div>
                   </div>
                 </div>
