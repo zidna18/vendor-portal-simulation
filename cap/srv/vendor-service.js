@@ -44,7 +44,7 @@ module.exports = cds.service.impl(async function (srv) {
       const [bpRes, supRes, bankRes, taxRes] = await Promise.all([
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${baseUrl}/A_BusinessPartner('${vendorId}')?$expand=to_BusinessPartnerAddress`,
+          url: `${baseUrl}/A_BusinessPartner('${vendorId}')?$expand=to_BusinessPartnerAddress,to_BPTaxNumber`,
           headers: hdrs,
         }),
         executeHttpRequest(dest, {
@@ -66,7 +66,10 @@ module.exports = cds.service.impl(async function (srv) {
       bp = bpRes.data?.d || bpRes.data || {};
       sup = supRes.data?.d || supRes.data || {};
       bankData = bankRes ? (bankRes.data?.d?.results || bankRes.data?.value || []) : [];
-      taxNumbers = taxRes ? (taxRes.data?.d?.results || taxRes.data?.value || []) : [];
+      // Tax numbers from separate query (fallback: from BP expand to_BPTaxNumber)
+      const taxFromExpand = bp.to_BPTaxNumber?.results || bp.to_BPTaxNumber?.value || [];
+      taxNumbers = (taxRes ? (taxRes.data?.d?.results || taxRes.data?.value || []) : []);
+      if (taxNumbers.length === 0) taxNumbers = taxFromExpand;
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 500) || '';
