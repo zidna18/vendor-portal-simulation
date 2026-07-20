@@ -16,11 +16,14 @@ service VendorPortal @(path: '/api/VendorPortal') {
   function whoami() returns WhoAmIResult;
 
   // Vendor master data fetched live from SAP S/4HANA via BTP Destination 'S4HC'
-  // banks / lfb1 / lfm1 are JSON strings (parse on frontend)
+  // addresses / banks / lfb1 / lfm1 are JSON strings (parse on frontend)
   type VendorMasterResult {
     id         : String;
     name       : String;
     tax        : String;
+    npwp       : String;
+    nppkp      : String;
+    nitku      : String;
     addr       : String;
     phone      : String;
     fax        : String;
@@ -31,9 +34,12 @@ service VendorPortal @(path: '/api/VendorPortal') {
     status     : String;
     website    : String;
     pkp        : String;
+    pkpStatus  : String;
+    legalForm  : String;
     taxStatus  : String;
     certExpiry : String;
     npwpAddress: String;
+    addresses  : String;
     banks      : String;
     lfb1       : String;
     lfm1       : String;
