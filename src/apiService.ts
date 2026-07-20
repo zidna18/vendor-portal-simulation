@@ -54,9 +54,10 @@ export async function fetchVendorMaster(vendorId: string) {
   const raw = await odataGet(`/VendorPortal/vendorMaster(vendorId='${vendorId}')`);
   return {
     ...raw,
-    banks: parseJsonField(raw.banks, []),
-    lfb1:  parseJsonField(raw.lfb1,  []),
-    lfm1:  parseJsonField(raw.lfm1,  []),
+    addresses: parseJsonField(raw.addresses, []),
+    banks:     parseJsonField(raw.banks, []),
+    lfb1:      parseJsonField(raw.lfb1,  []),
+    lfm1:      parseJsonField(raw.lfm1,  []),
   };
 }
 

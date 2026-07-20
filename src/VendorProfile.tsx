@@ -140,25 +140,18 @@ export const VendorProfile = ({user}) => {
           {/* Contact & Address */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
             {(()=>{
-              // Build address table rows from vendor data + mock additional addresses
-              const mainCity=v.addr?.split(",")[1]?.trim()||"Jakarta";
-              const addrRows=[
-                {no:"0001",type:"HQ / Registered",default:true, street:v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:v.fax||"—", email:v.email},
-                {no:"0002",type:"Billing Address",default:false, street:v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:v.fax||"—", email:"billing@"+v.email?.split("@")[1]},
-                {no:"0003",type:"Warehouse / Delivery",default:false, street:"Jl. Industri Raya No. 88, Kawasan Industri Pulogadung", city:"Jakarta Timur", postal:"13920", country:"Indonesia", phone:v.phone?.replace("1234","9900"), fax:"—", email:"warehouse@"+v.email?.split("@")[1]},
-                {no:"0004",type:"NPWP / Tax Office",default:false, street:v.npwpAddress||v.addr, city:mainCity, postal:v.addr?.match(/\d{5}/)?.[0]||"10000", country:"Indonesia", phone:v.phone, fax:"—", email:"tax@"+v.email?.split("@")[1]},
-              ];
-              const addrCols=["No.","Address Type","Street / Address","City","Postal","Country","Phone","Fax","Email","Default"];
-              const colW=["48px","150px","260px","130px","70px","100px","140px","140px","210px","70px"];
+              const addrRows:any[]=v.addresses||[];
+              const addrCols=["No.","Street / Address","City","Postal","Country","Phone","Fax","Email","Default"];
+              const colW=["48px","280px","130px","70px","80px","140px","120px","200px","70px"];
               return(
                 <div style={{marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,paddingBottom:10,borderBottom:`2px solid ${C.border}`}}>
                     <SapIcon name="map" size={16} color={C.primary}/>
                     <span style={{fontSize:14,fontWeight:700,color:C.primary,letterSpacing:0.2,textTransform:"uppercase"}}>Contact & Address</span>
-                    <span style={{marginLeft:"auto",fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px"}}>{addrRows.length} addresses</span>
+                    <span style={{marginLeft:"auto",fontSize:11,color:C.t2,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:3,padding:"2px 8px"}}>{addrRows.length} address{addrRows.length!==1?"es":""}</span>
                   </div>
                   <div style={{overflowX:"auto",border:`1px solid ${C.border}`,borderRadius:4}}>
-                    <table style={{borderCollapse:"collapse",fontSize:13,minWidth:1320}}>
+                    <table style={{borderCollapse:"collapse",fontSize:13,minWidth:1140}}>
                       <colgroup>{colW.map((w,i)=><col key={i} style={{width:w}}/>)}</colgroup>
                       <thead>
                         <tr style={{background:TK.hdrBg}}>
@@ -168,17 +161,18 @@ export const VendorProfile = ({user}) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {addrRows.map((a,i)=>(
+                        {addrRows.length===0
+                          ? <tr><td colSpan={9} style={{padding:"20px 10px",textAlign:"center",color:C.t2,fontSize:13}}>No address data from SAP</td></tr>
+                          : addrRows.map((a,i)=>(
                           <tr key={a.no} style={{background:i%2===0?TK.rowBg:C.subtle,borderBottom:`1px solid ${TK.rowBorder}`}}>
                             <td style={{padding:"8px 10px",fontFamily:"monospace",fontSize:12,color:C.t2}}>{a.no}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,fontWeight:600,color:C.t1,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{a.type}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis",maxWidth:260}}>{a.street}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const}}>{a.city}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,color:C.t2,fontFamily:"monospace"}}>{a.postal}</td>
-                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.country}</td>
-                            <td style={{padding:"8px 10px",fontSize:12,color:C.t1,fontFamily:"monospace"}}>{a.phone}</td>
-                            <td style={{padding:"8px 10px",fontSize:12,color:a.fax==="—"?C.t2:C.t1,fontFamily:"monospace"}}>{a.fax}</td>
-                            <td style={{padding:"8px 10px",fontSize:12,color:"#0854a0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{a.email}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,maxWidth:280}}>{a.street||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1,whiteSpace:"nowrap" as const}}>{a.city||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t2,fontFamily:"monospace"}}>{a.postal||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:13,color:C.t1}}>{a.country||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:a.phone?C.t1:C.t2,fontFamily:"monospace"}}>{a.phone||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:a.fax?C.t1:C.t2,fontFamily:"monospace"}}>{a.fax||"—"}</td>
+                            <td style={{padding:"8px 10px",fontSize:12,color:a.email?"#0854a0":C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{a.email||"—"}</td>
                             <td style={{padding:"8px 10px",textAlign:"center" as const}}>
                               {a.default&&<span style={{display:"inline-block",background:"#e8f4e8",color:"#256025",border:"1px solid #9dd89d",borderRadius:3,fontSize:10,fontWeight:700,padding:"1px 7px",letterSpacing:0.4}}>DEFAULT</span>}
                             </td>
@@ -198,7 +192,7 @@ export const VendorProfile = ({user}) => {
                     ].map(r=>(
                       <div key={r.label} style={{display:"flex",gap:8,alignItems:"baseline"}}>
                         <span style={{fontSize:11,fontWeight:700,color:C.t2,textTransform:"uppercase" as const,letterSpacing:0.7,minWidth:110,flexShrink:0}}>{r.label}</span>
-                        <span style={{fontSize:13,color:C.t1}}>{r.value}</span>
+                        <span style={{fontSize:13,color:C.t1}}>{r.value||"—"}</span>
                       </div>
                     ))}
                   </div>
@@ -261,10 +255,12 @@ export const VendorProfile = ({user}) => {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"20px 24px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
             <Section title="Tax Registration" icon="document-text">
-              <Row label="NPWP Number"       value={v.tax} mono/>
-              <Row label="NPWP Address"      value={v.npwpAddress}/>
-              <Row label="PKP Status"        value={v.pkp}/>
-              <Row label="Tax Status"        value={v.taxStatus}/>
+              <Row label="NPWP Number (ID1)"  value={v.npwp||v.tax} mono/>
+              <Row label="NPPKP Number (ID3)" value={v.nppkp} mono/>
+              <Row label="NITKU Number (ID5)" value={v.nitku} mono/>
+              <Row label="NPWP Address"       value={v.npwpAddress}/>
+              <Row label="PKP Status"         value={v.pkpStatus||(v.legalForm?`${v.legalForm} — Unknown`:"")}/>
+              <Row label="Tax Status"         value={v.taxStatus}/>
               <Row label="Certificate Expiry" value={v.certExpiry?fmtDate(v.certExpiry):"—"}/>
             </Section>
           </div>

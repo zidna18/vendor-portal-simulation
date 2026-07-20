@@ -39,9 +39,9 @@ module.exports = cds.service.impl(async function (srv) {
     const baseUrl = `/sap/opu/odata/SAP/API_BUSINESS_PARTNER`;
     const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
 
-    let bp = {}, sup = {}, bankData = [];
+    let bp = {}, sup = {}, bankData = [], taxNumbers = [];
     try {
-      const [bpRes, supRes, bankRes] = await Promise.all([
+      const [bpRes, supRes, bankRes, taxRes] = await Promise.all([
         executeHttpRequest(dest, {
           method: 'GET',
           url: `${baseUrl}/A_BusinessPartner('${vendorId}')?$expand=to_BusinessPartnerAddress`,
@@ -57,10 +57,16 @@ module.exports = cds.service.impl(async function (srv) {
           url: `${baseUrl}/A_SupplierBankAccount?$filter=Supplier eq '${vendorId}'`,
           headers: hdrs,
         }).catch(e => { console.warn('[vendorMaster] bank accounts unavailable:', e.message); return null; }),
+        executeHttpRequest(dest, {
+          method: 'GET',
+          url: `${baseUrl}/A_BusinessPartnerTaxNumber?$filter=BusinessPartner eq '${vendorId}'`,
+          headers: hdrs,
+        }).catch(e => { console.warn('[vendorMaster] tax numbers unavailable:', e.message); return null; }),
       ]);
       bp = bpRes.data?.d || bpRes.data || {};
       sup = supRes.data?.d || supRes.data || {};
       bankData = bankRes ? (bankRes.data?.d?.results || bankRes.data?.value || []) : [];
+      taxNumbers = taxRes ? (taxRes.data?.d?.results || taxRes.data?.value || []) : [];
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 500) || '';
@@ -68,7 +74,7 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(502, `SAP API HTTP ${status}: ${e.message}. Body: ${body}`);
     }
 
-    // ── Address ──────────────────────────────────────────────────────
+    // ── Address — one entry per SAP Address Overview row ─────────────
     const addresses = bp.to_BusinessPartnerAddress?.results
       || bp.to_BusinessPartnerAddress?.value
       || [];
@@ -79,6 +85,31 @@ module.exports = cds.service.impl(async function (srv) {
       mainAddr.CityName,
       mainAddr.PostalCode,
     ].filter(Boolean).join(', ');
+
+    // Map each SAP address to a flat object for the UI table
+    const addrRows = addresses.map((a, i) => ({
+      no:      String(i + 1).padStart(4, '0'),
+      street:  [a.StreetName, a.HouseNumber].filter(Boolean).join(' '),
+      city:    a.CityName || '',
+      postal:  a.PostalCode || '',
+      country: a.Country || 'ID',
+      region:  a.Region || '',
+      phone:   a.PhoneNumber || '',
+      fax:     a.FaxNumber || '',
+      email:   a.EmailAddress || '',
+      default: i === 0,
+    }));
+
+    // ── Tax numbers (ID1=NPWP, ID3=NPPKP, ID5=NITKU) ─────────────────
+    const taxByCategory = {};
+    taxNumbers.forEach(t => { taxByCategory[t.TaxNumberCategory] = t.TaxNumber || t.TaxNumberLong || ''; });
+    const npwp  = taxByCategory['ID1'] || sup.TaxNumber1 || '';
+    const nppkp = taxByCategory['ID3'] || '';
+    const nitku = taxByCategory['ID5'] || '';
+
+    // ── PKP status from LegalForm ─────────────────────────────────────
+    const legalForm = bp.LegalForm || '';
+    const pkpStatus = legalForm === 'Z1' ? 'PKP' : legalForm === 'Z2' ? 'Non PKP' : legalForm === 'Z9' ? 'Others' : '';
 
     // ── Bank accounts ─────────────────────────────────────────────────
     const banks = bankData.map((b, i) => ({
@@ -135,7 +166,7 @@ module.exports = cds.service.impl(async function (srv) {
     return {
       id:          vendorId,
       name:        bp.BusinessPartnerFullName || bp.OrganizationBPName1 || '',
-      tax:         sup.TaxNumber1 || '',
+      tax:         npwp,
       addr:        addrStr,
       phone:       mainAddr.PhoneNumber || '',
       fax:         mainAddr.FaxNumber || '',
@@ -145,10 +176,16 @@ module.exports = cds.service.impl(async function (srv) {
       rep:         '',
       status:      sup.DeletionIndicator ? 'Inactive' : 'Active',
       website:     bp.WebsiteURL || '',
-      pkp:         '',
+      pkp:         pkpStatus,
+      pkpStatus:   pkpStatus,
+      legalForm:   legalForm,
       taxStatus:   'Active',
       certExpiry:  '',
+      npwp:        npwp,
+      nppkp:       nppkp,
+      nitku:       nitku,
       npwpAddress: addrStr,
+      addresses:   JSON.stringify(addrRows),
       banks:       JSON.stringify(banks),
       lfb1:        JSON.stringify(lfb1),
       lfm1:        JSON.stringify(lfm1),
