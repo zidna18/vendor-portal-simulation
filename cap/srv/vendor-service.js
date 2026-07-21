@@ -256,37 +256,28 @@ module.exports = cds.service.impl(async function (srv) {
     // Build OData filter for multiple POs
     const poFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
 
-    let items = [], grHistory = {}, dpAmounts = {};
+    let items = [], v4Items = {};
     try {
-      const [itemRes, grRes] = await Promise.all([
+      // V2: material data, unit price, DP amount (DownPaymentAmount is on item)
+      // V4: delivery quantities to calculate GR amount
+      const hdrsV4 = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
+      const v4ItemFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
+      const [itemRes, v4Res] = await Promise.all([
+        executeHttpRequest(dest, { method: 'GET', url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}`, headers: hdrs }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}`,
-          headers: hdrs,
-        }),
-        executeHttpRequest(dest, {
-          method: 'GET',
-          url: `${base}/A_PurchaseOrderHistoryCategory?$filter=(${poFilter}) and HistoryCategory eq 'WE'`,
-          headers: hdrs,
-        }).catch(e => { console.warn('[poItems] GR history unavailable:', e.message); return null; }),
+          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}`,
+          headers: hdrsV4,
+        }).catch(e => { console.warn('[poItems] V4 item unavailable:', e.message); return null; }),
       ]);
 
       items = itemRes.data?.d?.results || itemRes.data?.value || [];
-      if (items.length > 0) console.log('[poItems] sample item keys:', Object.keys(items[0]).join(','));
 
-      const rawGr = grRes ? (grRes.data?.d?.results || grRes.data?.value || []) : [];
-      if (rawGr.length > 0) console.log('[poItems] GR history keys:', Object.keys(rawGr[0]).join(','));
-      // GR: S=Soll(Debit)=positive goods receipt; H=Haben(Credit)=reversal/correction
-      rawGr.forEach(h => {
-        const key = `${h.PurchaseOrder}/${h.PurchaseOrderItem}`;
-        const amt = parseFloat(
-          h.GoodsMvtDocInCoCdCurrency || h.GoodsMvtDocInTransactionCurr ||
-          h.GoodsMvtDocInLocalCurrency || h.AmountInCoCodeCurrency || '0'
-        );
-        // Debit (S) = goods in = positive; Credit (H) = reversal = negative
-        const sign = (h.DebitCreditCode === 'H') ? -1 : 1;
-        grHistory[key] = (grHistory[key] || 0) + sign * Math.abs(amt);
-      });
+      const rawV4 = v4Res ? (v4Res.data?.value || []) : [];
+      if (rawV4.length > 0) {
+        console.log('[poItems] V4 item keys:', Object.keys(rawV4[0]).join(','));
+        rawV4.forEach(r => { v4Items[`${r.PurchaseOrder}/${r.PurchaseOrderItem}`] = r; });
+      }
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 300) || '';
@@ -294,61 +285,52 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(502, `SAP API HTTP ${status}: ${e.message}`);
     }
 
-    // ── GR + DP amounts from Journal Entry API (SAP_COM_0002) ────────
-    // GR: RMWE transactions, debit side (DebitCreditCode='S'), non-reversed
-    // DP: SpecialGLCode='F', non-reversed
-    // Requires SAP_COM_0002 comm arrangement + S4HC_JOURNALENTRY_AVAILABLE=true env var
-    if (process.env.S4HC_JOURNALENTRY_AVAILABLE === 'true') {
-      const jFilter = poList.map(p => `PurchasingDocument eq '${p}'`).join(' or ');
-      const jeBase = `/sap/opu/odata/SAP/API_JOURNALENTRYITEMBASIC_SRV/A_JournalEntryItem`;
-      try {
-        const [grJeRes, dpJeRes] = await Promise.all([
-          // GR amounts: RMWE business transaction, debit entries, non-reversed
-          executeHttpRequest(dest, {
-            method: 'GET',
-            url: `${jeBase}?$filter=(${jFilter}) and BusinessTransactionType eq 'RMWE' and DebitCreditCode eq 'S' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchasingDocumentItem,AmountInCompanyCodeCurrency,CompanyCodeCurrency`,
-            headers: hdrs,
-          }).catch(e => { console.warn('[poItems] GR Journal Entry failed:', e.message); return null; }),
-          // DP amounts: special GL 'F', non-reversed
-          executeHttpRequest(dest, {
-            method: 'GET',
-            url: `${jeBase}?$filter=(${jFilter}) and SpecialGLCode eq 'F' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchasingDocumentItem,AmountInCompanyCodeCurrency,CompanyCodeCurrency`,
-            headers: hdrs,
-          }).catch(e => { console.warn('[poItems] DP Journal Entry failed:', e.message); return null; }),
-        ]);
-
-        const rawGrJe = grJeRes ? (grJeRes.data?.d?.results || grJeRes.data?.value || []) : [];
-        rawGrJe.forEach(r => {
-          const key = `${r.PurchasingDocument}/${r.PurchasingDocumentItem || ''}`;
-          grHistory[key] = (grHistory[key] || 0) + parseFloat(r.AmountInCompanyCodeCurrency || '0');
-        });
-        if (rawGrJe.length > 0) console.log('[poItems] GR from Journal Entry: overriding PO history amounts');
-
-        const rawDpJe = dpJeRes ? (dpJeRes.data?.d?.results || dpJeRes.data?.value || []) : [];
-        rawDpJe.forEach(r => {
-          const key = `${r.PurchasingDocument}/${r.PurchasingDocumentItem || ''}`;
-          dpAmounts[key] = (dpAmounts[key] || 0) + parseFloat(r.AmountInCompanyCodeCurrency || '0');
-        });
-      } catch (e) {
-        console.warn('[poItems] Journal Entry API failed:', e.message);
-      }
-    }
-
     return items.map(r => {
       const key = `${r.PurchaseOrder}/${r.PurchaseOrderItem}`;
-      const grAmt = grHistory[key] || 0;
-      const dpAmt = dpAmounts[key] || 0;
+
+      // PO Amount: NetPriceAmount / NetPriceQuantity × OrderQuantity
+      // (NetOrderValue is not returned by V2 A_PurchaseOrderItem)
+      const netPrice  = parseFloat(r.NetPriceAmount   || '0');
+      const priceQty  = parseFloat(r.NetPriceQuantity || '1') || 1;
+      const orderQty  = parseFloat(r.OrderQuantity    || '0');
+      const poAmount  = netPrice / priceQty * orderQty;
+
+      // DP Amount: directly available on item (no extra API needed)
+      const dpAmount  = parseFloat(r.DownPaymentAmount || '0');
+
+      // GR Amount: use V4 item if available.
+      // V4 should have QuantityToBeDelivered (open quantity remaining).
+      // GR Qty = OrderQuantity - QuantityToBeDelivered
+      // GR Amount = GR Qty / OrderQuantity * PO Amount
+      let grAmount = 0;
+      const v4 = v4Items[key];
+      if (v4) {
+        // Log field names once to find the right quantity field
+        if (key === Object.keys(v4Items)[0]) {
+          console.log('[poItems] V4 item first-row keys for GR calc:', JSON.stringify(Object.fromEntries(
+            Object.entries(v4).filter(([k]) => /[Qq]uant|[Dd]eliv|[Gg]ood|[Rr]eceiv|[Oo]pen/.test(k))
+          )));
+        }
+        const qtyToDeliver = parseFloat(
+          v4.QuantityToBeDelivered ?? v4.OpenQuantity ?? v4.RemainingQuantity ?? v4.DeliveryQuantity ?? 'NaN'
+        );
+        if (!isNaN(qtyToDeliver) && orderQty > 0) {
+          const deliveredQty = Math.max(0, orderQty - qtyToDeliver);
+          grAmount = deliveredQty / orderQty * poAmount;
+        }
+      }
+
       return {
         po:        r.PurchaseOrder || '',
         item:      r.PurchaseOrderItem || '',
         material:  r.Material || '',
         desc:      r.PurchaseOrderItemText || '',
-        qty:       String(parseFloat(r.OrderQuantity || '0')),
+        qty:       String(orderQty),
         uom:       r.PurchaseOrderQuantityUnit || '',
-        unitPrice: String(parseFloat(r.NetPriceAmount || '0')),
-        poAmount:  String(parseFloat(r.NetOrderValue || '0')),
-        grAmount:  String(grAmt),
-        dpAmount:  String(dpAmt),
+        unitPrice: String(netPrice / priceQty),
+        poAmount:  String(poAmount),
+        grAmount:  String(grAmount),
+        dpAmount:  String(dpAmount),
         currency:  r.DocumentCurrency || 'IDR',
         plant:     r.Plant || '',
       };
