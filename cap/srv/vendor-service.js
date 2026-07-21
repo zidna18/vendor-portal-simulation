@@ -205,22 +205,21 @@ module.exports = cds.service.impl(async function (srv) {
     }
 
     const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
-    const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
-
+    const hdrsV4 = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
     try {
       const res = await executeHttpRequest(dest, {
         method: 'GET',
-        url: `/sap/opu/odata/SAP/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrder?$filter=Supplier eq '${vendorId}'&$select=PurchaseOrder,CompanyCode,Supplier,DocumentCurrency,NetPaymentAmount,PurchaseOrderDate,PurchasingOrganization&$top=100&$orderby=PurchaseOrderDate desc`,
-        headers: hdrs,
+        url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrder?$filter=Supplier eq '${vendorId}'&$select=PurchaseOrder,CompanyCode,Supplier,DocumentCurrency,NetAmount,CreationDate,PurchasingOrganization,PurchaseOrderType&$top=100&$orderby=CreationDate desc`,
+        headers: hdrsV4,
       });
-      const rows = res.data?.d?.results || res.data?.value || [];
+      const rows = res.data?.value || [];
       return rows.map(r => ({
         po:          r.PurchaseOrder || '',
         companyCode: r.CompanyCode || '',
         supplier:    r.Supplier || '',
         currency:    r.DocumentCurrency || 'IDR',
-        netAmount:   r.NetPaymentAmount || r.NetAmount || '0',
-        poDate:      r.PurchaseOrderDate || '',
+        netAmount:   String(r.NetAmount || '0'),
+        poDate:      r.CreationDate || '',
         description: r.PurchaseOrderType || '',
         plant:       '',
         purchOrg:    r.PurchasingOrganization || '',
