@@ -270,7 +270,7 @@ module.exports = cds.service.impl(async function (srv) {
         }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}&$expand=_ScheduleLine`,
+          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}`,
           headers: hdrsV4,
         }).catch(e => { console.warn('[poItems] V4 item unavailable:', e.message); return null; }),
       ]);
@@ -279,9 +279,6 @@ module.exports = cds.service.impl(async function (srv) {
 
       const rawV4 = v4Res ? (v4Res.data?.value || []) : [];
       if (rawV4.length > 0) {
-        // Log V4 schedule line fields once to find delivered qty field
-        const v4sl0 = rawV4[0]?._ScheduleLine?.value?.[0] || rawV4[0]?._ScheduleLine?.[0];
-        if (v4sl0) console.log('[poItems] V4 schedule line keys:', Object.keys(v4sl0).join(','));
         rawV4.forEach(r => { v4Items[`${r.PurchaseOrder}/${r.PurchaseOrderItem}`] = r; });
       }
     } catch (e) {
