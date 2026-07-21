@@ -270,19 +270,18 @@ module.exports = cds.service.impl(async function (srv) {
         }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}`,
+          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}&$expand=_ScheduleLine`,
           headers: hdrsV4,
         }).catch(e => { console.warn('[poItems] V4 item unavailable:', e.message); return null; }),
       ]);
 
       items = itemRes.data?.d?.results || itemRes.data?.value || [];
-      if (items.length > 0) {
-        const sl0 = items[0].to_ScheduleLine?.results?.[0];
-        if (sl0) console.log('[poItems] schedule line keys:', Object.keys(sl0).join(','));
-      }
 
       const rawV4 = v4Res ? (v4Res.data?.value || []) : [];
       if (rawV4.length > 0) {
+        // Log V4 schedule line fields once to find delivered qty field
+        const v4sl0 = rawV4[0]?._ScheduleLine?.value?.[0] || rawV4[0]?._ScheduleLine?.[0];
+        if (v4sl0) console.log('[poItems] V4 schedule line keys:', Object.keys(v4sl0).join(','));
         rawV4.forEach(r => { v4Items[`${r.PurchaseOrder}/${r.PurchaseOrderItem}`] = r; });
       }
     } catch (e) {
@@ -306,18 +305,31 @@ module.exports = cds.service.impl(async function (srv) {
       const dpAmount = parseFloat(r.DownPaymentAmount || '0');
 
       // GR Amount: IsCompletelyDelivered=true → full PO amount; otherwise
-      // try ScheduleLineDeliveredQtyInOrdUnit (field absent in this tenant → 0)
+      // try V4 schedule line delivered qty (richer than V2), then V2 schedule lines
       let grAmount = 0;
       if (v4?.IsCompletelyDelivered === true) {
         grAmount = poAmount;
       } else {
-        const schedLines = r.to_ScheduleLine?.results || [];
-        const deliveredQty = schedLines.reduce((sum, sl) => {
+        // V4 schedule lines (expanded via _ScheduleLine)
+        const v4Sls = v4?._ScheduleLine?.value || v4?._ScheduleLine || [];
+        const v4DeliveredQty = v4Sls.reduce((sum, sl) => {
           return sum + parseFloat(
-            sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ?? sl.QuantityDelivered ?? '0'
+            sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ??
+            sl.QuantityDelivered ?? sl.GoodsReceiptQty ?? '0'
           );
         }, 0);
-        if (deliveredQty > 0) grAmount = deliveredQty * (netPrice / priceQty);
+        if (v4DeliveredQty > 0) {
+          grAmount = v4DeliveredQty * (netPrice / priceQty);
+        } else {
+          // Fallback: V2 schedule lines
+          const v2Sls = r.to_ScheduleLine?.results || [];
+          const v2DeliveredQty = v2Sls.reduce((sum, sl) => {
+            return sum + parseFloat(
+              sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ?? sl.QuantityDelivered ?? '0'
+            );
+          }, 0);
+          if (v2DeliveredQty > 0) grAmount = v2DeliveredQty * (netPrice / priceQty);
+        }
       }
 
       return {
