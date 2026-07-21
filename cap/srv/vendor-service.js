@@ -305,20 +305,19 @@ module.exports = cds.service.impl(async function (srv) {
       // DP Amount: directly on V2 item (DownPaymentAmount confirmed in response)
       const dpAmount = parseFloat(r.DownPaymentAmount || '0');
 
-      // GR Amount: sum delivered qty from schedule lines × unit price
-      // Fallback: if IsCompletelyDelivered=true use full PO amount
+      // GR Amount: IsCompletelyDelivered=true → full PO amount; otherwise
+      // try ScheduleLineDeliveredQtyInOrdUnit (field absent in this tenant → 0)
       let grAmount = 0;
-      const schedLines = r.to_ScheduleLine?.results || [];
-      if (schedLines.length > 0) {
+      if (v4?.IsCompletelyDelivered === true) {
+        grAmount = poAmount;
+      } else {
+        const schedLines = r.to_ScheduleLine?.results || [];
         const deliveredQty = schedLines.reduce((sum, sl) => {
           return sum + parseFloat(
             sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ?? sl.QuantityDelivered ?? '0'
           );
         }, 0);
-        grAmount = deliveredQty * (netPrice / priceQty);
-      } else if (v4?.IsCompletelyDelivered === true) {
-        // No schedule line data but fully delivered → GR = PO amount
-        grAmount = poAmount;
+        if (deliveredQty > 0) grAmount = deliveredQty * (netPrice / priceQty);
       }
 
       return {
