@@ -146,6 +146,18 @@ export async function saveRfq(rfq: any) {
   return parseRfq(await odataPost('/VendorPortal/RFQs', payload));
 }
 
+// ── Purchase Orders (BTP: live from SAP; mock: returns null → caller uses MOCK_POS) ──
+export async function fetchPurchaseOrders(vendorId: string): Promise<any[] | null> {
+  if (USE_MOCK) return null;
+  try {
+    const rows = await odataGet(`/VendorPortal/purchaseOrders(vendorId='${vendorId}')`);
+    return Array.isArray(rows) ? rows : [];
+  } catch (e) {
+    console.warn('[fetchPurchaseOrders] failed:', e);
+    return null;
+  }
+}
+
 // ── Attachment helpers (BTP only) ─────────────────────────────────
 export async function uploadAttachment(invoiceId: string, file: File): Promise<{ id: string; fileName: string; fileSize: number }> {
   return new Promise((resolve, reject) => {

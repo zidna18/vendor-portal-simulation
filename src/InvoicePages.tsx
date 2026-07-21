@@ -30,17 +30,21 @@ export const MOCK_POS = [
 ];
 
 // ── PO Value Help Dialog ───────────────────────────────────────
-export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
+export const PoValueHelp = ({values,onConfirm,onClose,companyCode="",vendorId="",livePos=null}:any) => {
   const [tab,setTab]=useState<"search"|"define">("search");
   const [search,setSearch]=useState("");
   const [sel,setSel]=useState<Set<string>>(new Set(values));
   const [conditions,setConditions]=useState([{field:"poNo",op:"contains",val:""}]);
-  const allPos = companyCode ? MOCK_POS.filter(p=>p.companyCode===companyCode) : MOCK_POS;
-  const filtered = allPos.filter(po=>!search||po.v.includes(search)||po.desc.toLowerCase().includes(search.toLowerCase())||po.companyCode.toLowerCase().includes(search.toLowerCase()));
+  // livePos: array from SAP API (BTP mode); null → fall back to MOCK_POS
+  const basePos = livePos
+    ? livePos.map((r:any)=>({v:r.po,companyCode:r.companyCode,currency:r.currency,amount:parseFloat(r.netAmount||"0"),desc:r.description||r.purchOrg||""}))
+    : MOCK_POS;
+  const allPos = companyCode ? basePos.filter((p:any)=>p.companyCode===companyCode) : basePos;
+  const filtered = allPos.filter((po:any)=>!search||po.v.includes(search)||po.desc.toLowerCase().includes(search.toLowerCase())||po.companyCode.toLowerCase().includes(search.toLowerCase()));
   const toggle=(v:string)=>{const n=new Set(sel);n.has(v)?n.delete(v):n.add(v);setSel(n);};
-  const toggleAll=(checked:boolean)=>{const n=new Set(sel);filtered.forEach(p=>checked?n.add(p.v):n.delete(p.v));setSel(n);};
+  const toggleAll=(checked:boolean)=>{const n=new Set(sel);filtered.forEach((p:any)=>checked?n.add(p.v):n.delete(p.v));setSel(n);};
   const applyConditions=()=>{
-    const matching=MOCK_POS.filter(po=>conditions.every(c=>{
+    const matching=basePos.filter((po:any)=>conditions.every(c=>{
       const fv=c.field==="poNo"?po.v:c.field==="companyCode"?po.companyCode:po.desc;
       if(!c.val)return true;
       if(c.op==="contains")return fv.toLowerCase().includes(c.val.toLowerCase());
@@ -48,7 +52,7 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
       if(c.op==="startsWith")return fv.toLowerCase().startsWith(c.val.toLowerCase());
       return true;
     }));
-    const n=new Set(sel);matching.forEach(p=>n.add(p.v));setSel(n);setTab("search");setSearch("");
+    const n=new Set(sel);matching.forEach((p:any)=>n.add(p.v));setSel(n);setTab("search");setSearch("");
   };
   const TabBtn=({id,label}:any)=>(
     <button onClick={()=>setTab(id)} style={{background:"none",border:"none",borderBottom:`2px solid ${tab===id?C.primary:"transparent"}`,cursor:"pointer",padding:"8px 16px 10px",fontSize:14,color:tab===id?C.primary:C.t2,fontFamily:"inherit",fontWeight:tab===id?600:400,marginBottom:-1}}>{label}</button>
@@ -68,7 +72,7 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode=""}:any) => {
           </div>
           <Btn v="primary" onClick={()=>setSearch(search)}>Go</Btn>
         </div>
-        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Items ({filtered.length}) <span style={{fontSize:10}}>📡 SAP API: A_PurchaseOrder (OData v4)</span></div>
+        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Items ({filtered.length}) <span style={{fontSize:10}}>📡 SAP API: A_PurchaseOrder (OData v2) {livePos?"· Live":"· Mock"}</span></div>
         <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"auto",maxHeight:300}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead>
@@ -169,6 +173,19 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
      otherFees:[],additionalFee:0,feeCategory:"",desc:"",taxDoc:"",status:"Draft",files:[],vendorId,vendorName});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const [showPoHelp,setShowPoHelp]=useState(false);
+  const [livePos,setLivePos]=useState<any[]|null>(null);
+  const [livePosLoading,setLivePosLoading]=useState(false);
+  const openPoHelp=async()=>{
+    setShowPoHelp(true);setPoDropOpen(false);
+    if(livePos!==null||livePosLoading||isMockMode)return;
+    setLivePosLoading(true);
+    try{
+      const {fetchPurchaseOrders}=await import("./apiService");
+      const rows=await fetchPurchaseOrders(vendorId||"");
+      setLivePos(rows);
+    }catch(e){console.warn("[PoValueHelp] PO fetch failed",e);}
+    finally{setLivePosLoading(false);}
+  };
   const [poDropOpen,setPoDropOpen]=useState(false);
   const [poSearch,setPoSearch]=useState("");
   const poRef=useRef<HTMLDivElement>(null);
@@ -310,7 +327,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                 placeholder={(f.poNumbers||[]).length===0?"Search or select PO numbers...":""}
                 style={{border:"none",background:"none",outline:"none",fontSize:13,color:C.t1,padding:"4px 0",minWidth:160,flex:1,fontFamily:"inherit"}}/>
             </div>
-            <button onClick={()=>{setShowPoHelp(true);setPoDropOpen(false);}} title="Value Help (F4)" style={{padding:"0 12px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:11,color:C.t1,fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap" as const}}>⊞ F4</button>
+            <button onClick={openPoHelp} title="Value Help (F4)" style={{padding:"0 12px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:11,color:C.t1,fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap" as const}}>{livePosLoading?"…":"⊞ F4"}</button>
           </div>
           {poDropOpen&&(()=>{
             const byCC=f.companyCode?MOCK_POS.filter(p=>p.companyCode===f.companyCode):MOCK_POS;
@@ -518,7 +535,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
       </div>
-      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} companyCode={f.companyCode||""} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
+      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} companyCode={f.companyCode||""} vendorId={vendorId} livePos={livePos} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
     </Modal>
   );
 };

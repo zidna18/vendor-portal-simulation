@@ -52,4 +52,19 @@ service VendorPortal @(path: '/api/VendorPortal') {
     lfm1       : String;
   }
   function vendorMaster(vendorId: String) returns VendorMasterResult;
+
+  // Purchase Orders fetched from SAP via API_PURCHASEORDER_PROCESS_SRV (SAP_COM_0009)
+  // Filtered by Supplier = vendorId; returns open POs available for invoice reference
+  type PurchaseOrderItem {
+    po          : String;
+    companyCode : String;
+    supplier    : String;
+    currency    : String;
+    netAmount   : String;
+    poDate      : String;
+    description : String;
+    plant       : String;
+    purchOrg    : String;
+  }
+  function purchaseOrders(vendorId: String) returns array of PurchaseOrderItem;
 }

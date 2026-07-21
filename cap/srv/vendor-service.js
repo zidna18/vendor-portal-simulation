@@ -192,6 +192,47 @@ module.exports = cds.service.impl(async function (srv) {
     };
   });
 
+  // ── purchaseOrders ──────────────────────────────────────────────────
+  srv.on('purchaseOrders', async req => {
+    const { vendorId } = req.data;
+    if (!vendorId) return req.error(400, 'vendorId is required');
+
+    let executeHttpRequest;
+    try {
+      ({ executeHttpRequest } = require('@sap-cloud-sdk/http-client'));
+    } catch (e) {
+      return req.error(503, 'SAP Cloud SDK not available: ' + e.message);
+    }
+
+    const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
+    const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
+
+    try {
+      const res = await executeHttpRequest(dest, {
+        method: 'GET',
+        url: `/sap/opu/odata/SAP/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrder?$filter=Supplier eq '${vendorId}'&$select=PurchaseOrder,CompanyCode,Supplier,DocumentCurrency,NetPaymentAmount,PurchaseOrderDate,PurchasingOrganization&$top=100&$orderby=PurchaseOrderDate desc`,
+        headers: hdrs,
+      });
+      const rows = res.data?.d?.results || res.data?.value || [];
+      return rows.map(r => ({
+        po:          r.PurchaseOrder || '',
+        companyCode: r.CompanyCode || '',
+        supplier:    r.Supplier || '',
+        currency:    r.DocumentCurrency || 'IDR',
+        netAmount:   r.NetPaymentAmount || r.NetAmount || '0',
+        poDate:      r.PurchaseOrderDate || '',
+        description: r.PurchaseOrderType || '',
+        plant:       '',
+        purchOrg:    r.PurchasingOrganization || '',
+      }));
+    } catch (e) {
+      const status = e.response?.status;
+      const body = JSON.stringify(e.response?.data)?.slice(0, 300) || '';
+      console.error(`[purchaseOrders] SAP API failed: HTTP ${status} — ${e.message} — body: ${body}`);
+      return req.error(502, `SAP API HTTP ${status}: ${e.message}`);
+    }
+  });
+
   // ── Startup: register Express routes + clear mock seed data ────────
   cds.on('served', async () => {
     // ── File attachment routes (binary — bypass OData) ───────────────
