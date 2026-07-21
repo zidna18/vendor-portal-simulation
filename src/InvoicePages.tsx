@@ -73,7 +73,7 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode="",vendorId=""
           </div>
           <Btn v="primary" onClick={()=>setSearch(search)}>Go</Btn>
         </div>
-        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Items ({filtered.length}) <span style={{fontSize:10}}>📡 SAP API: A_PurchaseOrder (OData v2) {livePos?"· Live":"· Mock"}</span></div>
+        <div style={{fontSize:12,color:C.t2,marginBottom:6}}>Items ({filtered.length}) <span style={{fontSize:10}}>📡 SAP API: PurchaseOrder (OData v4) {livePos?"· Live":"· Mock"}</span></div>
         <div style={{border:`1px solid ${C.border}`,borderRadius:4,overflow:"auto",maxHeight:300}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead>

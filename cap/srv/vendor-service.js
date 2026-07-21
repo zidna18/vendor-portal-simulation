@@ -209,19 +209,21 @@ module.exports = cds.service.impl(async function (srv) {
     try {
       const res = await executeHttpRequest(dest, {
         method: 'GET',
-        url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrder?$filter=Supplier eq '${vendorId}'&$select=PurchaseOrder,CompanyCode,Supplier,DocumentCurrency,NetAmount,CreationDate,PurchasingOrganization,PurchaseOrderType&$top=100&$orderby=CreationDate desc`,
+        url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrder?$filter=Supplier eq '${vendorId}'&$top=100`,
         headers: hdrsV4,
       });
       const rows = res.data?.value || [];
+      if (rows.length > 0) console.log('[purchaseOrders] V4 sample row keys:', Object.keys(rows[0]).join(','));
+      else console.log('[purchaseOrders] V4 returned 0 rows for vendorId:', vendorId);
       return rows.map(r => ({
-        po:          r.PurchaseOrder || '',
+        po:          r.PurchaseOrder || r.PurchasingDocument || '',
         companyCode: r.CompanyCode || '',
-        supplier:    r.Supplier || '',
-        currency:    r.DocumentCurrency || 'IDR',
-        netAmount:   String(r.NetAmount || '0'),
-        poDate:      r.CreationDate || '',
-        description: r.PurchaseOrderType || '',
-        plant:       '',
+        supplier:    r.Supplier || r.SupplierAddressID || '',
+        currency:    r.DocumentCurrency || r.PurchaseOrderCurrency || 'IDR',
+        netAmount:   String(r.NetAmount || r.TotalNetAmount || r.NetOrderValue || '0'),
+        poDate:      r.CreationDate || r.PurchaseOrderDate || '',
+        description: r.PurchaseOrderType || r.PurchaseOrderLongText || '',
+        plant:       r.Plant || '',
         purchOrg:    r.PurchasingOrganization || '',
       }));
     } catch (e) {
