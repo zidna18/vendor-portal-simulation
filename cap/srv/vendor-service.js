@@ -258,12 +258,16 @@ module.exports = cds.service.impl(async function (srv) {
 
     let items = [], v4Items = {};
     try {
-      // V2: material data, unit price, DP amount (DownPaymentAmount is on item)
-      // V4: delivery quantities to calculate GR amount
+      // V2: expand to_ScheduleLine to get delivered quantities for GR amount
+      // V4: NetAmount (PO amount directly), IsCompletelyDelivered flag
       const hdrsV4 = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
       const v4ItemFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
       const [itemRes, v4Res] = await Promise.all([
-        executeHttpRequest(dest, { method: 'GET', url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}`, headers: hdrs }),
+        executeHttpRequest(dest, {
+          method: 'GET',
+          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}&$expand=to_ScheduleLine`,
+          headers: hdrs,
+        }),
         executeHttpRequest(dest, {
           method: 'GET',
           url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}`,
@@ -272,10 +276,13 @@ module.exports = cds.service.impl(async function (srv) {
       ]);
 
       items = itemRes.data?.d?.results || itemRes.data?.value || [];
+      if (items.length > 0) {
+        const sl0 = items[0].to_ScheduleLine?.results?.[0];
+        if (sl0) console.log('[poItems] schedule line keys:', Object.keys(sl0).join(','));
+      }
 
       const rawV4 = v4Res ? (v4Res.data?.value || []) : [];
       if (rawV4.length > 0) {
-        console.log('[poItems] V4 item keys:', Object.keys(rawV4[0]).join(','));
         rawV4.forEach(r => { v4Items[`${r.PurchaseOrder}/${r.PurchaseOrderItem}`] = r; });
       }
     } catch (e) {
@@ -287,37 +294,31 @@ module.exports = cds.service.impl(async function (srv) {
 
     return items.map(r => {
       const key = `${r.PurchaseOrder}/${r.PurchaseOrderItem}`;
+      const v4   = v4Items[key];
 
-      // PO Amount: NetPriceAmount / NetPriceQuantity × OrderQuantity
-      // (NetOrderValue is not returned by V2 A_PurchaseOrderItem)
-      const netPrice  = parseFloat(r.NetPriceAmount   || '0');
-      const priceQty  = parseFloat(r.NetPriceQuantity || '1') || 1;
-      const orderQty  = parseFloat(r.OrderQuantity    || '0');
-      const poAmount  = netPrice / priceQty * orderQty;
+      // PO Amount: use V4 NetAmount directly (confirmed available); fallback to calculation
+      const orderQty = parseFloat(r.OrderQuantity    || '0');
+      const netPrice = parseFloat(r.NetPriceAmount   || '0');
+      const priceQty = parseFloat(r.NetPriceQuantity || '1') || 1;
+      const poAmount = v4 ? parseFloat(v4.NetAmount || '0') : netPrice / priceQty * orderQty;
 
-      // DP Amount: directly available on item (no extra API needed)
-      const dpAmount  = parseFloat(r.DownPaymentAmount || '0');
+      // DP Amount: directly on V2 item (DownPaymentAmount confirmed in response)
+      const dpAmount = parseFloat(r.DownPaymentAmount || '0');
 
-      // GR Amount: use V4 item if available.
-      // V4 should have QuantityToBeDelivered (open quantity remaining).
-      // GR Qty = OrderQuantity - QuantityToBeDelivered
-      // GR Amount = GR Qty / OrderQuantity * PO Amount
+      // GR Amount: sum delivered qty from schedule lines × unit price
+      // Fallback: if IsCompletelyDelivered=true use full PO amount
       let grAmount = 0;
-      const v4 = v4Items[key];
-      if (v4) {
-        // Log field names once to find the right quantity field
-        if (key === Object.keys(v4Items)[0]) {
-          console.log('[poItems] V4 item first-row keys for GR calc:', JSON.stringify(Object.fromEntries(
-            Object.entries(v4).filter(([k]) => /[Qq]uant|[Dd]eliv|[Gg]ood|[Rr]eceiv|[Oo]pen/.test(k))
-          )));
-        }
-        const qtyToDeliver = parseFloat(
-          v4.QuantityToBeDelivered ?? v4.OpenQuantity ?? v4.RemainingQuantity ?? v4.DeliveryQuantity ?? 'NaN'
-        );
-        if (!isNaN(qtyToDeliver) && orderQty > 0) {
-          const deliveredQty = Math.max(0, orderQty - qtyToDeliver);
-          grAmount = deliveredQty / orderQty * poAmount;
-        }
+      const schedLines = r.to_ScheduleLine?.results || [];
+      if (schedLines.length > 0) {
+        const deliveredQty = schedLines.reduce((sum, sl) => {
+          return sum + parseFloat(
+            sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ?? sl.QuantityDelivered ?? '0'
+          );
+        }, 0);
+        grAmount = deliveredQty * (netPrice / priceQty);
+      } else if (v4?.IsCompletelyDelivered === true) {
+        // No schedule line data but fully delivered → GR = PO amount
+        grAmount = poAmount;
       }
 
       return {
