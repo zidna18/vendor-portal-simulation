@@ -12,21 +12,21 @@ import {
 
 // ── PO Mock Master Data ────────────────────────────────────────
 export const MOCK_POS = [
-  {v:"4500001234",companyCode:"BRMS",currency:"IDR",amount:25000000,desc:"Office Supplies & Stationery Q2 2025"},
-  {v:"4500001235",companyCode:"BRMS",currency:"IDR",amount:87500000,desc:"IT Equipment & Peripherals Procurement"},
-  {v:"4500001236",companyCode:"CPMS",currency:"IDR",amount:45000000,desc:"Facility Maintenance Services"},
-  {v:"4500001237",companyCode:"BRMS",currency:"USD",amount:8500,desc:"Enterprise Software License Renewal"},
-  {v:"4500001238",companyCode:"GMIN",currency:"IDR",amount:125000000,desc:"Mining Equipment Spare Parts"},
-  {v:"4500001239",companyCode:"SHSI",currency:"IDR",amount:56000000,desc:"Logistics & Transportation Services"},
-  {v:"4500001240",companyCode:"LMRS",currency:"IDR",amount:18500000,desc:"Technical Consulting Services"},
-  {v:"4500001241",companyCode:"BRMS",currency:"IDR",amount:92000000,desc:"Construction & Civil Works Materials"},
-  {v:"4500001242",companyCode:"CPMS",currency:"IDR",amount:35000000,desc:"Environmental Management Services"},
-  {v:"4500001243",companyCode:"BRMS",currency:"IDR",amount:150000000,desc:"Heavy Equipment Rental"},
-  {v:"4500001244",companyCode:"GMIN",currency:"IDR",amount:68000000,desc:"Chemical Reagents & Lab Supplies"},
-  {v:"4500001245",companyCode:"SHSI",currency:"SGD",amount:12500,desc:"Safety Equipment & PPE Procurement"},
-  {v:"4500001246",companyCode:"BRMS",currency:"IDR",amount:210000000,desc:"Drilling Services & Equipment"},
-  {v:"4500001247",companyCode:"LMRS",currency:"IDR",amount:44000000,desc:"Surveying & Mapping Services"},
-  {v:"4500001248",companyCode:"CPMS",currency:"IDR",amount:78000000,desc:"Water Treatment Plant Maintenance"},
+  {v:"4500001234",companyCode:"BRMS",currency:"IDR",amount:25000000,desc:"Office Supplies & Stationery Q2 2025",      supplier:"10000001"},
+  {v:"4500001235",companyCode:"BRMS",currency:"IDR",amount:87500000,desc:"IT Equipment & Peripherals Procurement",    supplier:"10000001"},
+  {v:"4500001236",companyCode:"CPMS",currency:"IDR",amount:45000000,desc:"Facility Maintenance Services",             supplier:"10000001"},
+  {v:"4500001237",companyCode:"BRMS",currency:"USD",amount:8500,    desc:"Enterprise Software License Renewal",       supplier:"10000001"},
+  {v:"4500001238",companyCode:"GMIN",currency:"IDR",amount:125000000,desc:"Mining Equipment Spare Parts",             supplier:"10000001"},
+  {v:"4500001239",companyCode:"SHSI",currency:"IDR",amount:56000000,desc:"Logistics & Transportation Services",       supplier:"10000001"},
+  {v:"4500001240",companyCode:"LMRS",currency:"IDR",amount:18500000,desc:"Technical Consulting Services",             supplier:"10000001"},
+  {v:"4500001241",companyCode:"BRMS",currency:"IDR",amount:92000000,desc:"Construction & Civil Works Materials",      supplier:"10000001"},
+  {v:"4500001242",companyCode:"CPMS",currency:"IDR",amount:35000000,desc:"Environmental Management Services",         supplier:"10000002"},
+  {v:"4500001243",companyCode:"BRMS",currency:"IDR",amount:150000000,desc:"Heavy Equipment Rental",                   supplier:"10000002"},
+  {v:"4500001244",companyCode:"GMIN",currency:"IDR",amount:68000000,desc:"Chemical Reagents & Lab Supplies",          supplier:"10000002"},
+  {v:"4500001245",companyCode:"SHSI",currency:"SGD",amount:12500,   desc:"Safety Equipment & PPE Procurement",        supplier:"10000002"},
+  {v:"4500001246",companyCode:"BRMS",currency:"IDR",amount:210000000,desc:"Drilling Services & Equipment",            supplier:"10000002"},
+  {v:"4500001247",companyCode:"LMRS",currency:"IDR",amount:44000000,desc:"Surveying & Mapping Services",              supplier:"10000002"},
+  {v:"4500001248",companyCode:"CPMS",currency:"IDR",amount:78000000,desc:"Water Treatment Plant Maintenance",         supplier:"10000002"},
 ];
 
 // ── PO Value Help Dialog ───────────────────────────────────────
@@ -37,9 +37,10 @@ export const PoValueHelp = ({values,onConfirm,onClose,companyCode="",vendorId=""
   const [conditions,setConditions]=useState([{field:"poNo",op:"contains",val:""}]);
   // livePos: array from SAP API (BTP mode); null → fall back to MOCK_POS
   const basePos = livePos
-    ? livePos.map((r:any)=>({v:r.po,companyCode:r.companyCode,currency:r.currency,amount:parseFloat(r.netAmount||"0"),desc:r.description||r.purchOrg||""}))
+    ? livePos.map((r:any)=>({v:r.po,companyCode:r.companyCode,currency:r.currency,amount:parseFloat(r.netAmount||"0"),desc:r.description||r.purchOrg||"",supplier:r.supplier||""}))
     : MOCK_POS;
-  const allPos = companyCode ? basePos.filter((p:any)=>p.companyCode===companyCode) : basePos;
+  const vendorFiltered = vendorId ? basePos.filter((p:any)=>!p.supplier||p.supplier===vendorId) : basePos;
+  const allPos = companyCode ? vendorFiltered.filter((p:any)=>p.companyCode===companyCode) : vendorFiltered;
   const filtered = allPos.filter((po:any)=>!search||po.v.includes(search)||po.desc.toLowerCase().includes(search.toLowerCase())||po.companyCode.toLowerCase().includes(search.toLowerCase()));
   const toggle=(v:string)=>{const n=new Set(sel);n.has(v)?n.delete(v):n.add(v);setSel(n);};
   const toggleAll=(checked:boolean)=>{const n=new Set(sel);filtered.forEach((p:any)=>checked?n.add(p.v):n.delete(p.v));setSel(n);};
@@ -330,7 +331,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
             <button onClick={openPoHelp} title="Value Help (F4)" style={{padding:"0 12px",background:C.subtle,border:"none",borderLeft:`1px solid ${C.border}`,cursor:"pointer",fontSize:11,color:C.t1,fontWeight:700,letterSpacing:0.5,whiteSpace:"nowrap" as const}}>{livePosLoading?"…":"⊞ F4"}</button>
           </div>
           {poDropOpen&&(()=>{
-            const byCC=f.companyCode?MOCK_POS.filter(p=>p.companyCode===f.companyCode):MOCK_POS;
+            const byVendor=vendorId?MOCK_POS.filter(p=>!p.supplier||p.supplier===vendorId):MOCK_POS;
+            const byCC=f.companyCode?byVendor.filter(p=>p.companyCode===f.companyCode):byVendor;
             const avail=byCC.filter(p=>!(f.poNumbers||[]).includes(p.v)&&(!poSearch||p.v.includes(poSearch)||p.desc.toLowerCase().includes(poSearch.toLowerCase())));
             return(
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderTop:"none",borderRadius:"0 0 4px 4px",boxShadow:"0 4px 12px rgba(0,0,0,0.12)",maxHeight:220,overflowY:"auto",marginBottom:4}}>
