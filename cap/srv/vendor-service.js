@@ -256,12 +256,12 @@ module.exports = cds.service.impl(async function (srv) {
     // Build OData filter for multiple POs
     const poFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
 
-    let items = [], grHistory = [], dpAmounts = [];
+    let items = [], grHistory = {}, dpAmounts = {};
     try {
       const [itemRes, grRes] = await Promise.all([
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}&$select=PurchaseOrder,PurchaseOrderItem,Plant,Material,PurchaseOrderItemText,OrderQuantity,PurchaseOrderQuantityUnit,NetPriceAmount,NetOrderValue,DocumentCurrency`,
+          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}`,
           headers: hdrs,
         }),
         executeHttpRequest(dest, {

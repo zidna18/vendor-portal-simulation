@@ -163,7 +163,7 @@ export async function fetchPurchaseOrderItems(poNumbers: string[]): Promise<any[
   if (USE_MOCK) return null;
   if (!poNumbers.length) return [];
   try {
-    const param = encodeURIComponent(poNumbers.join(','));
+    const param = poNumbers.join(','); // plain comma — OData string literals don't URL-decode %2C
     const rows = await odataGet(`/VendorPortal/purchaseOrderItems(poNumbers='${param}')`);
     return Array.isArray(rows) ? rows : [];
   } catch (e) {
