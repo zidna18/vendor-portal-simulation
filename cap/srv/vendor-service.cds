@@ -67,4 +67,23 @@ service VendorPortal @(path: '/api/VendorPortal') {
     purchOrg    : String;
   }
   function purchaseOrders(vendorId: String) returns array of PurchaseOrderItem;
+
+  // PO line items + GR history for selected PO numbers (comma-separated)
+  // GR Amount from A_PurchaseOrderHistoryCategory (SAP_COM_0053)
+  // DP Amount from API_JOURNALENTRYITEMBASIC_SRV (SAP_COM_0002 — 0 until configured)
+  type POLineItem {
+    po        : String;
+    item      : String;
+    material  : String;
+    desc      : String;
+    qty       : String;
+    uom       : String;
+    unitPrice : String;
+    poAmount  : String;
+    grAmount  : String;
+    dpAmount  : String;
+    currency  : String;
+    plant     : String;
+  }
+  function purchaseOrderItems(poNumbers: String) returns array of POLineItem;
 }

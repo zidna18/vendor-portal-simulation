@@ -234,6 +234,102 @@ module.exports = cds.service.impl(async function (srv) {
     }
   });
 
+  // ── purchaseOrderItems ──────────────────────────────────────────────
+  // Fetches real PO line items + GR amounts from SAP (SAP_COM_0053).
+  // DP amounts require SAP_COM_0002 (Journal Entry API) — returns 0 until configured.
+  srv.on('purchaseOrderItems', async req => {
+    const { poNumbers } = req.data;
+    const poList = (poNumbers || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!poList.length) return req.error(400, 'poNumbers is required');
+
+    let executeHttpRequest;
+    try {
+      ({ executeHttpRequest } = require('@sap-cloud-sdk/http-client'));
+    } catch (e) {
+      return req.error(503, 'SAP Cloud SDK not available: ' + e.message);
+    }
+
+    const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
+    const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
+    const base = `/sap/opu/odata/SAP/API_PURCHASEORDER_PROCESS_SRV`;
+
+    // Build OData filter for multiple POs
+    const poFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
+
+    let items = [], grHistory = [], dpAmounts = [];
+    try {
+      const [itemRes, grRes] = await Promise.all([
+        executeHttpRequest(dest, {
+          method: 'GET',
+          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}&$select=PurchaseOrder,PurchaseOrderItem,Plant,Material,PurchaseOrderItemText,OrderQuantity,PurchaseOrderQuantityUnit,NetPriceAmount,NetOrderValue,DocumentCurrency`,
+          headers: hdrs,
+        }),
+        executeHttpRequest(dest, {
+          method: 'GET',
+          url: `${base}/A_PurchaseOrderHistoryCategory?$filter=(${poFilter}) and HistoryCategory eq 'WE'&$select=PurchaseOrder,PurchaseOrderItem,HistoryCategory,AmountInTransactionCurrency,TransactionCurrency,DebitCreditCode`,
+          headers: hdrs,
+        }).catch(e => { console.warn('[poItems] GR history unavailable:', e.message); return null; }),
+      ]);
+
+      items = itemRes.data?.d?.results || itemRes.data?.value || [];
+
+      if (items.length > 0) console.log('[poItems] sample item keys:', Object.keys(items[0]).join(','));
+
+      const rawGr = grRes ? (grRes.data?.d?.results || grRes.data?.value || []) : [];
+      // Sum GR amounts per PO+Item (H=debit adds, S=credit subtracts for reversals)
+      rawGr.forEach(h => {
+        const key = `${h.PurchaseOrder}/${h.PurchaseOrderItem}`;
+        const sign = h.DebitCreditCode === 'S' ? -1 : 1;
+        grHistory[key] = (grHistory[key] || 0) + sign * parseFloat(h.AmountInTransactionCurrency || '0');
+      });
+    } catch (e) {
+      const status = e.response?.status;
+      const body = JSON.stringify(e.response?.data)?.slice(0, 300) || '';
+      console.error(`[poItems] SAP API failed: HTTP ${status} — ${e.message} — ${body}`);
+      return req.error(502, `SAP API HTTP ${status}: ${e.message}`);
+    }
+
+    // ── DP amounts from Journal Entry API (SAP_COM_0002) ─────────────
+    // If S4HC_JOURNALENTRY_AVAILABLE env var is set, query API_JOURNALENTRYITEMBASIC_SRV
+    if (process.env.S4HC_JOURNALENTRY_AVAILABLE === 'true') {
+      try {
+        const dpFilter = poList.map(p => `PurchasingDocument eq '${p}'`).join(' or ');
+        const dpRes = await executeHttpRequest(dest, {
+          method: 'GET',
+          url: `/sap/opu/odata/SAP/API_JOURNALENTRYITEMBASIC_SRV/A_JournalEntryItem?$filter=(${dpFilter}) and SpecialGLCode eq 'F' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchaseOrderItem,AmountInTransactionCurrency,TransactionCurrency`,
+          headers: hdrs,
+        });
+        const rawDp = dpRes.data?.d?.results || dpRes.data?.value || [];
+        rawDp.forEach(d => {
+          const key = `${d.PurchasingDocument}/${d.PurchaseOrderItem || ''}`;
+          dpAmounts[key] = (dpAmounts[key] || 0) + parseFloat(d.AmountInTransactionCurrency || '0');
+        });
+      } catch (e) {
+        console.warn('[poItems] DP amount fetch failed:', e.message);
+      }
+    }
+
+    return items.map(r => {
+      const key = `${r.PurchaseOrder}/${r.PurchaseOrderItem}`;
+      const grAmt = grHistory[key] || 0;
+      const dpAmt = dpAmounts[key] || 0;
+      return {
+        po:        r.PurchaseOrder || '',
+        item:      r.PurchaseOrderItem || '',
+        material:  r.Material || '',
+        desc:      r.PurchaseOrderItemText || '',
+        qty:       String(parseFloat(r.OrderQuantity || '0')),
+        uom:       r.PurchaseOrderQuantityUnit || '',
+        unitPrice: String(parseFloat(r.NetPriceAmount || '0')),
+        poAmount:  String(parseFloat(r.NetOrderValue || '0')),
+        grAmount:  String(grAmt),
+        dpAmount:  String(dpAmt),
+        currency:  r.DocumentCurrency || 'IDR',
+        plant:     r.Plant || '',
+      };
+    });
+  });
+
   // ── Startup: register Express routes + clear mock seed data ────────
   cds.on('served', async () => {
     // ── File attachment routes (binary — bypass OData) ───────────────

@@ -158,6 +158,20 @@ export async function fetchPurchaseOrders(vendorId: string): Promise<any[] | nul
   }
 }
 
+// ── PO Line Items (BTP: live from SAP; mock: returns null → caller uses getMockPoItem) ──
+export async function fetchPurchaseOrderItems(poNumbers: string[]): Promise<any[] | null> {
+  if (USE_MOCK) return null;
+  if (!poNumbers.length) return [];
+  try {
+    const param = encodeURIComponent(poNumbers.join(','));
+    const rows = await odataGet(`/VendorPortal/purchaseOrderItems(poNumbers='${param}')`);
+    return Array.isArray(rows) ? rows : [];
+  } catch (e) {
+    console.warn('[fetchPurchaseOrderItems] failed:', e);
+    return null;
+  }
+}
+
 // ── Attachment helpers (BTP only) ─────────────────────────────────
 export async function uploadAttachment(invoiceId: string, file: File): Promise<{ id: string; fileName: string; fileSize: number }> {
   return new Promise((resolve, reject) => {

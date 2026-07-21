@@ -187,6 +187,28 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     }catch(e){console.warn("[PoValueHelp] PO fetch failed",e);}
     finally{setLivePosLoading(false);}
   };
+  const [livePoItems,setLivePoItems]=useState<Record<string,any>|null>(null);
+  const [loadingPoItems,setLoadingPoItems]=useState(false);
+  const fetchPoItems=async(poNums:string[])=>{
+    if(isMockMode||!poNums.length)return;
+    setLoadingPoItems(true);
+    try{
+      const {fetchPurchaseOrderItems}=await import("./apiService");
+      const rows=await fetchPurchaseOrderItems(poNums);
+      if(rows){
+        // Group by PO: aggregate amounts, keep first item's material/desc
+        const byPo:Record<string,any>={};
+        rows.forEach((r:any)=>{
+          if(!byPo[r.po]){byPo[r.po]={...r,poAmount:0,grAmount:0,dpAmount:0};}
+          byPo[r.po].poAmount+=parseFloat(r.poAmount||'0');
+          byPo[r.po].grAmount+=parseFloat(r.grAmount||'0');
+          byPo[r.po].dpAmount+=parseFloat(r.dpAmount||'0');
+        });
+        setLivePoItems(byPo);
+      }
+    }catch(e){console.warn('[fetchPoItems]',e);}
+    finally{setLoadingPoItems(false);}
+  };
   const [poDropOpen,setPoDropOpen]=useState(false);
   const [poSearch,setPoSearch]=useState("");
   const poRef=useRef<HTMLDivElement>(null);
@@ -373,8 +395,23 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                 </tr>
               </thead>
               <tbody>
-                {(f.poNumbers||[]).map((po:string,pi:number)=>{
-                  const m=getMockPoItem(po);
+                {loadingPoItems&&<tr><td colSpan={13} style={{padding:"12px",textAlign:"center",color:C.t2,fontSize:12}}>Loading PO items from SAP…</td></tr>}
+                {!loadingPoItems&&(f.poNumbers||[]).map((po:string,pi:number)=>{
+                  const live=livePoItems?.[po];
+                  const m=live?{
+                    item:    live.item||'10',
+                    matCode: live.material||'—',
+                    matDesc: live.desc||'—',
+                    qty:     parseFloat(live.qty||'0'),
+                    uom:     live.uom||'—',
+                    unitAmt: parseFloat(live.unitPrice||'0'),
+                    poAmt:   live.poAmount||0,
+                    grAmt:   live.grAmount||0,
+                    dpAmt:   live.dpAmount||0,
+                    invAmt:  (live.grAmount||0)-(live.dpAmount||0),
+                    currency:live.currency||f.currency||'IDR',
+                  }:getMockPoItem(po);
+                  const cur=(live?m.currency:null)||f.currency||'IDR';
                   const checked=poItemChecked[po]!==false;
                   return(
                   <tr key={pi} style={{background:checked?(pi%2===0?C.card:C.subtle):`${C.err}12`,opacity:checked?1:0.65}}>
@@ -387,13 +424,13 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                     <td style={{padding:"7px 9px",color:C.t2,textAlign:"center"}}>{m.item}</td>
                     <td style={{padding:"7px 9px",color:C.t2,fontFamily:"monospace",fontSize:12}}>{m.matCode}</td>
                     <td style={{padding:"7px 9px",color:C.t1}}>{m.matDesc}</td>
-                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right"}}>{m.qty.toLocaleString()}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right"}}>{typeof m.qty==='number'?m.qty.toLocaleString():m.qty}</td>
                     <td style={{padding:"7px 9px",color:C.t2}}>{m.uom}</td>
-                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.unitAmt,f.currency||"IDR")}</td>
-                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,f.currency||"IDR")}</td>
-                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,f.currency||"IDR")}</td>
-                    <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,f.currency||"IDR")}</td>
-                    <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,f.currency||"IDR")}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.unitAmt,cur)}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,cur)}</td>
+                    <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,cur)}</td>
+                    <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,cur)}</td>
+                    <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,cur)}</td>
                     <td style={{padding:"5px 7px",minWidth:110}}><AmtInp value="" onChange={()=>{}}/></td>
                   </tr>
                   );
@@ -537,7 +574,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
         <Btn v="ghost" onClick={()=>save(true)}>Save as Draft</Btn>
         <Btn v="primary" onClick={()=>save(false)}>Submit Invoice</Btn>
       </div>
-      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} companyCode={f.companyCode||""} vendorId={vendorId} livePos={livePos} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);}} onClose={()=>setShowPoHelp(false)}/>}
+      {showPoHelp&&<PoValueHelp values={f.poNumbers||[]} companyCode={f.companyCode||""} vendorId={vendorId} livePos={livePos} onConfirm={pns=>{s("poNumbers",pns);setShowPoHelp(false);fetchPoItems(pns);}} onClose={()=>setShowPoHelp(false)}/>}
     </Modal>
   );
 };
