@@ -266,21 +266,26 @@ module.exports = cds.service.impl(async function (srv) {
         }),
         executeHttpRequest(dest, {
           method: 'GET',
-          url: `${base}/A_PurchaseOrderHistoryCategory?$filter=(${poFilter}) and HistoryCategory eq 'WE'&$select=PurchaseOrder,PurchaseOrderItem,HistoryCategory,AmountInTransactionCurrency,TransactionCurrency,DebitCreditCode`,
+          url: `${base}/A_PurchaseOrderHistoryCategory?$filter=(${poFilter}) and HistoryCategory eq 'WE'`,
           headers: hdrs,
         }).catch(e => { console.warn('[poItems] GR history unavailable:', e.message); return null; }),
       ]);
 
       items = itemRes.data?.d?.results || itemRes.data?.value || [];
-
       if (items.length > 0) console.log('[poItems] sample item keys:', Object.keys(items[0]).join(','));
 
       const rawGr = grRes ? (grRes.data?.d?.results || grRes.data?.value || []) : [];
-      // Sum GR amounts per PO+Item (H=debit adds, S=credit subtracts for reversals)
+      if (rawGr.length > 0) console.log('[poItems] GR history keys:', Object.keys(rawGr[0]).join(','));
+      // GR: S=Soll(Debit)=positive goods receipt; H=Haben(Credit)=reversal/correction
       rawGr.forEach(h => {
         const key = `${h.PurchaseOrder}/${h.PurchaseOrderItem}`;
-        const sign = h.DebitCreditCode === 'S' ? -1 : 1;
-        grHistory[key] = (grHistory[key] || 0) + sign * parseFloat(h.AmountInTransactionCurrency || '0');
+        const amt = parseFloat(
+          h.GoodsMvtDocInCoCdCurrency || h.GoodsMvtDocInTransactionCurr ||
+          h.GoodsMvtDocInLocalCurrency || h.AmountInCoCodeCurrency || '0'
+        );
+        // Debit (S) = goods in = positive; Credit (H) = reversal = negative
+        const sign = (h.DebitCreditCode === 'H') ? -1 : 1;
+        grHistory[key] = (grHistory[key] || 0) + sign * Math.abs(amt);
       });
     } catch (e) {
       const status = e.response?.status;
@@ -289,23 +294,43 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(502, `SAP API HTTP ${status}: ${e.message}`);
     }
 
-    // ── DP amounts from Journal Entry API (SAP_COM_0002) ─────────────
-    // If S4HC_JOURNALENTRY_AVAILABLE env var is set, query API_JOURNALENTRYITEMBASIC_SRV
+    // ── GR + DP amounts from Journal Entry API (SAP_COM_0002) ────────
+    // GR: RMWE transactions, debit side (DebitCreditCode='S'), non-reversed
+    // DP: SpecialGLCode='F', non-reversed
+    // Requires SAP_COM_0002 comm arrangement + S4HC_JOURNALENTRY_AVAILABLE=true env var
     if (process.env.S4HC_JOURNALENTRY_AVAILABLE === 'true') {
+      const jFilter = poList.map(p => `PurchasingDocument eq '${p}'`).join(' or ');
+      const jeBase = `/sap/opu/odata/SAP/API_JOURNALENTRYITEMBASIC_SRV/A_JournalEntryItem`;
       try {
-        const dpFilter = poList.map(p => `PurchasingDocument eq '${p}'`).join(' or ');
-        const dpRes = await executeHttpRequest(dest, {
-          method: 'GET',
-          url: `/sap/opu/odata/SAP/API_JOURNALENTRYITEMBASIC_SRV/A_JournalEntryItem?$filter=(${dpFilter}) and SpecialGLCode eq 'F' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchaseOrderItem,AmountInTransactionCurrency,TransactionCurrency`,
-          headers: hdrs,
+        const [grJeRes, dpJeRes] = await Promise.all([
+          // GR amounts: RMWE business transaction, debit entries, non-reversed
+          executeHttpRequest(dest, {
+            method: 'GET',
+            url: `${jeBase}?$filter=(${jFilter}) and BusinessTransactionType eq 'RMWE' and DebitCreditCode eq 'S' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchasingDocumentItem,AmountInCompanyCodeCurrency,CompanyCodeCurrency`,
+            headers: hdrs,
+          }).catch(e => { console.warn('[poItems] GR Journal Entry failed:', e.message); return null; }),
+          // DP amounts: special GL 'F', non-reversed
+          executeHttpRequest(dest, {
+            method: 'GET',
+            url: `${jeBase}?$filter=(${jFilter}) and SpecialGLCode eq 'F' and IsReversalDocument eq false and IsReversed eq false&$select=PurchasingDocument,PurchasingDocumentItem,AmountInCompanyCodeCurrency,CompanyCodeCurrency`,
+            headers: hdrs,
+          }).catch(e => { console.warn('[poItems] DP Journal Entry failed:', e.message); return null; }),
+        ]);
+
+        const rawGrJe = grJeRes ? (grJeRes.data?.d?.results || grJeRes.data?.value || []) : [];
+        rawGrJe.forEach(r => {
+          const key = `${r.PurchasingDocument}/${r.PurchasingDocumentItem || ''}`;
+          grHistory[key] = (grHistory[key] || 0) + parseFloat(r.AmountInCompanyCodeCurrency || '0');
         });
-        const rawDp = dpRes.data?.d?.results || dpRes.data?.value || [];
-        rawDp.forEach(d => {
-          const key = `${d.PurchasingDocument}/${d.PurchaseOrderItem || ''}`;
-          dpAmounts[key] = (dpAmounts[key] || 0) + parseFloat(d.AmountInTransactionCurrency || '0');
+        if (rawGrJe.length > 0) console.log('[poItems] GR from Journal Entry: overriding PO history amounts');
+
+        const rawDpJe = dpJeRes ? (dpJeRes.data?.d?.results || dpJeRes.data?.value || []) : [];
+        rawDpJe.forEach(r => {
+          const key = `${r.PurchasingDocument}/${r.PurchasingDocumentItem || ''}`;
+          dpAmounts[key] = (dpAmounts[key] || 0) + parseFloat(r.AmountInCompanyCodeCurrency || '0');
         });
       } catch (e) {
-        console.warn('[poItems] DP amount fetch failed:', e.message);
+        console.warn('[poItems] Journal Entry API failed:', e.message);
       }
     }
 
