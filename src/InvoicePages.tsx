@@ -230,8 +230,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   // Sum of Invoice Amount column in the PO items table (checked rows only)
   const totalPoInvAmt=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false).reduce((s:number,po:string)=>s+Number(poInvAmts[po]||0),0);
   const hasPOItems=(f.poNumbers||[]).length>0;
-  // When PO items present: Invoice Amount = PO total + VAT + Other Fee; netBalance = Invoice Amount - WHT
-  const netBalance=Number(f.amount||0)-Number(f.whtAmt||0);
+  // Invoice Amount = PO total + VAT + Other Fee; WHT deducted at payment, not here
+  const netBalance=Number(f.amount||0);
   const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",placeholder:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",placeholder:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",placeholder:"50002103"}];
   // files[] entries are either strings (mock) or {id,fileName,...} objects (BTP)
   const fileKey=(entry:any)=>typeof entry==="string"?entry:entry?.fileName||entry?.id||"";
