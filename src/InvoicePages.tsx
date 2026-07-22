@@ -644,7 +644,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
 // ── PDF Preview Components ─────────────────────────────────────
 export const InvoiceDoc = ({inv}) => {
   const vd=VENDORS[inv.vendorId]||{};
-  const net=Number(inv.amount||0)+Number(inv.vatAmt||0)-Number(inv.whtAmt||0);
+  const net=Number(inv.amount||0)-Number(inv.whtAmt||0);
   const rows=[["Amount",fmtAmt(inv.amount,inv.currency)],["VAT Base Amount",fmtAmt(inv.vatBase||0,inv.currency)],["VAT Amount (PPN 11%)",fmtAmt(inv.vatAmt||0,inv.currency)],
     ...(inv.whtType?[[WHT_TYPES.find(w=>w.v===inv.whtType)?.l||inv.whtType,""],["WHT Base Amount",fmtAmt(inv.whtBase||0,inv.currency)],["WHT Amount","("+fmtAmt(inv.whtAmt||0,inv.currency)+")"]]:[])] ;
   return (
@@ -1421,7 +1421,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,onDelete
   const canWithdraw = view.status==="Submitted";
   const canDel      = view.status==="Draft";
   const pos         = (view.poNumbers||[view.poNumber]).filter(Boolean);
-  const totalAmt    = Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0);
+  const totalAmt    = Number(view.amount||0);
 
   const Lbl = ({children}:any) => <div style={{fontSize:11,color:C.t2,marginBottom:2,lineHeight:1.3}}>{children}</div>;
   const Val = ({children,bold,blue}:any) => <div style={{fontSize:13,color:blue?C.primary:C.t1,fontWeight:bold?700:400,lineHeight:1.5,wordBreak:"break-word"}}>{children||"—"}</div>;
@@ -1638,14 +1638,14 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,onDelete
           </>}
           <SecHdr>Financial Summary</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            <div><Lbl>Invoice Amount (Gross)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount (embedded)</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
             {(view.additionalFee||0)>0&&<>
               <div><Lbl>Other Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
               <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
             </>}
-            <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
-            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(totalAmt-Number(view.whtAmt||0),view.currency)}</Val></div>
+            <div><Lbl>WHT Deduction</Lbl><Val>{view.whtAmt?(fmtAmt(view.whtAmt,view.currency)):"—"}</Val></div>
+            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(Number(view.amount||0)-Number(view.whtAmt||0),view.currency)}</Val></div>
           </div>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:4}}>
             <strong>SAP Integration:</strong>{" "}
@@ -2082,7 +2082,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
                     {!hiddenCols.has("pmtTermsStatus")&&(()=>{const ct=(VENDORS[inv.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===inv.companyCode)?.zterm;const ok=ct&&inv.paymentTerms?inv.paymentTerms===ct:null;return(<td style={cs}>{ok===null?<span style={{color:C.t2,fontSize:FS.sm}}>—</span>:ok?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={13} color="#107e3e"/>Compliant</span>:<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Differs ({ct})</span>}</td>);})()}
 
                     {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)+Number(inv.additionalFee||0),inv.currency)}</span>
+                      <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0),inv.currency)}</span>
                     </td>}
                     {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
                       <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>
@@ -2420,7 +2420,7 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   };
 
   const pos = (view.poNumbers||[view.poNumber]).filter(Boolean);
-  const totalAmt = Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0);
+  const totalAmt = Number(view.amount||0);
 
   const canReview  = ["Submitted"].includes(view.status);
   const canAccept  = ["Submitted","Under Review"].includes(view.status);
@@ -2630,14 +2630,14 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
           </>}
           <SecHdr>Financial Summary</SecHdr>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 16px",marginBottom:16}}>
-            <div><Lbl>Item Amount (subtotal)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
-            <div><Lbl>VAT Amount</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
+            <div><Lbl>Invoice Amount (Gross)</Lbl><Val>{fmtAmt(view.amount,view.currency)}</Val></div>
+            <div><Lbl>VAT Amount (embedded)</Lbl><Val>{fmtAmt(view.vatAmt||0,view.currency)}</Val></div>
             {(view.additionalFee||0)>0&&<>
               <div><Lbl>Other Fee</Lbl><Val>{fmtAmt(view.additionalFee,view.currency)}</Val></div>
               <div><Lbl>Fee Category</Lbl><Val>{view.feeCategory||"—"}</Val></div>
             </>}
-            <div><Lbl>WHT Amount</Lbl><Val>{fmtAmt(view.whtAmt||0,view.currency)}</Val></div>
-            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(totalAmt-Number(view.whtAmt||0),view.currency)}</Val></div>
+            <div><Lbl>WHT Deduction</Lbl><Val>{view.whtAmt?(fmtAmt(view.whtAmt,view.currency)):"—"}</Val></div>
+            <div><Lbl>Net Payable</Lbl><Val bold blue>{fmtAmt(Number(view.amount||0)-Number(view.whtAmt||0),view.currency)}</Val></div>
           </div>
           <div style={{padding:10,background:C.infoBg,borderRadius:4,fontSize:11,color:C.primary,marginTop:4}}>
             <strong>SAP Integration:</strong>{" "}
@@ -3134,7 +3134,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                     {!hiddenCols.has("submittedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>}
                     {!hiddenCols.has("confirmedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>}
                     {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontWeight:700,fontSize:FS.sm,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)+Number(inv.additionalFee||0),inv.currency)}</span>
+                      <span style={{fontWeight:700,fontSize:FS.sm,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0),inv.currency)}</span>
                     </td>}
                     {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
                       <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>

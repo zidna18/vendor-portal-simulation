@@ -473,18 +473,29 @@ module.exports = cds.service.impl(async function (srv) {
 
         console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
 
-        // 6. POST to SAP
+        // 6. POST to SAP — omit Accept so SAP returns its default (XML/ATOM for OData V2)
+        const postHdrs = {
+          'Content-Type': 'application/json',
+          'sap-client': process.env.S4HC_CLIENT || '120',
+          'x-csrf-token': csrfToken,
+        };
+        console.log('[postInvoice] POST headers:', JSON.stringify(postHdrs));
         const sapRes = await executeHttpRequest(dest, {
           method: 'POST',
-          url: `${base}/A_SupplierInvoice?$format=json`,
-          headers: { ...hdrs, 'x-csrf-token': csrfToken },
+          url: `${base}/A_SupplierInvoice`,
+          headers: postHdrs,
           data: payload,
+          responseType: 'text',
         });
 
-        const sapDoc = sapRes.data?.d || sapRes.data || {};
-        const sapDocNo = sapDoc.SupplierInvoice || '';
-        const fiscalYear = sapDoc.FiscalYear || today.slice(0, 4);
-        const fullDocNo = sapDocNo ? `${sapDocNo}/${fiscalYear}` : '';
+        // Parse SupplierInvoice + FiscalYear from OData V2 XML response
+        const xmlBody = typeof sapRes.data === 'string' ? sapRes.data : JSON.stringify(sapRes.data);
+        const docMatch = xmlBody.match(/<[^>]*:?SupplierInvoice[^>]*>([^<]+)<\/[^>]*:?SupplierInvoice>/);
+        const yrMatch  = xmlBody.match(/<[^>]*:?FiscalYear[^>]*>([^<]+)<\/[^>]*:?FiscalYear>/);
+        const sapDocNo   = docMatch ? docMatch[1].trim() : '';
+        const fiscalYear = yrMatch  ? yrMatch[1].trim()  : today.slice(0, 4);
+        const fullDocNo  = sapDocNo ? `${sapDocNo}/${fiscalYear}` : '';
+        const sapDoc     = { SupplierInvoice: sapDocNo, FiscalYear: fiscalYear };
 
         console.log('[postInvoice] SAP response:', JSON.stringify(sapDoc, null, 2));
 
@@ -557,8 +568,12 @@ module.exports = cds.service.impl(async function (srv) {
         res.json({ sapDocNo: fullDocNo, sapDoc, attachments: attachResults });
 
       } catch (e) {
-        const detail = e.response?.data || e.message;
-        console.error('[postInvoice] error:', JSON.stringify(detail, null, 2));
+        const status  = e.response?.status;
+        const headers = e.response?.headers;
+        const detail  = e.response?.data || e.message;
+        console.error('[postInvoice] error status:', status);
+        console.error('[postInvoice] error headers:', JSON.stringify(headers));
+        console.error('[postInvoice] error body:', typeof detail === 'string' ? detail : JSON.stringify(detail));
         res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
       }
     });
