@@ -1803,8 +1803,17 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     active.pmtTerms.length>0&&{label:"Payment Terms",val:active.pmtTerms.join(", "),onClear:()=>clr("pmtTerms")},
     active.pmtTermsStatus.length>0&&{label:"Pmt Terms Status",val:active.pmtTermsStatus.map(s=>s==="compliant"?"Compliant":s==="differs"?"Differs":"Unknown").join(", "),onClear:()=>clr("pmtTermsStatus")},
   ].filter(Boolean);
-  const save=obj=>{setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);setForm(false);setEd(null);};
-  const withdraw=id=>{if(window.confirm("Withdraw this invoice? Status will return to Draft."))setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Draft",submittedAt:null}:i));};
+  const save=async(obj)=>{
+    setInvoices(p=>p.find(i=>i.id===obj.id)?p.map(i=>i.id===obj.id?obj:i):[...p,obj]);
+    setForm(false);setEd(null);
+    try{await saveInvoice(obj);}catch(e:any){alert("Invoice saved locally but failed to persist:\n"+e.message);}
+  };
+  const withdraw=async(id)=>{
+    if(!window.confirm("Withdraw this invoice? Status will return to Draft."))return;
+    const updated={...invoices.find(i=>i.id===id),status:"Draft",submittedAt:null};
+    setInvoices(p=>p.map(i=>i.id===id?updated:i));
+    try{await saveInvoice(updated);}catch(e:any){console.warn("withdraw persist failed:",e);}
+  };
   const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const allSel=mine.length>0&&selRows.size===mine.length;
   const toggleAll=()=>setSelRows(allSel?new Set():new Set(mine.map(i=>i.id)));
