@@ -34,7 +34,11 @@ async function odataPost(path: string, body: any) {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API POST ${res.status}: ${path}`);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    const msg = detail?.error?.message || detail?.message || JSON.stringify(detail);
+    throw new Error(`API POST ${res.status}: ${path}\n${msg}`);
+  }
   return res.json();
 }
 
@@ -45,7 +49,11 @@ async function odataPatch(path: string, body: any) {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API PATCH ${res.status}: ${path}`);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    const msg = detail?.error?.message || detail?.message || JSON.stringify(detail);
+    throw new Error(`API PATCH ${res.status}: ${path}\n${msg}`);
+  }
   return res.status === 204 ? null : res.json();
 }
 
@@ -77,8 +85,30 @@ function parseRfq(r: any) {
   return { ...r, targets: parseJsonField(r.targets, []), items: parseJsonField(r.items, []), discussions: parseJsonField(r.discussions, []), awardProposal: parseJsonField(r.awardProposal, null) };
 }
 
+// Schema-known fields only — CAP may reject unknown properties
+const INV_FIELDS = new Set(['id','invoiceNo','invoiceType','vendorId','vendorName','companyCode',
+  'amount','currency','vatBase','vatAmt','whtType','whtBase','whtAmt','additionalFee','feeCategory',
+  'paymentTerms','invoiceDate','dueDate','desc','status','submittedAt','confirmedAt','postedAt',
+  'sapDocNo','convertedDocNo','clearingDocNo','rejReason','taxDoc','poNumbers','items','files']);
+
+function toDateTime(d: any) {
+  if (!d) return null;
+  // If already a full ISO string keep it; bare date → add midnight UTC
+  return String(d).length === 10 ? `${d}T00:00:00Z` : d;
+}
+
 function serializeInvoice(inv: any) {
-  return { ...inv, poNumbers: JSON.stringify(inv.poNumbers || []), items: JSON.stringify(inv.items || []), files: JSON.stringify(inv.files || []) };
+  const out: any = {};
+  for (const k of INV_FIELDS) {
+    if (k in inv) out[k] = inv[k];
+  }
+  out.poNumbers   = JSON.stringify(inv.poNumbers  || []);
+  out.items       = JSON.stringify(inv.items       || []);
+  out.files       = JSON.stringify(inv.files       || []);
+  out.submittedAt = toDateTime(inv.submittedAt);
+  out.confirmedAt = toDateTime(inv.confirmedAt);
+  out.postedAt    = toDateTime(inv.postedAt);
+  return out;
 }
 function serializeQuotation(qt: any) {
   return { ...qt, items: JSON.stringify(qt.items || []), files: JSON.stringify(qt.files || []), priceConditions: JSON.stringify(qt.priceConditions || {}), scores: qt.scores ? JSON.stringify(qt.scores) : null, awardProposal: qt.awardProposal ? JSON.stringify(qt.awardProposal) : null };
