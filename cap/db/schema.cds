@@ -1,7 +1,7 @@
 namespace vendor.portal;
 
 entity Invoices {
-  key id            : UUID;
+  key id            : String(50);
   invoiceNo         : String(50);
   invoiceType       : String(30)    default 'Invoice';
   vendorId          : String(20);
@@ -35,7 +35,7 @@ entity Invoices {
 }
 
 entity Quotations {
-  key id            : UUID;
+  key id            : String(50);
   rfqId             : String(20);
   rfqTitle          : String(200);
   vendorId          : String(20);
@@ -74,7 +74,7 @@ entity InvoiceAttachments {
 }
 
 entity RFQs {
-  key id                     : UUID;
+  key id                     : String(50);
   title                      : String(200);
   postedDate                 : Date;
   closingDate                : Date;
