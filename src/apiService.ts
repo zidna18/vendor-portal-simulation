@@ -231,6 +231,16 @@ export async function postInvoiceToSAP(invoice: any): Promise<{ sapDocNo: string
   return res.json();
 }
 
+// ── Delete Invoice ────────────────────────────────────────────────
+export async function deleteInvoice(id: string) {
+  if (USE_MOCK) return;
+  const res = await fetch(`${API_BASE}/VendorPortal/Invoices(${id})`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`Delete failed: ${res.status}`);
+}
+
 // ── Attachment helpers (BTP only) ─────────────────────────────────
 export async function uploadAttachment(invoiceId: string, file: File): Promise<{ id: string; fileName: string; fileSize: number }> {
   return new Promise((resolve, reject) => {

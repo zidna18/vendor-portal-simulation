@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "./lib/useToast";
-import { isMockMode, uploadAttachment, attachmentDownloadUrl, postInvoiceToSAP, saveInvoice } from "./apiService";
+import { isMockMode, uploadAttachment, attachmentDownloadUrl, postInvoiceToSAP, saveInvoice, deleteInvoice } from "./apiService";
 import {
   C, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -267,13 +267,20 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       if(!f.companyCode){toast("Select a Company Code before uploading attachments.","err");return;}
       invId=genInvId(f.companyCode,allInvoices);s("id",invId);
     }
+    const DOCTYPE_MAP:Record<string,string>={invoice:"IV",fakturPajak:"FP",grDocument:"GR"};
+    const docType=DOCTYPE_MAP[key]||key.slice(0,2).toUpperCase();
+    const existingOfType=(f.files||[]).filter((e:any)=>e.slot===key).length;
+    const runNum=String(existingOfType+1).padStart(2,"0");
+    const ext=file.name.includes(".")?file.name.slice(file.name.lastIndexOf(".")):"";
+    const renamedName=`${invId}_${docType}_${runNum}${ext}`;
+    const renamedFile=new File([file],renamedName,{type:file.type});
     try{
-      toast(`Uploading ${file.name}…`,"info");
-      const meta=await uploadAttachment(invId,file);
+      toast(`Uploading ${renamedName}…`,"info");
+      const meta=await uploadAttachment(invId,renamedFile);
       // Replace fixed-slot entry or add new
       const cur=(f.files||[]).filter((e:any)=>fileKey(e)!==key);
       s("files",[...cur,{...meta,slot:key}]);
-      toast(`${file.name} uploaded.`,"ok");
+      toast(`${renamedName} uploaded.`,"ok");
     }catch(err:any){
       toast(`Upload failed: ${err.message}`,"err");
     }
@@ -1386,7 +1393,7 @@ const ALL_VENDOR_FILTER_FIELDS = [
 ];
 
 // ── Vendor Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ──────────
-const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScreen,onToggleFullScreen,panelFlex}) => {
+const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,onDelete,fullScreen,onToggleFullScreen,panelFlex}) => {
   const [activeTab,setActiveTab]=useState("general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const secRefs   = useRef<Record<string,HTMLDivElement|null>>({});
@@ -1412,6 +1419,7 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
 
   const canEdit     = ["Draft","Rejected"].includes(view.status);
   const canWithdraw = view.status==="Submitted";
+  const canDel      = view.status==="Draft";
   const pos         = (view.poNumbers||[view.poNumber]).filter(Boolean);
   const totalAmt    = Number(view.amount||0)+Number(view.vatAmt||0)+Number(view.additionalFee||0);
 
@@ -1461,6 +1469,9 @@ const VendorInvoiceDetailPanel = ({view,onClose,onPdf,onEdit,onWithdraw,fullScre
             <button style={btnStyle(canEdit)} disabled={!canEdit} onClick={()=>canEdit&&onEdit(view)}>
               <SapIcon name="edit" size={13} color={canEdit?C.t1:"#bfbfbf"}/>Edit
             </button>
+            {canDel&&<button style={{...btnStyle(true),color:C.err}} onClick={()=>onDelete(view.id)}>
+              <SapIcon name="delete" size={13} color={C.err}/>Delete
+            </button>}
             <button style={btnStyle(canWithdraw)} disabled={!canWithdraw} onClick={()=>canWithdraw&&onWithdraw(view.id)}>
               <SapIcon name="undo" size={13} color={canWithdraw?C.t1:"#bfbfbf"}/>Withdraw
             </button>
@@ -1825,9 +1836,17 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
     setInvoices(p=>p.map(i=>i.id===id?updated:i));
     try{await saveInvoice(updated);}catch(e:any){console.warn("withdraw persist failed:",e);}
   };
+  const delInvoice=async(id)=>{
+    if(!window.confirm("Delete this draft invoice? This cannot be undone.\n\nThe invoice number will not be reused."))return;
+    setInvoices(p=>p.filter(i=>i.id!==id));
+    if(view?.id===id)setView(null);
+    try{await deleteInvoice(id);}catch(e:any){console.warn("delete persist failed:",e);}
+  };
   const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const allSel=mine.length>0&&selRows.size===mine.length;
   const toggleAll=()=>setSelRows(allSel?new Set():new Set(mine.map(i=>i.id)));
+  const selMine=mine.filter(i=>selRows.has(i.id));
+  const canDelete=selMine.length>0&&selMine.every(i=>i.status==="Draft");
 
   const TK={
     hdrBg:C.subtle,      hdrBorder:C.border,    hdrText:C.t2,
@@ -1945,6 +1964,11 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
               <SapIcon name={allExpanded?"collapse-all":"expand-all"} size={14} color={C.t1}/> {allExpanded?"Collapse All":"Expand All"}
             </button>
             <div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/>
+            {canDelete&&<><button onClick={()=>selMine.forEach(i=>delInvoice(i.id))}
+              title={`Delete ${selMine.length} draft invoice${selMine.length>1?"s":""}`}
+              style={{background:"transparent",border:"none",color:C.err,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
+              <SapIcon name="delete" size={14} color={C.err}/> Delete
+            </button><div style={{width:1,height:20,background:C.border,margin:"0 4px"}}/></>}
             <button onClick={()=>{setSelRows(new Set());setEd(null);setForm(true);}}
               style={{background:"transparent",border:"none",color:C.t1,borderRadius:4,padding:"0 0.625rem",fontSize:FS.sm,fontFamily:"inherit",fontWeight:400,cursor:"pointer",height:36,display:"flex",alignItems:"center",gap:4}}>
               <SapIcon name="add" size={14} color={C.t1}/> Create
@@ -2150,7 +2174,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
         <VendorInvoiceDetailPanel
           view={view} onClose={()=>{setView(null);setFullScreen(false);}}
           onPdf={setPdfView} onEdit={inv=>{setEd(inv);setForm(true);}}
-          onWithdraw={withdraw} fullScreen={fullScreen}
+          onWithdraw={withdraw} onDelete={delInvoice} fullScreen={fullScreen}
           onToggleFullScreen={()=>setFullScreen(f=>!f)}
           panelFlex={fullScreen?"1":`0 0 ${100-split}%`}
         />
