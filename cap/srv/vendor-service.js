@@ -409,10 +409,8 @@ module.exports = cds.service.impl(async function (srv) {
 
         const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
         const base = `/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV`;
-        // OData V2 requires Accept: application/json with odata=verbose for content negotiation.
-        // Adding $format=json on POST URL as additional fallback.
         const hdrs = {
-          Accept: 'application/json;odata=verbose',
+          Accept: 'application/json',
           'Content-Type': 'application/json',
           'sap-client': process.env.S4HC_CLIENT || '120',
         };
