@@ -120,8 +120,16 @@ export async function saveInvoice(invoice: any) {
   if (USE_MOCK) return invoice;
   const payload = serializeInvoice(invoice);
   if (invoice.id) {
-    await odataPatch(`/VendorPortal/Invoices(${invoice.id})`, payload);
-    return invoice;
+    try {
+      await odataPatch(`/VendorPortal/Invoices(${invoice.id})`, payload);
+      return invoice;
+    } catch (e: any) {
+      if (e.message?.includes('404')) {
+        // Record not in DB yet (ID was assigned client-side for attachment upload)
+        return parseInvoice(await odataPost('/VendorPortal/Invoices', payload));
+      }
+      throw e;
+    }
   }
   return parseInvoice(await odataPost('/VendorPortal/Invoices', payload));
 }
