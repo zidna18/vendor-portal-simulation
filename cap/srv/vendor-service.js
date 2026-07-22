@@ -473,9 +473,11 @@ module.exports = cds.service.impl(async function (srv) {
 
         console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
 
-        // 6. POST to SAP — omit Accept so SAP returns its default (XML/ATOM for OData V2)
+        // 6. POST to SAP — SDK adds Accept:application/json by default; override to atom+xml
+        //    which is what API_SUPPLIERINVOICE_PROCESS_SRV can produce for POST responses
         const postHdrs = {
           'Content-Type': 'application/json',
+          'Accept': 'application/atom+xml',
           'sap-client': process.env.S4HC_CLIENT || '120',
           'x-csrf-token': csrfToken,
         };
