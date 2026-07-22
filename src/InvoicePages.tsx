@@ -227,7 +227,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const autoCalcVat=(base:any,rate:string)=>Math.round(Number(base||0)*(VAT_RATES.find(r=>r.v===rate)?.r||0.11));
   const getWhtRate=(whtType:string,whtCode:string)=>(WHT_CODES[whtType]||[]).find(c=>c.v===whtCode)?.rate||0;
   const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
-  const netBalance=Number(f.amount||0)+Number(f.vatAmt||0)+totalOtherFee-Number(f.whtAmt||0);
+  // Sum of Invoice Amount column in the PO items table (checked rows only)
+  const totalPoInvAmt=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false).reduce((s:number,po:string)=>s+Number(poInvAmts[po]||0),0);
+  const hasPOItems=(f.poNumbers||[]).length>0;
+  // When PO items present: Invoice Amount = PO total + VAT + Other Fee; netBalance = Invoice Amount - WHT
+  const netBalance=Number(f.amount||0)-Number(f.whtAmt||0);
   const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",placeholder:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",placeholder:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",placeholder:"50002103"}];
   // files[] entries are either strings (mock) or {id,fileName,...} objects (BTP)
   const fileKey=(entry:any)=>typeof entry==="string"?entry:entry?.fileName||entry?.id||"";
@@ -294,7 +298,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       <div style={{display:"flex",alignItems:"center",gap:16,padding:"8px 12px",background:C.subtle,borderRadius:4,marginBottom:4,border:`1px solid ${C.border}`}}>
         <div style={{fontSize:12,fontWeight:600,color:C.t2}}>Invoice Balance:</div>
         <div style={{fontSize:15,fontWeight:700,color:netBalance>=0?C.ok:C.err,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(netBalance,f.currency||"IDR")}</div>
-        <div style={{flex:1,fontSize:11,color:C.t2}}>Check: invoice amount consistent with Item (PO Invoice amount + VAT Amount + Other Fee)</div>
+        <div style={{flex:1,fontSize:11,color:C.t2}}>{hasPOItems?"Invoice Amount (auto) − WHT":"Invoice Amount + VAT + Other Fee − WHT"}</div>
       </div>
 
       {/* GENERAL INFORMATION */}
@@ -329,8 +333,10 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           </div>
         </div>
         <div style={{gridColumn:"1/-1"}}>
-          <Lbl>Invoice Amount *</Lbl>
-          <AmtInp value={f.amount} onChange={v=>{const base=Number(v||0);const vat=autoCalcVat(base,f.vatRate);setF(p=>({...p,amount:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:p.whtType?Math.round(base*(getWhtRate(p.whtType,p.whtCode)/100)):0}));}}/>
+          <Lbl>Invoice Amount *{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(auto: PO items + VAT + other fee)</span>}</Lbl>
+          {hasPOItems
+            ?<div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const,fontWeight:600}}>{fmtAmt(Number(f.amount||0),f.currency||"IDR")}</div>
+            :<AmtInp value={f.amount} onChange={v=>{const base=Number(v||0);const vat=autoCalcVat(base,f.vatRate);setF(p=>({...p,amount:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:p.whtType?Math.round(base*(getWhtRate(p.whtType,p.whtCode)/100)):0}));}}/>}
         </div>
       </div>
 
@@ -437,9 +443,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                         const v=String(m.invAmt||0);
                         setPoInvAmts(p=>{
                           const n={...p,[po]:v};
-                          const total=Object.entries(n).filter(([k])=>poItemChecked[k]!==false).reduce((s,[,a])=>s+Number(a||0),0);
-                          const base=total;const vat=autoCalcVat(base,f.vatRate);
-                          setF((prev:any)=>({...prev,amount:String(total),vatBase:base,vatAmt:vat,whtBase:base,whtAmt:prev.whtType?Math.round(base*(getWhtRate(prev.whtType,prev.whtCode)/100)):0}));
+                          const poTotal=(f.poNumbers||[]).filter((k:string)=>poItemChecked[k]!==false).reduce((s:number,k:string)=>s+Number(n[k]||0),0);
+                          const vat=autoCalcVat(poTotal,f.vatRate);
+                          const grand=poTotal+vat+totalOtherFee;
+                          const wht=f.whtType?Math.round(poTotal*(getWhtRate(f.whtType,f.whtCode)/100)):0;
+                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat,whtBase:poTotal,whtAmt:wht,amount:String(grand)}));
                           return n;
                         });
                       }}>{fmtAmt(m.invAmt,cur)}</td>
@@ -447,9 +455,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                       <AmtInp value={poInvAmts[po]??''} onChange={v=>{
                         setPoInvAmts(p=>{
                           const n={...p,[po]:v};
-                          const total=Object.entries(n).filter(([k])=>poItemChecked[k]!==false).reduce((s,[,a])=>s+Number(a||0),0);
-                          const base=total;const vat=autoCalcVat(base,f.vatRate);
-                          setF((prev:any)=>({...prev,amount:String(total),vatBase:base,vatAmt:vat,whtBase:base,whtAmt:prev.whtType?Math.round(base*(getWhtRate(prev.whtType,prev.whtCode)/100)):0}));
+                          const poTotal=(f.poNumbers||[]).filter((k:string)=>poItemChecked[k]!==false).reduce((s:number,k:string)=>s+Number(n[k]||0),0);
+                          const vat=autoCalcVat(poTotal,f.vatRate);
+                          const grand=poTotal+vat+totalOtherFee;
+                          const wht=f.whtType?Math.round(poTotal*(getWhtRate(f.whtType,f.whtCode)/100)):0;
+                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat,whtBase:poTotal,whtAmt:wht,amount:String(grand)}));
                           return n;
                         });
                       }}/>
@@ -468,12 +478,20 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       <SHdr>Tax Information</SHdr>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px"}}>
         <div>
-          <Lbl>VAT Base Amount</Lbl>
-          <AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>
+          <Lbl>VAT Base Amount{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(= PO items total)</span>}</Lbl>
+          {hasPOItems
+            ?<div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(totalPoInvAmt,f.currency||"IDR")}</div>
+            :<AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>}
         </div>
         <div>
           <Lbl>VAT Rate</Lbl>
-          <Sel value={f.vatRate||"11"} onChange={v=>{const vat=autoCalcVat(f.vatBase,v);s("vatRate",v);s("vatAmt",vat);}} opts={VAT_RATES.map(r=>({v:r.v,l:r.l}))}/>
+          <Sel value={f.vatRate||"11"} onChange={v=>{
+            const base=hasPOItems?totalPoInvAmt:Number(f.vatBase||0);
+            const vat=autoCalcVat(base,v);
+            const grand=hasPOItems?base+vat+totalOtherFee:Number(f.amount||0);
+            const wht=f.whtType?Math.round(base*(getWhtRate(f.whtType,f.whtCode)/100)):0;
+            setF((p:any)=>({...p,vatRate:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:wht,amount:hasPOItems?String(grand):p.amount}));
+          }} opts={VAT_RATES.map(r=>({v:r.v,l:r.l}))}/>
         </div>
         <div>
           <Lbl>VAT Amount (auto)</Lbl>
