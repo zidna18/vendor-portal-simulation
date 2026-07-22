@@ -230,8 +230,11 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   // Sum of Invoice Amount column in the PO items table (checked rows only)
   const totalPoInvAmt=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false).reduce((s:number,po:string)=>s+Number(poInvAmts[po]||0),0);
   const hasPOItems=(f.poNumbers||[]).length>0;
-  // Invoice Amount = PO total + VAT + Other Fee; WHT deducted at payment, not here
-  const netBalance=Number(f.amount||0);
+  // System-calculated total: PO items + VAT + Other Fee (the "expected" invoice value)
+  const systemTotal=totalPoInvAmt+Number(f.vatAmt||0)+totalOtherFee;
+  // Invoice Amount (f.amount) is manually entered from the physical document — used as control
+  const docAmount=Number(f.amount||0);
+  const amountMatches=hasPOItems&&totalPoInvAmt>0?Math.abs(docAmount-systemTotal)<1:true;
   const FIXED_ATT=[{key:"invoice.pdf",label:"Invoice",placeholder:"INV/AXX/2026/001"},{key:"faktur_pajak.pdf",label:"Faktur Pajak",placeholder:"FP-00214141041"},{key:"gr_document.pdf",label:"GR Document",placeholder:"50002103"}];
   // files[] entries are either strings (mock) or {id,fileName,...} objects (BTP)
   const fileKey=(entry:any)=>typeof entry==="string"?entry:entry?.fileName||entry?.id||"";
@@ -294,11 +297,22 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const fixedKeys=FIXED_ATT.map(a=>a.key);
   return (
     <Modal title={isNew?"Add New Invoice":`Edit Invoice: ${inv.invoiceNo}`} onClose={onClose} width={860} expanded={expanded} onToggleExpand={()=>setExpanded(p=>!p)}>
-      {/* Invoice balance strip */}
-      <div style={{display:"flex",alignItems:"center",gap:16,padding:"8px 12px",background:C.subtle,borderRadius:4,marginBottom:4,border:`1px solid ${C.border}`}}>
-        <div style={{fontSize:12,fontWeight:600,color:C.t2}}>Invoice Balance:</div>
-        <div style={{fontSize:15,fontWeight:700,color:netBalance>=0?C.ok:C.err,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(netBalance,f.currency||"IDR")}</div>
-        <div style={{flex:1,fontSize:11,color:C.t2}}>{hasPOItems?"Invoice Amount (auto) − WHT":"Invoice Amount + VAT + Other Fee − WHT"}</div>
+      {/* Invoice balance strip — MIRO-style control check */}
+      <div style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:amountMatches?`${C.ok}18`:`${C.err}15`,borderRadius:4,marginBottom:4,border:`1px solid ${amountMatches?C.ok:C.err}`}}>
+        <div style={{fontSize:12,fontWeight:600,color:C.t2,whiteSpace:"nowrap" as const}}>Invoice Balance:</div>
+        {hasPOItems&&totalPoInvAmt>0?(
+          <>
+            <div style={{fontSize:13,color:C.t2,whiteSpace:"nowrap" as const}}>Document:&nbsp;<span style={{fontWeight:700,color:C.t1,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(docAmount,f.currency||"IDR")}</span></div>
+            <div style={{fontSize:13,color:C.t2,whiteSpace:"nowrap" as const}}>System:&nbsp;<span style={{fontWeight:700,color:C.t1,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(systemTotal,f.currency||"IDR")}</span></div>
+            <div style={{fontSize:12,fontWeight:700,color:amountMatches?C.ok:C.err,whiteSpace:"nowrap" as const}}>{amountMatches?"✓ Matched":"✗ Difference: "+fmtAmt(Math.abs(docAmount-systemTotal),f.currency||"IDR")}</div>
+            <div style={{flex:1,fontSize:11,color:C.t2}}>System = PO items + VAT + Other Fee. Enter Invoice Amount to match your physical document.</div>
+          </>
+        ):(
+          <>
+            <div style={{fontSize:15,fontWeight:700,color:C.t1,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(docAmount,f.currency||"IDR")}</div>
+            <div style={{flex:1,fontSize:11,color:C.t2}}>Enter Invoice Amount and PO items — system will verify they match.</div>
+          </>
+        )}
       </div>
 
       {/* GENERAL INFORMATION */}
@@ -333,10 +347,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           </div>
         </div>
         <div style={{gridColumn:"1/-1"}}>
-          <Lbl>Invoice Amount *{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(auto: PO items + VAT + other fee)</span>}</Lbl>
-          {hasPOItems
-            ?<div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const,fontWeight:600}}>{fmtAmt(Number(f.amount||0),f.currency||"IDR")}</div>
-            :<AmtInp value={f.amount} onChange={v=>{const base=Number(v||0);const vat=autoCalcVat(base,f.vatRate);setF(p=>({...p,amount:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:p.whtType?Math.round(base*(getWhtRate(p.whtType,p.whtCode)/100)):0}));}}/>}
+          <Lbl>Invoice Amount *</Lbl>
+          <AmtInp value={f.amount} onChange={v=>{const base=Number(v||0);const wht=f.whtType?Math.round(base*(getWhtRate(f.whtType,f.whtCode)/100)):0;setF((p:any)=>({...p,amount:v,whtBase:base,whtAmt:wht}));}}/>
         </div>
       </div>
 
@@ -445,9 +457,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                           const n={...p,[po]:v};
                           const poTotal=(f.poNumbers||[]).filter((k:string)=>poItemChecked[k]!==false).reduce((s:number,k:string)=>s+Number(n[k]||0),0);
                           const vat=autoCalcVat(poTotal,f.vatRate);
-                          const grand=poTotal+vat+totalOtherFee;
-                          const wht=f.whtType?Math.round(poTotal*(getWhtRate(f.whtType,f.whtCode)/100)):0;
-                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat,whtBase:poTotal,whtAmt:wht,amount:String(grand)}));
+                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat}));
                           return n;
                         });
                       }}>{fmtAmt(m.invAmt,cur)}</td>
@@ -457,9 +467,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                           const n={...p,[po]:v};
                           const poTotal=(f.poNumbers||[]).filter((k:string)=>poItemChecked[k]!==false).reduce((s:number,k:string)=>s+Number(n[k]||0),0);
                           const vat=autoCalcVat(poTotal,f.vatRate);
-                          const grand=poTotal+vat+totalOtherFee;
-                          const wht=f.whtType?Math.round(poTotal*(getWhtRate(f.whtType,f.whtCode)/100)):0;
-                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat,whtBase:poTotal,whtAmt:wht,amount:String(grand)}));
+                          setF((prev:any)=>({...prev,vatBase:poTotal,vatAmt:vat}));
                           return n;
                         });
                       }}/>
@@ -478,7 +486,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       <SHdr>Tax Information</SHdr>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px"}}>
         <div>
-          <Lbl>VAT Base Amount{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(= PO items total)</span>}</Lbl>
+          <Lbl>VAT Base Amount{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(auto = PO items total)</span>}</Lbl>
           {hasPOItems
             ?<div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(totalPoInvAmt,f.currency||"IDR")}</div>
             :<AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>}
@@ -488,9 +496,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
           <Sel value={f.vatRate||"11"} onChange={v=>{
             const base=hasPOItems?totalPoInvAmt:Number(f.vatBase||0);
             const vat=autoCalcVat(base,v);
-            const grand=hasPOItems?base+vat+totalOtherFee:Number(f.amount||0);
-            const wht=f.whtType?Math.round(base*(getWhtRate(f.whtType,f.whtCode)/100)):0;
-            setF((p:any)=>({...p,vatRate:v,vatBase:base,vatAmt:vat,whtBase:base,whtAmt:wht,amount:hasPOItems?String(grand):p.amount}));
+            setF((p:any)=>({...p,vatRate:v,vatBase:base,vatAmt:vat}));
           }} opts={VAT_RATES.map(r=>({v:r.v,l:r.l}))}/>
         </div>
         <div>
