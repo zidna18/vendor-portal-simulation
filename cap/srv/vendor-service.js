@@ -428,7 +428,7 @@ module.exports = cds.service.impl(async function (srv) {
           PurchaseOrderItem:             String(item.item || '').padStart(5, '0'),
           Plant:                         item.plant || '',
           SupplierInvoiceItemAmount:     String(Number(item.invoiceAmt || item.poAmount || 0).toFixed(2)),
-          TaxCode:                       inv.vatTaxCode || 'P1',
+          TaxCode:                       inv.vatTaxCode || 'V1',  // V1 = Input VAT 11% (CPMS)
           DocumentCurrency:              inv.currency || 'IDR',
           PurchaseOrderQuantityUnit:     item.uom || 'EA',
           QuantityInPurchaseOrderUnit:   String(Number(item.qty || 0).toFixed(3)),
@@ -436,7 +436,7 @@ module.exports = cds.service.impl(async function (srv) {
 
         // 3. Build tax lines (one per tax code)
         const taxLines = Number(inv.vatAmt || 0) > 0 ? [{
-          TaxCode:          inv.vatTaxCode || 'P1',
+          TaxCode:          inv.vatTaxCode || 'V1',  // V1 = Input VAT 11% (CPMS)
           TaxAmount:        String(Number(inv.vatAmt || 0).toFixed(2)),
           DocumentCurrency: inv.currency || 'IDR',
         }] : [];
