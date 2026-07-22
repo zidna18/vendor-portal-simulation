@@ -220,9 +220,10 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
   const [attRefs,setAttRefs]=useState<Record<string,string>>(inv?.attRefs||{"invoice.pdf":"","faktur_pajak.pdf":"","gr_document.pdf":""});
   const updateAttRef=(key:string,v:string)=>setAttRefs(p=>({...p,[key]:v}));
   const [poItemChecked,setPoItemChecked]=useState<Record<string,boolean>>(()=>{const o:any={};(inv?.poNumbers||[]).forEach((po:string)=>{o[po]=true;});return o;});
+  const [poInvAmts,setPoInvAmts]=useState<Record<string,string>>({});
   const addPo=(po:string)=>{s("poNumbers",[...(f.poNumbers||[]),po]);setPoItemChecked(p=>({...p,[po]:true}));};
-  const removePo=(po:string)=>{s("poNumbers",(f.poNumbers||[]).filter((x:string)=>x!==po));setPoItemChecked(p=>{const n={...p};delete n[po];return n;});};
-  const removeUnchecked=()=>{const keep=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false);s("poNumbers",keep);setPoItemChecked(p=>{const n:any={};keep.forEach(po=>n[po]=p[po]);return n;});};
+  const removePo=(po:string)=>{s("poNumbers",(f.poNumbers||[]).filter((x:string)=>x!==po));setPoItemChecked(p=>{const n={...p};delete n[po];return n;});setPoInvAmts(p=>{const n={...p};delete n[po];return n;});};
+  const removeUnchecked=()=>{const keep=(f.poNumbers||[]).filter((po:string)=>poItemChecked[po]!==false);s("poNumbers",keep);setPoItemChecked(p=>{const n:any={};keep.forEach(po=>n[po]=p[po]);return n;});setPoInvAmts(p=>{const n:any={};keep.forEach(po=>n[po]=p[po]);return n;});};
   const autoCalcVat=(base:any,rate:string)=>Math.round(Number(base||0)*(VAT_RATES.find(r=>r.v===rate)?.r||0.11));
   const getWhtRate=(whtType:string,whtCode:string)=>(WHT_CODES[whtType]||[]).find(c=>c.v===whtCode)?.rate||0;
   const totalOtherFee=(f.otherFees||[]).reduce((s:number,r:any)=>s+Number(r.amount||0),0);
@@ -430,8 +431,29 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
                     <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.poAmt,cur)}</td>
                     <td style={{padding:"7px 9px",color:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.grAmt,cur)}</td>
                     <td style={{padding:"7px 9px",color:m.dpAmt>0?C.gold:C.t2,textAlign:"right",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.dpAmt,cur)}</td>
-                    <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(m.invAmt,cur)}</td>
-                    <td style={{padding:"5px 7px",minWidth:110}}><AmtInp value="" onChange={()=>{}}/></td>
+                    <td style={{padding:"7px 9px",color:C.primary,textAlign:"right",fontWeight:600,fontVariantNumeric:"tabular-nums" as const,cursor:"pointer"}}
+                      title="Click to use as Invoice Amount"
+                      onClick={()=>{
+                        const v=String(m.invAmt||0);
+                        setPoInvAmts(p=>{
+                          const n={...p,[po]:v};
+                          const total=Object.entries(n).filter(([k])=>poItemChecked[k]!==false).reduce((s,[,a])=>s+Number(a||0),0);
+                          const base=total;const vat=autoCalcVat(base,f.vatRate);
+                          setF((prev:any)=>({...prev,amount:String(total),vatBase:base,vatAmt:vat,whtBase:base,whtAmt:prev.whtType?Math.round(base*(getWhtRate(prev.whtType,prev.whtCode)/100)):0}));
+                          return n;
+                        });
+                      }}>{fmtAmt(m.invAmt,cur)}</td>
+                    <td style={{padding:"5px 7px",minWidth:110}}>
+                      <AmtInp value={poInvAmts[po]??''} onChange={v=>{
+                        setPoInvAmts(p=>{
+                          const n={...p,[po]:v};
+                          const total=Object.entries(n).filter(([k])=>poItemChecked[k]!==false).reduce((s,[,a])=>s+Number(a||0),0);
+                          const base=total;const vat=autoCalcVat(base,f.vatRate);
+                          setF((prev:any)=>({...prev,amount:String(total),vatBase:base,vatAmt:vat,whtBase:base,whtAmt:prev.whtType?Math.round(base*(getWhtRate(prev.whtType,prev.whtCode)/100)):0}));
+                          return n;
+                        });
+                      }}/>
+                    </td>
                   </tr>
                   );
                 })}
