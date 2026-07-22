@@ -486,10 +486,8 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
       <SHdr>Tax Information</SHdr>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px 16px"}}>
         <div>
-          <Lbl>VAT Base Amount{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(auto = PO items total)</span>}</Lbl>
-          {hasPOItems
-            ?<div style={{padding:"0 10px",height:36,background:C.subtle,border:`1px solid ${C.border}`,borderRadius:2,fontSize:13,color:C.t1,display:"flex",alignItems:"center",fontVariantNumeric:"tabular-nums" as const}}>{fmtAmt(totalPoInvAmt,f.currency||"IDR")}</div>
-            :<AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>}
+          <Lbl>VAT Base Amount{hasPOItems&&<span style={{fontSize:10,color:C.t2,fontWeight:400,marginLeft:6}}>(auto-filled, editable)</span>}</Lbl>
+          <AmtInp value={f.vatBase} onChange={v=>{const vat=autoCalcVat(v,f.vatRate);s("vatBase",v);s("vatAmt",vat);}}/>
         </div>
         <div>
           <Lbl>VAT Rate</Lbl>
