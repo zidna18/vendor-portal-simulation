@@ -172,6 +172,27 @@ export async function fetchPurchaseOrderItems(poNumbers: string[]): Promise<any[
   }
 }
 
+// ── Post Supplier Invoice to SAP S/4HANA ─────────────────────────
+export async function postInvoiceToSAP(invoice: any): Promise<{ sapDocNo: string; sapDoc: any }> {
+  if (USE_MOCK) {
+    // Mock mode: simulate SAP response
+    const num = Math.floor(1000000000 + Math.random() * 899999999).toString().slice(0, 10);
+    const year = new Date().getFullYear();
+    return { sapDocNo: `${num}/${year}`, sapDoc: {} };
+  }
+  const res = await fetch(`${API_BASE}/postInvoice`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(invoice),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `Post to SAP failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 // ── Attachment helpers (BTP only) ─────────────────────────────────
 export async function uploadAttachment(invoiceId: string, file: File): Promise<{ id: string; fileName: string; fileSize: number }> {
   return new Promise((resolve, reject) => {

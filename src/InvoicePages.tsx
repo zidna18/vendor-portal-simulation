@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "./lib/useToast";
-import { isMockMode, uploadAttachment, attachmentDownloadUrl } from "./apiService";
+import { isMockMode, uploadAttachment, attachmentDownloadUrl, postInvoiceToSAP, saveInvoice } from "./apiService";
 import {
   C, VENDORS, COMPANY_CODES, CURRENCIES, WHT_TYPES, PAYMENT_TERMS, calcDueDate,
   fmtAmt, fmtDate, fmtPOs, ccName, uid, idr,
@@ -2347,7 +2347,7 @@ const BRM_STATUS_LABEL:Record<string,string> = {
   "Rejected":            "Rejected",
 };
 // ── BRM Invoice Detail Panel (SAP S/4HANA Supplier Invoice style) ───────────
-const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen,panelFlex,onReview,onAccept,onReject,onPost,onConvert,onClear}) => {
+const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen,panelFlex,onReview,onAccept,onReject,onPost,onConvert,onClear,posting}) => {
   const [activeTab,setActiveTab]=useState("general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const secRefs   = useRef<Record<string,HTMLDivElement|null>>({});
@@ -2421,6 +2421,8 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
             <button style={btnStyle(canReview)} disabled={!canReview} onClick={()=>canReview&&onReview(view.id)}><SapIcon name="user-edit" size={13} color={canReview?C.t1:"#bfbfbf"}/>Review</button>
             <button style={btnStyle(canAccept)} disabled={!canAccept} onClick={()=>canAccept&&onAccept(view.id)}><SapIcon name="accept" size={13} color={canAccept?C.t1:"#bfbfbf"}/>Accept</button>
             <button style={btnStyle(canReject)} disabled={!canReject} onClick={()=>canReject&&onReject(view)}><SapIcon name="decline" size={13} color={canReject?C.t1:"#bfbfbf"}/>Reject</button>
+            <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
+            <button style={btnStyle(canPost&&!posting)} disabled={!canPost||posting} onClick={()=>canPost&&!posting&&onPost(view)}><SapIcon name="post" size={13} color={canPost&&!posting?C.t1:"#bfbfbf"}/>{posting?"Posting…":"Post to SAP"}</button>
             <div style={{width:1,height:20,background:C.border,margin:"0 2px"}}/>
             <button style={btnStyle(canConvert)} disabled={!canConvert} onClick={()=>canConvert&&onConvert(view)}><SapIcon name="convert" size={13} color={canConvert?C.t1:"#bfbfbf"}/>Convert</button>
             <button style={btnStyle(canClear)} disabled={!canClear} onClick={()=>canClear&&onClear(view)}><SapIcon name="complete" size={13} color={canClear?C.t1:"#bfbfbf"}/>Clear</button>
@@ -2752,13 +2754,22 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
   const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
   const reject=()=>{if(!rejR){toast("Provide a rejection reason.","err");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
   const setUR=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});};
-  const postToSAP=(inv)=>{
-    const isInv=inv.invoiceType==="Invoice";
-    const num=(100000000+Math.floor(Math.random()*899999999)).toString();
-    const docNo=isInv?`${num.slice(0,10)}/2025`:`${inv.companyCode||"BRMS"}/${num}/2025`;
-    if(window.confirm(`Post to SAP S/4HANA?\n\nDocument: ${inv.invoiceNo}\nType: ${inv.invoiceType||"Invoice"}\nSimulated SAP Doc No: ${docNo}\n\nThis will call API_SUPPLIERINVOICE_PROCESS_SRV and trigger the SAP workflow.`)){
-      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Posted",sapDocNo:docNo,postedAt:new Date().toISOString().split("T")[0]}:i));
-      if(view?.id===inv.id)setView(p=>({...p,status:"Posted",sapDocNo:docNo,postedAt:new Date().toISOString().split("T")[0]}));
+  const [posting,setPosting]=useState(false);
+  const postToSAP=async(inv)=>{
+    if(!window.confirm(`Post to SAP S/4HANA as Parked (Completed)?\n\nDocument: ${inv.invoiceNo}\nCompany Code: ${inv.companyCode}\nAmount: ${inv.amount} ${inv.currency}\n\nThis calls API_SUPPLIERINVOICE_PROCESS_SRV (SAP_COM_0057).`))return;
+    setPosting(true);
+    try{
+      const today=new Date().toISOString().split("T")[0];
+      const {sapDocNo}=await postInvoiceToSAP(inv);
+      const updated={...inv,status:"Posted",sapDocNo,postedAt:today};
+      await saveInvoice(updated);
+      setInvoices(p=>p.map(i=>i.id===inv.id?updated:i));
+      if(view?.id===inv.id)setView(updated);
+      alert(`Posted to SAP\nDocument: ${sapDocNo}\nStatus: Parked as Completed`);
+    }catch(e:any){
+      alert(`Post to SAP failed:\n${e.message}`);
+    }finally{
+      setPosting(false);
     }
   };
   const convertDPR=(inv)=>{
@@ -2934,6 +2945,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                 {tbBtn("Review",           ()=>sel.forEach(i=>setUR(i.id)),  "pending", canReview)}
                 {tbBtn("Accept",           ()=>sel.forEach(i=>accept(i.id)), "accept",           canAccept)}
                 {tbBtn("Reject",           ()=>{if(sel.length===1){setRejM(sel[0]);}else{if(window.confirm(`Reject ${sel.length} selected invoices?`))sel.forEach(i=>setInvoices(p=>p.map(x=>x.id===i.id?{...x,status:"Rejected",rejReason:"Bulk rejection"}:x)));}},"decline",canReject)}
+                {sep}
+                {tbBtn(posting?"Posting…":"Post to SAP",()=>sel.forEach(i=>postToSAP(i)),"post",canPost)}
                 {sep}
                 {tbBtn("Convert to Invoice",()=>sel.forEach(i=>convertDPR(i)), "switch-classes", canConvert)}
                 {tbBtn("Clear",            ()=>sel.forEach(i=>clearDPR(i)),    "complete",        canClear)}
@@ -3144,6 +3157,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
           onPost={(inv:any)=>postToSAP(inv)}
           onConvert={(inv:any)=>convertDPR(inv)}
           onClear={(inv:any)=>clearDPR(inv)}
+          posting={posting}
         />
       </>}
       {rejModal&&(

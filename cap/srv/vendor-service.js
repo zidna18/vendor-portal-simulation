@@ -392,6 +392,120 @@ module.exports = cds.service.impl(async function (srv) {
       }
     });
 
+    // ── Post Supplier Invoice to SAP S/4HANA (Parked as Completed) ──────
+    // Calls API_SUPPLIERINVOICE_PROCESS_SRV via BTP Destination 'S4HC'
+    // Communication scenario: SAP_COM_0057 (Supplier Invoice Integration)
+    cds.app.post('/api/postInvoice', express.json({ limit: '1mb' }), async (req, res) => {
+      try {
+        const inv = req.body;
+        if (!inv || !inv.id) return res.status(400).json({ error: 'invoice payload required' });
+
+        let executeHttpRequest;
+        try {
+          ({ executeHttpRequest } = require('@sap-cloud-sdk/http-client'));
+        } catch (e) {
+          return res.status(503).json({ error: 'SAP Cloud SDK not available: ' + e.message });
+        }
+
+        const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
+        const base = `/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV`;
+        const hdrs = {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'sap-client': process.env.S4HC_CLIENT || '120',
+        };
+
+        // 1. Fetch CSRF token
+        const tokenRes = await executeHttpRequest(dest, {
+          method: 'GET', url: `${base}/$metadata`, headers: { ...hdrs, 'x-csrf-token': 'Fetch' },
+        });
+        const csrfToken = tokenRes.headers['x-csrf-token'] || tokenRes.headers['X-CSRF-Token'] || '';
+
+        // 2. Build PO item lines
+        const poItems = (inv.items || []).map((item, idx) => ({
+          SupplierInvoiceItem:           String((idx + 1) * 10).padStart(5, '0'),
+          PurchaseOrder:                 item.po || '',
+          PurchaseOrderItem:             String(item.item || '').padStart(5, '0'),
+          Plant:                         item.plant || '',
+          SupplierInvoiceItemAmount:     String(Number(item.invoiceAmt || item.poAmount || 0).toFixed(2)),
+          TaxCode:                       inv.vatTaxCode || 'P1',
+          DocumentCurrency:              inv.currency || 'IDR',
+          PurchaseOrderQuantityUnit:     item.uom || 'EA',
+          QuantityInPurchaseOrderUnit:   String(Number(item.qty || 0).toFixed(3)),
+        }));
+
+        // 3. Build tax lines (one per tax code)
+        const taxLines = Number(inv.vatAmt || 0) > 0 ? [{
+          TaxCode:          inv.vatTaxCode || 'P1',
+          TaxAmount:        String(Number(inv.vatAmt || 0).toFixed(2)),
+          DocumentCurrency: inv.currency || 'IDR',
+        }] : [];
+
+        // 4. Build WHT lines if applicable
+        const whtLines = (inv.whtType && Number(inv.whtAmt || 0) > 0) ? [{
+          WithholdingTaxType:   inv.whtType,
+          WithholdingTaxCode:   inv.whtCode || '',
+          WithholdingTaxBase:   String(Number(inv.whtBase || inv.amount || 0).toFixed(2)),
+          WithholdingTaxAmount: String(Number(inv.whtAmt || 0).toFixed(2)),
+          DocumentCurrency:     inv.currency || 'IDR',
+        }] : [];
+
+        // 5. Build header payload — DocumentHeaderInProcessingStatus "B" = Parked as Completed
+        const today = new Date().toISOString().split('T')[0];
+        const payload = {
+          CompanyCode:                        inv.companyCode || 'BRMS',
+          DocumentDate:                       inv.invoiceDate || today,
+          PostingDate:                        today,
+          SupplierInvoiceIDByInvcgParty:      inv.invoiceNo || '',
+          InvoicingParty:                     inv.vendorId  || '',
+          DocumentCurrency:                   inv.currency  || 'IDR',
+          InvoiceGrossAmount:                 String(Number(inv.amount || 0).toFixed(2)),
+          DocumentHeaderText:                 inv.desc || inv.invoiceNo || '',
+          PaymentTerms:                       inv.pmtTerms || '',
+          TaxIsCalculatedAutomatically:       false,
+          DocumentHeaderInProcessingStatus:   'B',
+          // Tax document reference
+          ...(inv.taxDocNo ? { AssignmentReference: inv.taxDocNo } : {}),
+          to_SuplrInvcItemPurOrdRef:  { results: poItems },
+          to_SuplrInvcTax:            { results: taxLines },
+          ...(whtLines.length ? { to_SuplrInvcWthldgTax: { results: whtLines } } : {}),
+        };
+
+        console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
+
+        // 6. POST to SAP
+        const sapRes = await executeHttpRequest(dest, {
+          method: 'POST',
+          url: `${base}/A_SupplierInvoice`,
+          headers: { ...hdrs, 'x-csrf-token': csrfToken },
+          data: payload,
+        });
+
+        const sapDoc = sapRes.data?.d || sapRes.data || {};
+        const sapDocNo = sapDoc.SupplierInvoice || '';
+        const fiscalYear = sapDoc.FiscalYear || today.slice(0, 4);
+        const fullDocNo = sapDocNo ? `${sapDocNo}/${fiscalYear}` : '';
+
+        console.log('[postInvoice] SAP response:', JSON.stringify(sapDoc, null, 2));
+
+        // 7. Persist status + sapDocNo to HANA
+        const db = await cds.connect.to('db');
+        const { Invoices } = cds.entities('vendor.portal');
+        await db.run(UPDATE(Invoices).set({
+          status:    'Posted',
+          sapDocNo:  fullDocNo,
+          postedAt:  today,
+        }).where({ id: inv.id }));
+
+        res.json({ sapDocNo: fullDocNo, sapDoc });
+
+      } catch (e) {
+        const detail = e.response?.data || e.message;
+        console.error('[postInvoice] error:', JSON.stringify(detail, null, 2));
+        res.status(500).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+      }
+    });
+
     // ── Clear mock seed data ─────────────────────────────────────────
     try {
       const db = await cds.connect.to('db');
