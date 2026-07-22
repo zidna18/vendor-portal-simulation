@@ -2366,7 +2366,7 @@ const COL_DEFS_BRM = [
   {key:"status",       label:"Status",          defW:130},
   {key:"invoiceNo",    label:"Invoice No.",     defW:175},
   {key:"invoiceType",  label:"Invoice Type",    defW:130},
-  {key:"vendor",       label:"Vendor",          defW:145},
+  {key:"vendor",       label:"Vendor",          defW:180},
   {key:"compCode",     label:"Company Code",    defW:120},
   {key:"pmtTerms",       label:"Payment Terms",        defW:110},
   {key:"pmtTermsStatus", label:"Payment Terms Status",  defW:140},
@@ -3118,8 +3118,8 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                       }
                     </td>}
                     {!hiddenCols.has("vendor")&&<td style={cs}>
-                      <div style={{fontWeight:500,fontSize:FS.sm}}>{inv.vendorName}</div>
-                      <div style={{fontSize:FS.xs,color:C.t2}}>{inv.vendorId}</div>
+                      <div style={{fontWeight:500,fontSize:FS.sm,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inv.vendorName}</div>
+                      <div style={{fontSize:FS.xs,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inv.vendorId}</div>
                     </td>}
                     {!hiddenCols.has("compCode")&&<td style={cs}>
                       <span style={{fontFamily:"monospace",fontWeight:600,fontSize:FS.sm,color:TK.link}}>{inv.companyCode||"—"}</span>

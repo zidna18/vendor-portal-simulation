@@ -151,7 +151,7 @@ export async function saveInvoice(invoice: any) {
   const payload = serializeInvoice(invoice);
   if (invoice.id) {
     try {
-      await odataPatch(`/VendorPortal/Invoices(${invoice.id})`, payload);
+      await odataPatch(`/VendorPortal/Invoices('${invoice.id}')`, payload);
       return invoice;
     } catch (e: any) {
       if (e.message?.includes('404')) {
@@ -168,7 +168,7 @@ export async function saveQuotation(qt: any) {
   if (USE_MOCK) return qt;
   const payload = serializeQuotation(qt);
   if (qt.id) {
-    await odataPatch(`/VendorPortal/Quotations(${qt.id})`, payload);
+    await odataPatch(`/VendorPortal/Quotations('${qt.id}')`, payload);
     return qt;
   }
   return parseQuotation(await odataPost('/VendorPortal/Quotations', payload));
@@ -178,7 +178,7 @@ export async function saveRfq(rfq: any) {
   if (USE_MOCK) return rfq;
   const payload = serializeRfq(rfq);
   if (rfq.id) {
-    await odataPatch(`/VendorPortal/RFQs(${rfq.id})`, payload);
+    await odataPatch(`/VendorPortal/RFQs('${rfq.id}')`, payload);
     return rfq;
   }
   return parseRfq(await odataPost('/VendorPortal/RFQs', payload));
@@ -234,7 +234,7 @@ export async function postInvoiceToSAP(invoice: any): Promise<{ sapDocNo: string
 // ── Delete Invoice ────────────────────────────────────────────────
 export async function deleteInvoice(id: string) {
   if (USE_MOCK) return;
-  const res = await fetch(`${API_BASE}/VendorPortal/Invoices(${id})`, {
+  const res = await fetch(`${API_BASE}/VendorPortal/Invoices('${id}')`, {
     method: 'DELETE',
     credentials: 'include',
   });
