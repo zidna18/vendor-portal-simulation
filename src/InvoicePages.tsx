@@ -255,7 +255,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     const key=uploadingKey;setUploadingKey(null);
     // Use invoice id if already assigned (edit); for new invoices generate now and persist
     let invId=f.id;
-    if(!invId){invId=`PI-${uid()}`;s("id",invId);}
+    if(!invId){invId=`PI-${new Date().getFullYear()}-${f.companyCode||'BRM'}-${uid().slice(-4).toUpperCase()}`;s("id",invId);}
     try{
       toast(`Uploading ${file.name}…`,"info");
       const meta=await uploadAttachment(invId,file);
@@ -283,7 +283,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
     const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
     const obj={...f,vatRate:f.vatRate,whtCode:f.whtCode,otherFees:fees,additionalFee,feeCategory,attRefs,
-      status:draft?"Draft":"Submitted",id:f.id||`PI-${uid()}`,
+      status:draft?"Draft":"Submitted",id:f.id||`PI-${new Date().getFullYear()}-${f.companyCode||'BRM'}-${uid().slice(-4).toUpperCase()}`,
       submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
     if(!draft)addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
@@ -2038,7 +2038,7 @@ export const VendorInvoice = ({user,invoices,setInvoices,drillInvoiceNo,onClearD
                     {!hiddenCols.has("pmtTermsStatus")&&(()=>{const ct=(VENDORS[inv.vendorId]?.lfb1||[]).find((r:any)=>r.bukrs===inv.companyCode)?.zterm;const ok=ct&&inv.paymentTerms?inv.paymentTerms===ct:null;return(<td style={cs}>{ok===null?<span style={{color:C.t2,fontSize:FS.sm}}>—</span>:ok?<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#107e3e",fontSize:FS.sm}}><SapIcon name="accept" size={13} color="#107e3e"/>Compliant</span>:<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#df6e0c",fontSize:FS.sm}}><SapIcon name="alert" size={13} color="#df6e0c"/>Differs ({ct})</span>}</td>);})()}
 
                     {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt((inv.amount||0)+(inv.vatAmt||0)+(inv.additionalFee||0),inv.currency)}</span>
+                      <span style={{fontSize:FS.sm,fontWeight:700,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)+Number(inv.additionalFee||0),inv.currency)}</span>
                     </td>}
                     {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
                       <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>
@@ -3062,7 +3062,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
                     {!hiddenCols.has("submittedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.submittedAt?fmtDate(inv.submittedAt):"—"}</span></td>}
                     {!hiddenCols.has("confirmedAt")&&<td style={cs}><span style={{fontSize:FS.sm}}>{inv.confirmedAt?fmtDate(inv.confirmedAt):"—"}</span></td>}
                     {!hiddenCols.has("totalAmt")&&<td style={{...cs,textAlign:"right"}}>
-                      <span style={{fontWeight:700,fontSize:FS.sm,fontVariantNumeric:"tabular-nums"}}>{fmtAmt((inv.amount||0)+(inv.vatAmt||0)+(inv.additionalFee||0),inv.currency)}</span>
+                      <span style={{fontWeight:700,fontSize:FS.sm,fontVariantNumeric:"tabular-nums"}}>{fmtAmt(Number(inv.amount||0)+Number(inv.vatAmt||0)+Number(inv.additionalFee||0),inv.currency)}</span>
                     </td>}
                     {!hiddenCols.has("vatAmt")&&<td style={{...cs,textAlign:"right"}}>
                       <span style={{fontSize:FS.sm,fontVariantNumeric:"tabular-nums",color:C.t2}}>{inv.vatAmt?fmtAmt(inv.vatAmt,inv.currency):"—"}</span>
