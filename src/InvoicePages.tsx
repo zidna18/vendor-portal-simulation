@@ -159,6 +159,14 @@ const WHT_CODES:Record<string,{v:string,l:string,rate:number}[]> = {
   PPh26:  [{v:"26-100-01",l:"26-100-01 – Non-Resident (20%)",rate:20}],
   PPh4a2: [{v:"04-100-01",l:"04-100-01 – Sewa Tanah/Bangunan (10%)",rate:10},{v:"04-200-01",l:"04-200-01 – Jasa Konstruksi (2%)",rate:2}],
 };
+function genInvId(companyCode:string, allInvoices:any[]){
+  const year=new Date().getFullYear();
+  const prefix=`PI-${year}-${companyCode||'XXX'}-`;
+  const nums=allInvoices.map(i=>i.id||"").filter(id=>id.startsWith(prefix)).map(id=>parseInt(id.slice(prefix.length),10)||0);
+  const next=nums.length>0?Math.max(...nums)+1:1;
+  return `${prefix}${String(next).padStart(5,"0")}`;
+}
+
 export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvoices=[],addNotif}:any) => {
   const assignedCCs=(VENDORS[vendorId]?.lfb1||[]).map((r:any)=>r.bukrs);
   const allowedCCs=assignedCCs.length>0?COMPANY_CODES.filter(c=>assignedCCs.includes(c.v)):COMPANY_CODES;
@@ -255,7 +263,10 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     const key=uploadingKey;setUploadingKey(null);
     // Use invoice id if already assigned (edit); for new invoices generate now and persist
     let invId=f.id;
-    if(!invId){invId=`PI-${new Date().getFullYear()}-${f.companyCode||'BRM'}-${uid().slice(-4).toUpperCase()}`;s("id",invId);}
+    if(!invId){
+      if(!f.companyCode){toast("Select a Company Code before uploading attachments.","err");return;}
+      invId=genInvId(f.companyCode,allInvoices);s("id",invId);
+    }
     try{
       toast(`Uploading ${file.name}…`,"info");
       const meta=await uploadAttachment(invId,file);
@@ -283,7 +294,7 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
     const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
     const obj={...f,vatRate:f.vatRate,whtCode:f.whtCode,otherFees:fees,additionalFee,feeCategory,attRefs,
-      status:draft?"Draft":"Submitted",id:f.id||`PI-${new Date().getFullYear()}-${f.companyCode||'BRM'}-${uid().slice(-4).toUpperCase()}`,
+      status:draft?"Draft":"Submitted",id:f.id||genInvId(f.companyCode,allInvoices),
       submittedAt:draft?null:new Date().toISOString().split("T")[0]};
     onSave(obj);
     if(!draft)addNotif?.({title:"New Invoice Submitted",desc:`${obj.vendorName} submitted invoice ${obj.invoiceNo}`,forRole:"brm",icon:"add-document",iconColor:"#0a6ed1"});
@@ -2760,9 +2771,30 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     active.pmtTermsStatus?.length>0&&{label:"Pmt Terms Status",val:active.pmtTermsStatus.map(s=>s==="compliant"?"Compliant":s==="differs"?"Differs":"Unknown").join(", "),onClear:()=>clr("pmtTermsStatus")},
   ].filter(Boolean);
 
-  const accept=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]}:i));if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});setView(null);};
-  const reject=()=>{if(!rejR){toast("Provide a rejection reason.","err");return;}const inv=invoices.find(i=>i.id===rejModal.id);setInvoices(p=>p.map(i=>i.id===rejModal.id?{...i,status:"Rejected",rejReason:rejR}:i));if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});setRejM(null);setRejR("");setView(null);};
-  const setUR=id=>{const inv=invoices.find(i=>i.id===id);setInvoices(p=>p.map(i=>i.id===id?{...i,status:"Under Review"}:i));if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});};
+  const accept=async(id)=>{
+    const inv=invoices.find(i=>i.id===id);
+    const updated={...inv,status:"Confirmed",confirmedAt:new Date().toISOString().split("T")[0]};
+    setInvoices(p=>p.map(i=>i.id===id?updated:i));
+    if(inv)addNotif?.({title:"Invoice Confirmed",desc:`Your invoice ${inv.invoiceNo} has been confirmed.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"accept",iconColor:"#107e3e"});
+    setView(null);
+    try{await saveInvoice(updated);}catch(e:any){console.warn("accept persist failed:",e);}
+  };
+  const reject=async()=>{
+    if(!rejR){toast("Provide a rejection reason.","err");return;}
+    const inv=invoices.find(i=>i.id===rejModal.id);
+    const updated={...inv,status:"Rejected",rejReason:rejR};
+    setInvoices(p=>p.map(i=>i.id===rejModal.id?updated:i));
+    if(inv)addNotif?.({title:"Invoice Rejected",desc:`Your invoice ${inv.invoiceNo} was rejected: ${rejR}`,forRole:"vendor",forVendorId:inv.vendorId,icon:"decline",iconColor:"#bb0000"});
+    setRejM(null);setRejR("");setView(null);
+    try{await saveInvoice(updated);}catch(e:any){console.warn("reject persist failed:",e);}
+  };
+  const setUR=async(id)=>{
+    const inv=invoices.find(i=>i.id===id);
+    const updated={...inv,status:"Under Review"};
+    setInvoices(p=>p.map(i=>i.id===id?updated:i));
+    if(inv)addNotif?.({title:"Invoice Under Review",desc:`Your invoice ${inv.invoiceNo} is now under review.`,forRole:"vendor",forVendorId:inv.vendorId,icon:"pending",iconColor:"#e9730c"});
+    try{await saveInvoice(updated);}catch(e:any){console.warn("setUR persist failed:",e);}
+  };
   const [posting,setPosting]=useState(false);
   const postToSAP=async(inv)=>{
     if(!window.confirm(`Post to SAP S/4HANA as Parked (Completed)?\n\nDocument: ${inv.invoiceNo}\nCompany Code: ${inv.companyCode}\nAmount: ${inv.amount} ${inv.currency}\n\nThis calls API_SUPPLIERINVOICE_PROCESS_SRV (SAP_COM_0057).`))return;
@@ -2781,19 +2813,23 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
       setPosting(false);
     }
   };
-  const convertDPR=(inv)=>{
-    const docNo=`${(100000000+Math.floor(Math.random()*899999999)).toString().slice(0,10)}/2025`;
-    if(window.confirm(`Convert Down Payment Request to Supplier Invoice?\n\nDPR: ${inv.invoiceNo}\nSAP DPR Doc: ${inv.sapDocNo}\nNew SAP Invoice Doc: ${docNo}\n\nThis will call API_SUPPLIERINVOICE_PROCESS_SRV to create a posted invoice.`)){
-      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Converted to Invoice",convertedDocNo:docNo,convertedAt:new Date().toISOString().split("T")[0]}:i));
-      if(view?.id===inv.id)setView(p=>({...p,status:"Converted to Invoice",convertedDocNo:docNo}));
-    }
+  const convertDPR=async(inv)=>{
+    const yr=new Date().getFullYear();
+    const docNo=`${(100000000+Math.floor(Math.random()*899999999)).toString().slice(0,10)}/${yr}`;
+    if(!window.confirm(`Convert Down Payment Request to Supplier Invoice?\n\nDPR: ${inv.invoiceNo}\nSAP DPR Doc: ${inv.sapDocNo}\nNew SAP Invoice Doc: ${docNo}\n\nThis will call API_SUPPLIERINVOICE_PROCESS_SRV to create a posted invoice.`))return;
+    const updated={...inv,status:"Converted to Invoice",convertedDocNo:docNo};
+    setInvoices(p=>p.map(i=>i.id===inv.id?updated:i));
+    if(view?.id===inv.id)setView(updated);
+    try{await saveInvoice(updated);}catch(e:any){console.warn("convertDPR persist failed:",e);}
   };
-  const clearDPR=(inv)=>{
-    const clrDoc=`${inv.companyCode||"BRMS"}/${(100000+Math.floor(Math.random()*899999)).toString()}/2025`;
-    if(window.confirm(`Clear Down Payment against Invoice?\n\nThis will call SAP API to create clearing document.\nSimulated Clearing Doc: ${clrDoc}`)){
-      setInvoices(p=>p.map(i=>i.id===inv.id?{...i,status:"Cleared",clearingDocNo:clrDoc,clearedAt:new Date().toISOString().split("T")[0]}:i));
-      if(view?.id===inv.id)setView(p=>({...p,status:"Cleared",clearingDocNo:clrDoc}));
-    }
+  const clearDPR=async(inv)=>{
+    const yr=new Date().getFullYear();
+    const clrDoc=`${inv.companyCode||"BRMS"}/${(100000+Math.floor(Math.random()*899999)).toString()}/${yr}`;
+    if(!window.confirm(`Clear Down Payment against Invoice?\n\nThis will call SAP API to create clearing document.\nSimulated Clearing Doc: ${clrDoc}`))return;
+    const updated={...inv,status:"Cleared",clearingDocNo:clrDoc};
+    setInvoices(p=>p.map(i=>i.id===inv.id?updated:i));
+    if(view?.id===inv.id)setView(updated);
+    try{await saveInvoice(updated);}catch(e:any){console.warn("clearDPR persist failed:",e);}
   };
   const toggleSel=(id)=>setSelRows(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
   const allSel=list.length>0&&selRows.size===list.length;
