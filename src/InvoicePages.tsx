@@ -2825,12 +2825,15 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     setPosting(true);
     try{
       const today=new Date().toISOString().split("T")[0];
-      const {sapDocNo}=await postInvoiceToSAP(inv);
+      const {sapDocNo,attachments:attRes}=await postInvoiceToSAP(inv);
       const updated={...inv,status:"Posted",sapDocNo,postedAt:today};
       await saveInvoice(updated);
       setInvoices(p=>p.map(i=>i.id===inv.id?updated:i));
       if(view?.id===inv.id)setView(updated);
-      alert(`Posted to SAP\nDocument: ${sapDocNo}\nStatus: Parked as Completed`);
+      const attSummary=attRes?.length
+        ?`\n\nAttachments (${attRes.length}):\n`+attRes.map((a:any)=>`  ${a.ok?"✓":"✗"} ${a.fileName||"file"}${a.ok?"":" — "+a.error}`).join("\n")
+        :"";
+      alert(`Posted to SAP\nDocument: ${sapDocNo}\nStatus: Parked as Completed${attSummary}`);
     }catch(e:any){
       alert(`Post to SAP failed:\n${e.message}`);
     }finally{

@@ -490,14 +490,71 @@ module.exports = cds.service.impl(async function (srv) {
 
         // 7. Persist status + sapDocNo to HANA
         const db = await cds.connect.to('db');
-        const { Invoices } = cds.entities('vendor.portal');
+        const { Invoices, InvoiceAttachments } = cds.entities('vendor.portal');
         await db.run(UPDATE(Invoices).set({
           status:    'Posted',
           sapDocNo:  fullDocNo,
           postedAt:  today,
         }).where({ id: inv.id }));
 
-        res.json({ sapDocNo: fullDocNo, sapDoc });
+        // 8. Upload attachments to SAP via API_CV_ATTACHMENT_SRV (same SAP_COM_0057 destination)
+        const attachResults = [];
+        if (sapDocNo) {
+          try {
+            const attachments = await db.run(
+              SELECT.from(InvoiceAttachments).where({ invoiceId: inv.id })
+            );
+            if (attachments && attachments.length > 0) {
+              const attachBase = `/sap/opu/odata/sap/API_CV_ATTACHMENT_SRV`;
+              // CSRF token for attachment service
+              const aTokenRes = await executeHttpRequest(dest, {
+                method: 'GET', url: `${attachBase}/$metadata`,
+                headers: { ...hdrs, 'x-csrf-token': 'Fetch' },
+              });
+              const aCsrf = aTokenRes.headers['x-csrf-token'] || aTokenRes.headers['X-CSRF-Token'] || '';
+
+              // LinkedSAPObjectKey for BKPF: CompanyCode(4) + DocNumber(10) + FiscalYear(4)
+              const compCode = (inv.companyCode || 'BRMS').padEnd(4, ' ');
+              const belnr    = sapDocNo.padStart(10, '0');
+              const linkedKey = `${compCode}${belnr}${fiscalYear}`;
+
+              for (const att of attachments) {
+                try {
+                  // content is Buffer (HANA LargeBinary); convert if returned as base64 string
+                  const buf = Buffer.isBuffer(att.content)
+                    ? att.content
+                    : Buffer.from(att.content, 'base64');
+
+                  await executeHttpRequest(dest, {
+                    method: 'POST',
+                    url: `${attachBase}/A_AttachmentContent`,
+                    headers: {
+                      'Content-Type':          att.mimeType || 'application/octet-stream',
+                      'slug':                  att.fileName || 'attachment',
+                      'x-csrf-token':          aCsrf,
+                      'BusinessObjectTypeName': 'BKPF',
+                      'LinkedSAPObjectKey':     linkedKey,
+                      'SemanticObject':         'SupplierInvoice',
+                      'sap-client':             process.env.S4HC_CLIENT || '120',
+                    },
+                    data: buf,
+                  });
+                  console.log('[postInvoice] Attachment uploaded to SAP:', att.fileName);
+                  attachResults.push({ fileName: att.fileName, ok: true });
+                } catch (attErr) {
+                  const attDetail = attErr.response?.data || attErr.message;
+                  console.error('[postInvoice] Attachment upload failed:', att.fileName, JSON.stringify(attDetail));
+                  attachResults.push({ fileName: att.fileName, ok: false, error: String(attDetail) });
+                }
+              }
+            }
+          } catch (attStepErr) {
+            console.error('[postInvoice] Attachment step error:', attStepErr.message);
+            attachResults.push({ ok: false, error: attStepErr.message });
+          }
+        }
+
+        res.json({ sapDocNo: fullDocNo, sapDoc, attachments: attachResults });
 
       } catch (e) {
         const detail = e.response?.data || e.message;
