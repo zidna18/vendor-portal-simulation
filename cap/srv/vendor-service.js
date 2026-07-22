@@ -351,8 +351,8 @@ module.exports = cds.service.impl(async function (srv) {
     // ── File attachment routes (binary — bypass OData) ───────────────
     const express = require('express');
 
-    // Upload: POST /api/VendorPortal/attach
-    cds.app.post('/api/VendorPortal/attach', express.json({ limit: '20mb' }), async (req, res) => {
+    // Upload: POST /api/attach  (outside CDS service path to avoid OData 404 interception)
+    cds.app.post('/api/attach', express.json({ limit: '20mb' }), async (req, res) => {
       try {
         const { invoiceId, fileName, mimeType, content } = req.body;
         if (!invoiceId || !fileName || !content) return res.status(400).json({ error: 'invoiceId, fileName, content required' });
@@ -374,8 +374,8 @@ module.exports = cds.service.impl(async function (srv) {
       }
     });
 
-    // Download: GET /api/VendorPortal/attach/:id
-    cds.app.get('/api/VendorPortal/attach/:id', async (req, res) => {
+    // Download: GET /api/attach/:id
+    cds.app.get('/api/attach/:id', async (req, res) => {
       try {
         const db = await cds.connect.to('db');
         const row = await db.run(SELECT.one.from('vendor.portal.InvoiceAttachments').where({ id: req.params.id }));

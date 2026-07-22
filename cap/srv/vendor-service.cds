@@ -7,8 +7,8 @@ service VendorPortal @(path: '/api/VendorPortal') {
   entity RFQs                 as projection on db.RFQs;
 
   // Attachments — binary content stored in HANA LargeBinary column
-  // Upload:   POST /api/VendorPortal/attach  { invoiceId, fileName, mimeType, content: base64 }
-  // Download: GET  /api/VendorPortal/attach/:id
+  // Upload:   POST /api/attach  { invoiceId, fileName, mimeType, content: base64 }
+  // Download: GET  /api/attach/:id
   // List:     GET  /api/VendorPortal/InvoiceAttachments?$filter=invoiceId eq 'xxx'
   @readonly: false
   entity InvoiceAttachments as projection on db.InvoiceAttachments excluding { content };

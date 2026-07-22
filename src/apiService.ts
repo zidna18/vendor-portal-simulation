@@ -179,7 +179,7 @@ export async function uploadAttachment(invoiceId: string, file: File): Promise<{
     reader.onload = async () => {
       try {
         const base64 = (reader.result as string).split(',')[1];
-        const res = await fetch(`${API_BASE}/VendorPortal/attach`, {
+        const res = await fetch(`${API_BASE}/attach`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -195,7 +195,7 @@ export async function uploadAttachment(invoiceId: string, file: File): Promise<{
 }
 
 export function attachmentDownloadUrl(id: string) {
-  return `${API_BASE}/VendorPortal/attach/${id}`;
+  return `${API_BASE}/attach/${id}`;
 }
 
 export async function listAttachments(invoiceId: string): Promise<any[]> {
