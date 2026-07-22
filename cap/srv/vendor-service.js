@@ -359,7 +359,9 @@ module.exports = cds.service.impl(async function (srv) {
         const db = await cds.connect.to('db');
         const id = cds.utils.uuid();
         const buf = Buffer.from(content, 'base64');
-        await db.run(INSERT.into('vendor.portal.InvoiceAttachments').entries({
+        // HANA LargeBinary: insert as Buffer (CAP marshals to BLOB)
+        const { InvoiceAttachments } = cds.entities('vendor.portal');
+        await db.run(INSERT.into(InvoiceAttachments).entries({
           id, invoiceId, fileName,
           mimeType: mimeType || 'application/octet-stream',
           fileSize: buf.length,
@@ -378,7 +380,8 @@ module.exports = cds.service.impl(async function (srv) {
     cds.app.get('/api/attach/:id', async (req, res) => {
       try {
         const db = await cds.connect.to('db');
-        const row = await db.run(SELECT.one.from('vendor.portal.InvoiceAttachments').where({ id: req.params.id }));
+        const { InvoiceAttachments } = cds.entities('vendor.portal');
+        const row = await db.run(SELECT.one.from(InvoiceAttachments).where({ id: req.params.id }));
         if (!row) return res.status(404).send('Not found');
         res.set('Content-Type', row.mimeType || 'application/octet-stream');
         res.set('Content-Disposition', `attachment; filename="${row.fileName}"`);
