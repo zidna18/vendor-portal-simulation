@@ -425,6 +425,16 @@ module.exports = cds.service.impl(async function (srv) {
           ? rawCookies.map(c => c.split(';')[0]).join('; ')
           : (rawCookies ? rawCookies.split(';')[0] : '');
         console.log('[postInvoice] step1 done, token length:', csrfToken.length, 'cookie:', sessionCookie ? 'yes' : 'none');
+        // Log available entity sets so we can confirm A_SupplierInvoice vs A_SupplierInvoiceParked
+        const metaXml = typeof tokenRes.data === 'string' ? tokenRes.data : '';
+        const entitySets = [...metaXml.matchAll(/EntitySet Name="([^"]+)"/g)].map(m => m[1]);
+        console.log('[postInvoice] available EntitySets:', entitySets.join(', '));
+        // Log available properties on A_SupplierInvoice entity type
+        const invTypeMatch = metaXml.match(/EntityType Name="A_SupplierInvoiceType"[\s\S]*?<\/EntityType>/);
+        const propNames = invTypeMatch
+          ? [...invTypeMatch[0].matchAll(/Property Name="([^"]+)"/g)].map(m => m[1])
+          : [];
+        console.log('[postInvoice] A_SupplierInvoice properties:', propNames.join(', '));
 
         // 2. Build PO item lines
         const poItems = (inv.items || []).map((item, idx) => ({
