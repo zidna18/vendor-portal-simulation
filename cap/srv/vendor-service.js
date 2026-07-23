@@ -456,11 +456,16 @@ module.exports = cds.service.impl(async function (srv) {
         }] : [];
 
         // 5. Build header payload — DocumentHeaderInProcessingStatus "B" = Parked as Completed
-        const today = new Date().toISOString().split('T')[0];
+        // OData V2 requires Edm.DateTime as /Date(milliseconds)/ — plain YYYY-MM-DD is rejected
+        const toODataDate = (d) => {
+          const s = d ? String(d).slice(0, 10) : new Date().toISOString().slice(0, 10);
+          return `/Date(${new Date(s + 'T00:00:00Z').getTime()})/`;
+        };
+        const today = new Date().toISOString().slice(0, 10);
         const payload = {
           CompanyCode:                        inv.companyCode || 'BRMS',
-          DocumentDate:                       inv.invoiceDate || today,
-          PostingDate:                        today,
+          DocumentDate:                       toODataDate(inv.invoiceDate || today),
+          PostingDate:                        toODataDate(today),
           SupplierInvoiceIDByInvcgParty:      inv.invoiceNo || '',
           InvoicingParty:                     inv.vendorId  || '',
           DocumentCurrency:                   inv.currency  || 'IDR',
