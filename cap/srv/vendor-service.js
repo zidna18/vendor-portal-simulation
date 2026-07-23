@@ -411,7 +411,7 @@ module.exports = cds.service.impl(async function (srv) {
         const base = `/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV`;
         const client = process.env.S4HC_CLIENT || '120';
 
-        console.log('[postInvoice] step1: fetching CSRF token');
+        console.log('[postInvoice] inv.id:', inv.id, 'items count:', (inv.items||[]).length, 'items:', JSON.stringify(inv.items||[]).slice(0,300));;
         // 1. Fetch CSRF token — use Accept:*/* so $metadata (XML-only) doesn't 406
         const tokenRes = await executeHttpRequest(dest, {
           method: 'GET',
