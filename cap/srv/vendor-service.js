@@ -473,7 +473,6 @@ module.exports = cds.service.impl(async function (srv) {
           DocumentHeaderText:                 inv.desc || inv.invoiceNo || '',
           PaymentTerms:                       inv.pmtTerms || '',
           TaxIsCalculatedAutomatically:       false,
-          DocumentHeaderInProcessingStatus:   'B',
           // Tax document reference
           ...(inv.taxDocNo ? { AssignmentReference: inv.taxDocNo } : {}),
           to_SuplrInvcItemPurOrdRef:  { results: poItems },
