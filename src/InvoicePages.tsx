@@ -2825,7 +2825,13 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
     setPosting(true);
     try{
       const today=new Date().toISOString().split("T")[0];
-      const {sapDocNo,attachments:attRes}=await postInvoiceToSAP(inv);
+      let invToPost=inv;
+      if(!(inv.items&&inv.items.length>0)&&(inv.poNumbers||[]).length>0){
+        const {fetchPurchaseOrderItems}=await import("./apiService");
+        const liveItems=await fetchPurchaseOrderItems(inv.poNumbers||[]);
+        if(liveItems&&liveItems.length>0)invToPost={...inv,items:liveItems};
+      }
+      const {sapDocNo,attachments:attRes}=await postInvoiceToSAP(invToPost);
       const updated={...inv,status:"Posted",sapDocNo,postedAt:today};
       await saveInvoice(updated);
       setInvoices(p=>p.map(i=>i.id===inv.id?updated:i));

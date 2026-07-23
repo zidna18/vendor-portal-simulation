@@ -411,7 +411,34 @@ module.exports = cds.service.impl(async function (srv) {
         const base = `/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV`;
         const client = process.env.S4HC_CLIENT || '120';
 
-        console.log('[postInvoice] inv.id:', inv.id, 'items count:', (inv.items||[]).length, 'items:', JSON.stringify(inv.items||[]).slice(0,300));;
+        // 0. If inv.items is empty, fetch PO line items from SAP before building payload
+        let invItems = inv.items || [];
+        if (invItems.length === 0 && (inv.poNumbers || []).length > 0) {
+          console.log('[postInvoice] inv.items empty — fetching PO items from SAP for:', inv.poNumbers);
+          try {
+            const poList = inv.poNumbers;
+            const poFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
+            const poItemRes = await executeHttpRequest(dest, {
+              method: 'GET',
+              url: `/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrderItem?$filter=${poFilter}`,
+              headers: { 'Accept': 'application/json', 'sap-client': client },
+            });
+            const rawItems = poItemRes.data?.d?.results || poItemRes.data?.value || [];
+            invItems = rawItems.map(r => ({
+              po:       r.PurchaseOrder || '',
+              item:     r.PurchaseOrderItem || '',
+              plant:    r.Plant || '',
+              qty:      r.OrderQuantity || '0',
+              uom:      r.PurchaseOrderQuantityUnit || 'EA',
+              poAmount: String(parseFloat(r.NetPriceAmount || '0') / (parseFloat(r.NetPriceQuantity || '1') || 1) * parseFloat(r.OrderQuantity || '0')),
+            }));
+            console.log('[postInvoice] fetched', invItems.length, 'PO items from SAP');
+          } catch (e) {
+            console.warn('[postInvoice] PO items fetch failed:', e.message, '— proceeding without items');
+          }
+        }
+        console.log('[postInvoice] items count:', invItems.length, JSON.stringify(invItems).slice(0, 300));
+
         // 1. Fetch CSRF token — use Accept:*/* so $metadata (XML-only) doesn't 406
         const tokenRes = await executeHttpRequest(dest, {
           method: 'GET',
@@ -427,7 +454,7 @@ module.exports = cds.service.impl(async function (srv) {
         console.log('[postInvoice] step1 done, token length:', csrfToken.length, 'cookie:', sessionCookie ? 'yes' : 'none');
 
         // 2. Build PO item lines
-        const poItems = (inv.items || []).map((item, idx) => ({
+        const poItems = invItems.map((item, idx) => ({
           SupplierInvoiceItem:           String((idx + 1) * 10).padStart(5, '0'),
           PurchaseOrder:                 item.po || '',
           PurchaseOrderItem:             String(item.item || '').padStart(5, '0'),
