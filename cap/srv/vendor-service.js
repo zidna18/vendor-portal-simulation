@@ -448,11 +448,12 @@ module.exports = cds.service.impl(async function (srv) {
 
         // 4. Build WHT lines if applicable
         const whtLines = (inv.whtType && Number(inv.whtAmt || 0) > 0) ? [{
-          WithholdingTaxType:   inv.whtType,
-          WithholdingTaxCode:   inv.whtCode || '',
-          WithholdingTaxBase:   String(Number(inv.whtBase || inv.amount || 0).toFixed(2)),
-          WithholdingTaxAmount: String(Number(inv.whtAmt || 0).toFixed(2)),
-          DocumentCurrency:     inv.currency || 'IDR',
+          WithholdingTaxType:           inv.whtType,
+          WithholdingTaxCode:           inv.whtCode || '',
+          WithholdingTaxBaseAmount:     String(Number(inv.whtBase || inv.amount || 0).toFixed(2)),
+          ManuallyEnteredWhldgTaxAmount: String(Number(inv.whtAmt || 0).toFixed(2)),
+          WhldgTaxIsEnteredManually:    true,
+          DocumentCurrency:             inv.currency || 'IDR',
         }] : [];
 
         // 5. Build header payload — DocumentHeaderInProcessingStatus "B" = Parked as Completed
@@ -475,9 +476,9 @@ module.exports = cds.service.impl(async function (srv) {
           TaxIsCalculatedAutomatically:       false,
           // Tax document reference
           ...(inv.taxDocNo ? { AssignmentReference: inv.taxDocNo } : {}),
-          to_SuplrInvcItemPurOrdRef:  { results: poItems },
-          to_SuplrInvcTax:            { results: taxLines },
-          ...(whtLines.length ? { to_SuplrInvcWthldgTax: { results: whtLines } } : {}),
+          to_SuplrInvcItemPurOrdRef:    { results: poItems },
+          to_SupplierInvoiceTax:        { results: taxLines },
+          ...(whtLines.length ? { to_SupplierInvoiceWhldgTax: { results: whtLines } } : {}),
         };
 
         console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
