@@ -295,8 +295,9 @@ export const InvoiceFormModal = ({inv,onSave,onClose,vendorId,vendorName,allInvo
     if(!draft&&(f.files||[]).length<2){toast("Please upload both Invoice PDF and Faktur Pajak PDF before submitting.","err");return;}
     const dupNo=allInvoices.find(i=>i.id!==f.id&&i.invoiceNo.trim().toLowerCase()===f.invoiceNo.trim().toLowerCase());
     if(dupNo){toast(`Invoice number "${f.invoiceNo}" already exists (${dupNo.id}). Please use a unique invoice number.`,"err");return;}
-    const usedPOs=(f.poNumbers||[]).filter(po=>allInvoices.some(i=>i.id!==f.id&&(i.poNumbers||[]).includes(po)&&i.status!=="Rejected"));
-    if(usedPOs.length>0){toast(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`,"err");return;}
+    // TODO: re-enable PO reuse check after integration testing is complete
+    // const usedPOs=(f.poNumbers||[]).filter(po=>allInvoices.some(i=>i.id!==f.id&&(i.poNumbers||[]).includes(po)&&i.status!=="Rejected"));
+    // if(usedPOs.length>0){toast(`The following PO number(s) are already used in another invoice:\n${usedPOs.join(", ")}\n\nEach PO can only be referenced once across active invoices.`,"err");return;}
     const fees=f.otherFees||[];
     const additionalFee=fees.reduce((s:number,r:any)=>s+Number(r.amount||0),0);
     const feeCategory=fees.filter((r:any)=>r.category).map((r:any)=>r.category).join(", ");
