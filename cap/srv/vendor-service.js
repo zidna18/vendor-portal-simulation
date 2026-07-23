@@ -439,12 +439,7 @@ module.exports = cds.service.impl(async function (srv) {
           QuantityInPurchaseOrderUnit:   String(Number(item.qty || 0).toFixed(3)),
         }));
 
-        // 3. Build tax lines (one per tax code)
-        const taxLines = Number(inv.vatAmt || 0) > 0 ? [{
-          TaxCode:          inv.vatTaxCode || 'V1',  // V1 = Input VAT 11% (CPMS)
-          TaxAmount:        String(Number(inv.vatAmt || 0).toFixed(2)),
-          DocumentCurrency: inv.currency || 'IDR',
-        }] : [];
+        // Tax is derived automatically from TaxCode on each PO item line (FF/812 if duplicated here)
 
         // 4. Build WHT lines if applicable
         const whtLines = (inv.whtType && Number(inv.whtAmt || 0) > 0) ? [{
@@ -473,12 +468,11 @@ module.exports = cds.service.impl(async function (srv) {
           InvoiceGrossAmount:                 String(Number(inv.amount || 0).toFixed(2)),
           DocumentHeaderText:                 inv.desc || inv.invoiceNo || '',
           PaymentTerms:                       inv.pmtTerms || '',
-          TaxIsCalculatedAutomatically:       false,
+          TaxIsCalculatedAutomatically:       true,
           TaxDeterminationDate:               toODataDate(inv.invoiceDate || today),
           // Tax document reference
           ...(inv.taxDocNo ? { AssignmentReference: inv.taxDocNo } : {}),
           to_SuplrInvcItemPurOrdRef:    { results: poItems },
-          to_SupplierInvoiceTax:        { results: taxLines },
           ...(whtLines.length ? { to_SupplierInvoiceWhldgTax: { results: whtLines } } : {}),
         };
 
