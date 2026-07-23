@@ -455,7 +455,7 @@ module.exports = cds.service.impl(async function (srv) {
 
         // 2. Build PO item lines
         const poItems = invItems.map((item, idx) => ({
-          SupplierInvoiceItem:           String((idx + 1) * 10).padStart(5, '0'),
+          SupplierInvoiceItem:           String(idx + 1).padStart(5, '0'),
           PurchaseOrder:                 item.po || '',
           PurchaseOrderItem:             String(item.item || '').padStart(5, '0'),
           Plant:                         item.plant || '',
