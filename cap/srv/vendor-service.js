@@ -419,7 +419,12 @@ module.exports = cds.service.impl(async function (srv) {
           headers: { 'Accept': '*/*', 'sap-client': client, 'x-csrf-token': 'Fetch' },
         });
         const csrfToken = tokenRes.headers['x-csrf-token'] || tokenRes.headers['X-CSRF-Token'] || '';
-        console.log('[postInvoice] step1 done, token length:', csrfToken.length);
+        // Carry session cookies so SAP validates the CSRF token against the same session
+        const rawCookies = tokenRes.headers['set-cookie'];
+        const sessionCookie = Array.isArray(rawCookies)
+          ? rawCookies.map(c => c.split(';')[0]).join('; ')
+          : (rawCookies ? rawCookies.split(';')[0] : '');
+        console.log('[postInvoice] step1 done, token length:', csrfToken.length, 'cookie:', sessionCookie ? 'yes' : 'none');
 
         // 2. Build PO item lines
         const poItems = (inv.items || []).map((item, idx) => ({
@@ -479,6 +484,7 @@ module.exports = cds.service.impl(async function (srv) {
           'Accept': '*/*',
           'sap-client': client,
           'x-csrf-token': csrfToken,
+          ...(sessionCookie ? { 'Cookie': sessionCookie } : {}),
         };
         console.log('[postInvoice] POST headers:', JSON.stringify(postHdrs));
         const sapRes = await executeHttpRequest(dest, {
