@@ -503,7 +503,8 @@ module.exports = cds.service.impl(async function (srv) {
           ...(whtLines.length ? { to_SupplierInvoiceWhldgTax: { results: whtLines } } : {}),
         };
 
-        console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
+        console.log('[postInvoice] PaymentTerms:', JSON.stringify(inv.paymentTerms), 'pmtTerms:', JSON.stringify(inv.pmtTerms));
+        console.log('[postInvoice] payload:', JSON.stringify(payload));
 
         // 6. POST to SAP — Accept:*/* lets SAP respond in whatever format it supports
         const postHdrs = {
