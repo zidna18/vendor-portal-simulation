@@ -494,7 +494,7 @@ module.exports = cds.service.impl(async function (srv) {
           DocumentCurrency:                   inv.currency  || 'IDR',
           InvoiceGrossAmount:                 String(Number(inv.amount || 0).toFixed(2)),
           DocumentHeaderText:                 inv.desc || inv.invoiceNo || '',
-          PaymentTerms:                       inv.pmtTerms || '',
+          PaymentTerms:                       inv.paymentTerms || inv.pmtTerms || '',
           TaxIsCalculatedAutomatically:       true,
           TaxDeterminationDate:               toODataDate(inv.invoiceDate || today),
           // Tax document reference
