@@ -495,6 +495,7 @@ module.exports = cds.service.impl(async function (srv) {
           InvoiceGrossAmount:                 String(Number(inv.amount || 0).toFixed(2)),
           DocumentHeaderText:                 inv.desc || inv.invoiceNo || '',
           PaymentTerms:                       inv.paymentTerms || inv.pmtTerms || '',
+          SupplierInvoiceStatus:              'B',
           TaxIsCalculatedAutomatically:       true,
           TaxDeterminationDate:               toODataDate(inv.invoiceDate || today),
           // Tax document reference
