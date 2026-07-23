@@ -556,7 +556,7 @@ module.exports = cds.service.impl(async function (srv) {
               // CSRF token for attachment service
               const aTokenRes = await executeHttpRequest(dest, {
                 method: 'GET', url: `${attachBase}/$metadata`,
-                headers: { ...hdrs, 'x-csrf-token': 'Fetch' },
+                headers: { Accept: '*/*', 'sap-client': client, 'x-csrf-token': 'Fetch' },
               });
               const aCsrf = aTokenRes.headers['x-csrf-token'] || aTokenRes.headers['X-CSRF-Token'] || '';
 
