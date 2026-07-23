@@ -409,17 +409,17 @@ module.exports = cds.service.impl(async function (srv) {
 
         const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
         const base = `/sap/opu/odata/sap/API_SUPPLIERINVOICE_PROCESS_SRV`;
-        const hdrs = {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          'sap-client': process.env.S4HC_CLIENT || '120',
-        };
+        const client = process.env.S4HC_CLIENT || '120';
 
-        // 1. Fetch CSRF token
+        console.log('[postInvoice] step1: fetching CSRF token');
+        // 1. Fetch CSRF token — use Accept:*/* so $metadata (XML-only) doesn't 406
         const tokenRes = await executeHttpRequest(dest, {
-          method: 'GET', url: `${base}/$metadata`, headers: { ...hdrs, 'x-csrf-token': 'Fetch' },
+          method: 'GET',
+          url: `${base}/$metadata`,
+          headers: { 'Accept': '*/*', 'sap-client': client, 'x-csrf-token': 'Fetch' },
         });
         const csrfToken = tokenRes.headers['x-csrf-token'] || tokenRes.headers['X-CSRF-Token'] || '';
+        console.log('[postInvoice] step1 done, token length:', csrfToken.length);
 
         // 2. Build PO item lines
         const poItems = (inv.items || []).map((item, idx) => ({
@@ -473,12 +473,11 @@ module.exports = cds.service.impl(async function (srv) {
 
         console.log('[postInvoice] payload:', JSON.stringify(payload, null, 2));
 
-        // 6. POST to SAP — SDK adds Accept:application/json by default; override to atom+xml
-        //    which is what API_SUPPLIERINVOICE_PROCESS_SRV can produce for POST responses
+        // 6. POST to SAP — Accept:*/* lets SAP respond in whatever format it supports
         const postHdrs = {
           'Content-Type': 'application/json',
-          'Accept': 'application/atom+xml',
-          'sap-client': process.env.S4HC_CLIENT || '120',
+          'Accept': '*/*',
+          'sap-client': client,
           'x-csrf-token': csrfToken,
         };
         console.log('[postInvoice] POST headers:', JSON.stringify(postHdrs));
