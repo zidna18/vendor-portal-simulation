@@ -855,8 +855,10 @@ module.exports = cds.service.impl(async function (srv) {
 
       res.json(users);
     } catch (e) {
-      console.error('[syncBrmUsers]', e.message);
-      res.status(500).json({ error: e.message });
+      const status = e.response?.status || e.cause?.response?.status;
+      const detail = e.response?.data || e.cause?.response?.data || e.message;
+      console.error('[syncBrmUsers] status=%s detail=%j', status, detail);
+      res.status(500).json({ error: e.message, httpStatus: status, detail });
     }
   });
 
