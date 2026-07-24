@@ -85,7 +85,7 @@ module.exports = cds.service.impl(async function (srv) {
   });
 
   // ── whoami ──────────────────────────────────────────────────────────
-  srv.on('whoami', req => {
+  srv.on('whoami', async req => {
     const u = req.user;
     let role = 'brm';
     if (u.is('Director')) role = 'director';
@@ -96,7 +96,19 @@ module.exports = cds.service.impl(async function (srv) {
     const vendorId = (Array.isArray(attrs.vendorId) ? attrs.vendorId[0] : attrs.vendorId)
       || VENDOR_MAP[email]
       || null;
-    return { id: email, email, name: email, role, vendorId };
+    // BRM/Approver/Director: include allowed company codes from UserScopes for frontend filtering
+    let allowedCCs = [];
+    if (role !== 'vendor') {
+      try {
+        const db = await cds.connect.to('db');
+        const { UserScopes } = db.entities('vendor.portal');
+        const rows = await db.run(SELECT.from(UserScopes).where({ userId: email }));
+        allowedCCs = rows.map(r => r.companyCode);
+      } catch (e) {
+        console.warn('[whoami] UserScopes lookup failed:', e.message);
+      }
+    }
+    return { id: email, email, name: email, role, vendorId, allowedCCs: JSON.stringify(allowedCCs) };
   });
 
   // ── vendorMaster ────────────────────────────────────────────────────

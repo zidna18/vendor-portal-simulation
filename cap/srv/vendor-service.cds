@@ -14,11 +14,12 @@ service VendorPortal @(path: '/api/VendorPortal') {
   entity InvoiceAttachments as projection on db.InvoiceAttachments excluding { content };
 
   type WhoAmIResult {
-    id      : String;
-    email   : String;
-    name    : String;
-    role    : String;
-    vendorId: String;
+    id        : String;
+    email     : String;
+    name      : String;
+    role      : String;
+    vendorId  : String;
+    allowedCCs: String;  // JSON string: string[] of company codes from UserScopes
   }
   function whoami() returns WhoAmIResult;
 

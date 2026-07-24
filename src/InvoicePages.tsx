@@ -2694,7 +2694,9 @@ const BrmInvoiceDetailPanel = ({view,onClose,onPdf,fullScreen,onToggleFullScreen
   );
 };
 
-export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif}:any) => {
+export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,addNotif,user}:any) => {
+  const ccList=user?.allowedCCs?.length?COMPANY_CODES.filter(c=>user.allowedCCs.includes(c.v)):COMPANY_CODES;
+  const ccOpts=ccList.map(c=>({key:c.v,text:`${c.v} – ${c.l}`}));
   const [view,setView]=useState(null); const [rejModal,setRejM]=useState(null); const [rejR,setRejR]=useState(""); const [pdfView,setPdfView]=useState(null);
   const [hovRow,setHovRow]=useState<string|null>(null);
   const [selRows,setSelRows]=useState<Set<string>>(new Set());
@@ -2899,7 +2901,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
           <FilterMultiComboBox opts={VENDOR_OPTS} value={draft.vendorIds} onChange={v=>setDraft(d=>({...d,vendorIds:v}))} placeholder="All Vendors"/>
         </FField>}
         {visibleFields.has("companyCode")&&<FField label="Company Code">
-          <FilterMultiComboBox opts={COMPANY_CODE_OPTS} value={draft.companyCodes} onChange={v=>setDraft(d=>({...d,companyCodes:v}))} placeholder="All Company Codes"/>
+          <FilterMultiComboBox opts={ccOpts} value={draft.companyCodes} onChange={v=>setDraft(d=>({...d,companyCodes:v}))} placeholder="All Company Codes"/>
         </FField>}
         {visibleFields.has("status")&&<FField label="Status">
           <FilterMultiComboBox opts={INV_STATUS_OPTS} value={draft.statuses} onChange={v=>setDraft(d=>({...d,statuses:v}))} placeholder="All Statuses"/>
@@ -2932,7 +2934,7 @@ export const BrmInvoice = ({invoices,setInvoices,drillInvoiceNo,onClearDrill,add
       {vhOpen==="companyCode"&&(
         <ValueHelpDialog title="Company Code"
           cols={[{key:"v",label:"Company...",width:80},{key:"l",label:"Company Name",width:200},{key:"ctrl",label:"Controlling...",width:100},{key:"city",label:"City",width:100},{key:"country",label:"Country/Reg...",width:90},{key:"currency",label:"Currency",width:80},{key:"lang",label:"Language...",width:80},{key:"chart",label:"Chart of",width:70}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={ccList} keyField="v" labelField="l"
           selected={draft.companyCodes}
           onConfirm={s=>{sd("companyCodes",s);setVhOpen(null);}}
           onClose={()=>setVhOpen(null)}/>

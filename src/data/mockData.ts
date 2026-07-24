@@ -594,6 +594,13 @@ export const MOCK_BRM_USERS = [
     scopes:{ BRMS:[], CPMS:[], GMIN:[], SHSI:[], LMRS:[] } },
 ];
 
+// Returns CCs where the user has at least one role assigned (for frontend CC dropdown filtering)
+export function getMockAllowedCCs(userId: string): string[] {
+  const u = MOCK_BRM_USERS.find(u => u.id === userId);
+  if (!u) return [];
+  return Object.entries(u.scopes).filter(([, roles]) => (roles as string[]).length > 0).map(([cc]) => cc);
+}
+
 // ── Notification mock data (mock-only) ───────────────────────────────────────
 export const MOCK_NOTIFS = {
   brm:     BRM_NOTIFS,

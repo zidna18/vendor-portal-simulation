@@ -335,7 +335,8 @@ function AdaptFiltersDialog({open,onClose,visibleFields,onSave,draft,allFields,h
 }
 
 // ── BRM Quotation Mgmt ─────────────────────────────────────────
-export const BrmQuotation = ({quotations,setQuotations,rfqs}) => {
+export const BrmQuotation = ({quotations,setQuotations,rfqs,user}) => {
+  const ccList=user?.allowedCCs?.length?COMPANY_CODES.filter(c=>user.allowedCCs.includes(c.v)):COMPANY_CODES;
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
@@ -1775,6 +1776,7 @@ const RfqDocumentFlow = ({rfq, quotations}) => {
 };
 
 export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
+  const ccList=user?.allowedCCs?.length?COMPANY_CODES.filter(c=>user.allowedCCs.includes(c.v)):COMPANY_CODES;
   const [showForm,setForm]=useState(false);
   const [flt,setFlt]=useState("All");
   const [expanded,setExpanded]=useState({});
@@ -2045,7 +2047,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
 
       {vhOpen2==="companyCode"&&(
         <ValueHelpDialog title="Company Code" cols={[{key:"v",label:"Code",width:80},{key:"l",label:"Company Name",width:220}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={ccList} keyField="v" labelField="l"
           selected={draft2.companyCodes} onConfirm={s=>{sd2("companyCodes",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
       {vhOpen2==="status"&&(
@@ -2541,7 +2543,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
             <div><Lbl>Closing Date *</Lbl><DateInp value={f.closingDate} onChange={v=>sf("closingDate",v)}/></div>
             <div>
               <Lbl>Company Code</Lbl>
-              <Sel value={f.companyCode} onChange={v=>sf("companyCode",v)} opts={[{v:"",l:"— Select —"},...COMPANY_CODES.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
+              <Sel value={f.companyCode} onChange={v=>sf("companyCode",v)} opts={[{v:"",l:"— Select —"},...ccList.map(c=>({v:c.v,l:`${c.v} – ${c.l}`}))]}/>
             </div>
             <div><Lbl>Plant</Lbl><Inp value={f.plant} onChange={v=>sf("plant",v)} placeholder="e.g. PL01"/></div>
             <div>
@@ -2987,6 +2989,7 @@ export const BrmRfq = ({rfqs,setRfqs,quotations,setQuotations,user}) => {
 
 // ── Approver RFQ ──────────────────────────────────────────────
 export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) => {
+  const ccList=user?.allowedCCs?.length?COMPANY_CODES.filter(c=>user.allowedCCs.includes(c.v)):COMPANY_CODES;
   const [flt,setFlt]=useState("Award Proposed");
   const [expanded,setExpanded]=useState({});
   const [allExpanded,setAllExpanded]=useState(false);
@@ -3143,7 +3146,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
       {vhOpen2==="companyCode"&&(
         <ValueHelpDialog title="Company Code" cols={[{key:"v",label:"Code",width:80},{key:"l",label:"Company Name",width:220}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={ccList} keyField="v" labelField="l"
           selected={draft2.companyCodes} onConfirm={s=>{sd2("companyCodes",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
       {vhOpen2==="status"&&(
@@ -3532,6 +3535,7 @@ export const ApproverRfq = ({rfqs, setRfqs, quotations, setQuotations, user}) =>
 
 // ── Approver Quotation (PO Confirmation) ────────────────────────
 export const ApproverQuotation = ({quotations, setQuotations, rfqs, user}) => {
+  const ccList=user?.allowedCCs?.length?COMPANY_CODES.filter(c=>user.allowedCCs.includes(c.v)):COMPANY_CODES;
   const [flt,setFlt]=useState("Win");
   const [aprModal,setAprModal]=useState<{qt:any,action:"approve"|"reject"}|null>(null);
   const [notes,setNotes]=useState("");
@@ -4002,7 +4006,7 @@ export const DirectorRfq = ({rfqs, quotations, user, setRfqs}) => {
 
       {vhOpen2==="companyCode"&&(
         <ValueHelpDialog title="Company Code" cols={[{key:"v",label:"Code",width:80},{key:"l",label:"Company Name",width:220}]}
-          rows={COMPANY_CODES} keyField="v" labelField="l"
+          rows={ccList} keyField="v" labelField="l"
           selected={draft2.companyCodes} onConfirm={s=>{sd2("companyCodes",s);setVhOpen2(null);}} onClose={()=>setVhOpen2(null)}/>
       )}
       {vhOpen2==="status"&&(

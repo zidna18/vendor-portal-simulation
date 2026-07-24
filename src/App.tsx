@@ -385,7 +385,8 @@ export default function App() {
       .then(r=>{if(!r.ok)throw new Error('whoami '+r.status);return r.json();})
       .then(u=>{
         const d=u.value??u;
-        setUser({id:d.email||'user',name:d.name||d.email||'User',email:d.email||'',role:d.role||'brm',vendorId:d.vendorId||null,username:d.email||'user'});
+        const allowedCCs=typeof d.allowedCCs==='string'?JSON.parse(d.allowedCCs||'[]'):(d.allowedCCs||[]);
+        setUser({id:d.email||'user',name:d.name||d.email||'User',email:d.email||'',role:d.role||'brm',vendorId:d.vendorId||null,username:d.email||'user',allowedCCs});
       })
       .catch(()=>{})
       .finally(()=>setBtpLoading(false));
@@ -402,7 +403,18 @@ export default function App() {
   const [,setVpw]=useState(window.innerWidth);
   useEffect(()=>{const h=()=>{VP.w=window.innerWidth;setVpw(window.innerWidth);};window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const [drillInvoiceNo,setDrillInvoiceNo]=useState("");
-  const login=u=>{setUser(u);setSection("dashboard");};
+  const login=u=>{
+    let enriched={...u};
+    if(u.role!=="vendor"&&u.role!=="admin"){
+      import('./data/mockData').then(m=>{
+        enriched={...enriched,allowedCCs:m.getMockAllowedCCs(u.id)};
+        setUser(enriched);
+      });
+    } else {
+      setUser(enriched);
+    }
+    setSection("dashboard");
+  };
   const logout=()=>{
     if(isMockMode){setUser(null);setSection("dashboard");}
     else window.location.href='/do/logout';
@@ -429,8 +441,8 @@ export default function App() {
       default:        return <DirectorHome user={user} rfqs={rfqs} quotations={quotations} setSection={setSection}/>;
     }
     switch(section){
-      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")}/>;
-      case "brm-quotation": return <BrmQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
+      case "brm-invoice":   return <BrmInvoice invoices={invoices} setInvoices={setInvoices} drillInvoiceNo={drillInvoiceNo} onClearDrill={()=>setDrillInvoiceNo("")} user={user}/>;
+      case "brm-quotation": return <BrmQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} user={user}/>;
       case "brm-rfq":       return <BrmRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
       default:              return <BrmHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no:string)=>drillInvoice(no,"brm-invoice")}/>;
     }
