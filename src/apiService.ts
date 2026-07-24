@@ -292,6 +292,15 @@ export async function loadBrmUsers(): Promise<any[]> {
   return Array.isArray(rows) ? rows : [];
 }
 
+export async function syncBrmUsersFromSap(): Promise<any[]> {
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return (m!.MOCK_BRM_USERS as any[]).map(u => ({ ...u, scopes: { ...u.scopes } }));
+  }
+  const rows = await odataGet('/admin/syncBrmUsers');
+  return Array.isArray(rows) ? rows : [];
+}
+
 export async function assignBrmRole(email: string, role: string): Promise<void> {
   if (USE_MOCK) return;
   await odataPost('/admin/assignBrmRole', { email, role });

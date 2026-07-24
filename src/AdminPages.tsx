@@ -1,7 +1,7 @@
 // AdminPages.tsx — IT Admin · Role Maintenance Cockpit
 // Tabs: Vendor Sync | BRM User Sync | BRM Role Matrix
 import { useState, useEffect } from "react";
-import { loadAdminVendors, createPortalUser, loadBrmUsers, assignBrmRole, saveAllScopes } from "./apiService";
+import { loadAdminVendors, createPortalUser, loadBrmUsers, syncBrmUsersFromSap, assignBrmRole, saveAllScopes } from "./apiService";
 import {
   C, COMPANY_CODES,
   pg, mob,
@@ -37,6 +37,7 @@ export function AdminCockpit() {
   const [brmUsers, setBrmUsers]   = useState<any[]>([]);
   const [brmRoles, setBrmRoles]   = useState<Record<string,string>>({});
   const [brmApplying, setBrmApplying] = useState<Set<string>>(new Set());
+  const [brmSyncing, setBrmSyncing] = useState(false);
 
   // Role matrix
   const [scopes, setScopes]       = useState<Record<string,Record<string,string[]>>>({});
@@ -354,8 +355,21 @@ export function AdminCockpit() {
         </div>
 
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-          <Btn v="neutral" sm onClick={()=>toast("SAP API_BUSINESSUSER synced — BRM user list refreshed.","ok")}>
-            <SapIcon name="synchronize" size={13} color={C.t1}/>&nbsp;Sync from SAP
+          <Btn v="neutral" sm disabled={brmSyncing} onClick={async()=>{
+            setBrmSyncing(true);
+            try {
+              const uList = await syncBrmUsersFromSap();
+              setBrmUsers(uList);
+              const roles: Record<string,string> = {};
+              const sc: Record<string,Record<string,string[]>> = {};
+              uList.forEach((u:any) => { roles[u.id]=u.xsuaaRole||""; sc[u.id]=u.scopes||{}; });
+              setBrmRoles(roles); setScopes(sc);
+              toast(`Synced ${uList.length} user(s) from SAP S/4HANA.`, "ok");
+            } catch(e:any) {
+              toast("Sync failed: "+e.message, "err");
+            } finally { setBrmSyncing(false); }
+          }}>
+            <SapIcon name="synchronize" size={13} color={C.t1}/>&nbsp;{brmSyncing?"Syncing…":"Sync from SAP"}
           </Btn>
         </div>
 

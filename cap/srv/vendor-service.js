@@ -809,6 +809,57 @@ module.exports = cds.service.impl(async function (srv) {
     }
   });
 
+  // GET /api/admin/syncBrmUsers — fetches users from S/4HANA Public Cloud via API_BUSINESSUSER_SRV
+  // Merges with existing UserScopes so current role assignments are preserved.
+  cds.app.get('/api/admin/syncBrmUsers', async (req, res) => {
+    try {
+      let executeHttpRequest;
+      try {
+        ({ executeHttpRequest } = require('@sap-cloud-sdk/http-client'));
+      } catch (e) {
+        return res.status(503).json({ error: 'SAP Cloud SDK not available: ' + e.message });
+      }
+
+      const response = await executeHttpRequest(
+        { destinationName: 'S4HC' },
+        {
+          method: 'GET',
+          url: '/sap/opu/odata/sap/API_BUSINESSUSER_SRV/A_BusinessUser?$select=UserName,PersonFullName,DefaultEmailAddress&$top=200',
+          headers: { Accept: 'application/json' },
+        }
+      );
+
+      const sapUsers = response.data?.d?.results || [];
+
+      // Load current UserScopes to merge role assignments
+      const db = await cds.connect.to('db');
+      const { UserScopes } = db.entities('vendor.portal');
+      const scopeRows = await db.run(SELECT.from(UserScopes));
+      const byUser = {};
+      scopeRows.forEach(r => {
+        if (!byUser[r.userId]) byUser[r.userId] = {};
+        byUser[r.userId][r.companyCode] = JSON.parse(r.roles || '[]');
+      });
+
+      const users = sapUsers
+        .filter(u => u.DefaultEmailAddress) // skip users with no email
+        .map(u => ({
+          id: u.DefaultEmailAddress,
+          email: u.DefaultEmailAddress,
+          name: u.PersonFullName || u.UserName,
+          sapUserId: u.UserName,
+          iasConfirmed: false,
+          xsuaaRole: '',
+          scopes: byUser[u.DefaultEmailAddress] || {},
+        }));
+
+      res.json(users);
+    } catch (e) {
+      console.error('[syncBrmUsers]', e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // POST /api/admin/assignBrmRole — assigns XSUAA parent role collection to a BRM user
   cds.app.post('/api/admin/assignBrmRole', express.json(), async (req, res) => {
     try {
