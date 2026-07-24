@@ -11,24 +11,27 @@
     }
   ],
   "scopes": [
-    { "name": "$XSAPPNAME.Vendor",   "description": "Vendor / Supplier" },
-    { "name": "$XSAPPNAME.BRM",      "description": "BRM Procurement Employee" },
-    { "name": "$XSAPPNAME.Buyer",    "description": "Senior Buyer" },
-    { "name": "$XSAPPNAME.Approver", "description": "Finance Approver" },
-    { "name": "$XSAPPNAME.Director", "description": "Director" }
+    { "name": "$XSAPPNAME.Vendor",      "description": "Vendor / Supplier" },
+    { "name": "$XSAPPNAME.BRM",         "description": "BRM Procurement Employee" },
+    { "name": "$XSAPPNAME.Buyer",       "description": "Senior Buyer" },
+    { "name": "$XSAPPNAME.Approver",    "description": "Finance Approver" },
+    { "name": "$XSAPPNAME.Director",    "description": "Director" },
+    { "name": "$XSAPPNAME.PortalAdmin", "description": "IT Administrator — user provisioning and role matrix" }
   ],
   "role-templates": [
-    { "name": "Vendor",   "scope-references": ["$XSAPPNAME.Vendor"], "attribute-references": ["vendorId"] },
-    { "name": "BRM",      "scope-references": ["$XSAPPNAME.BRM"] },
-    { "name": "Buyer",    "scope-references": ["$XSAPPNAME.Buyer"] },
-    { "name": "Approver", "scope-references": ["$XSAPPNAME.Approver"] },
-    { "name": "Director", "scope-references": ["$XSAPPNAME.Director"] }
+    { "name": "Vendor",      "scope-references": ["$XSAPPNAME.Vendor"], "attribute-references": ["vendorId"] },
+    { "name": "BRM",         "scope-references": ["$XSAPPNAME.BRM"] },
+    { "name": "Buyer",       "scope-references": ["$XSAPPNAME.Buyer"] },
+    { "name": "Approver",    "scope-references": ["$XSAPPNAME.Approver"] },
+    { "name": "Director",    "scope-references": ["$XSAPPNAME.Director"] },
+    { "name": "PortalAdmin", "scope-references": ["$XSAPPNAME.PortalAdmin"] }
   ],
   "role-collections": [
-    { "name": "VendorPortal_Vendor",   "role-template-references": ["$XSAPPNAME.Vendor"] },
-    { "name": "VendorPortal_BRM",      "role-template-references": ["$XSAPPNAME.BRM"] },
-    { "name": "VendorPortal_Buyer",    "role-template-references": ["$XSAPPNAME.Buyer"] },
-    { "name": "VendorPortal_Approver", "role-template-references": ["$XSAPPNAME.Approver"] },
-    { "name": "VendorPortal_Director", "role-template-references": ["$XSAPPNAME.Director"] }
+    { "name": "VendorPortal_Vendor",      "role-template-references": ["$XSAPPNAME.Vendor"] },
+    { "name": "VendorPortal_BRM",         "role-template-references": ["$XSAPPNAME.BRM"] },
+    { "name": "VendorPortal_Buyer",       "role-template-references": ["$XSAPPNAME.Buyer"] },
+    { "name": "VendorPortal_Approver",    "role-template-references": ["$XSAPPNAME.Approver"] },
+    { "name": "VendorPortal_Director",    "role-template-references": ["$XSAPPNAME.Director"] },
+    { "name": "VendorPortal_PortalAdmin", "role-template-references": ["$XSAPPNAME.PortalAdmin"] }
   ]
 }
