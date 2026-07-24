@@ -73,6 +73,28 @@ entity InvoiceAttachments {
   uploadedBy      : String(100);
 }
 
+// Tracks vendor IAS provisioning status (which SAP BPs have portal users)
+entity VendorProvisioning {
+  key bp          : String(20);   // SAP Business Partner number
+  name            : String(200);
+  email           : String(200);
+  taxId           : String(50);
+  sapStatus       : String(20)  default 'Active';
+  iasStatus       : String(20);  // 'active' | 'pending' | null
+  iasEmail        : String(200);
+  provisionedAt   : DateTime;
+  provisionedBy   : String(100);
+}
+
+// Tracks company code-level role scopes per BRM user (child scoping layer)
+entity UserScopes {
+  key userId      : String(50);  // XSUAA / IAS user ID (email)
+  key companyCode : String(4);   // SAP company code
+  roles           : LargeString; // JSON: string[] — AP_ADMIN, BUYER, TENDER, DIRECTOR
+  updatedAt       : DateTime;
+  updatedBy       : String(100);
+}
+
 entity RFQs {
   key id                     : String(50);
   title                      : String(200);

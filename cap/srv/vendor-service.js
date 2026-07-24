@@ -629,4 +629,99 @@ module.exports = cds.service.impl(async function (srv) {
       console.error('[init] Clear failed:', e.message);
     }
   });
+
+  // ── Admin: Vendor provisioning list ─────────────────────────────
+  // GET /api/admin/vendors — returns VendorProvisioning records merged with SAP BP data
+  cds.app.get('/api/admin/vendors', async (req, res) => {
+    try {
+      const db = await cds.connect.to('db');
+      const { VendorProvisioning } = db.entities('vendor.portal');
+      const rows = await db.run(SELECT.from(VendorProvisioning).orderBy('bp'));
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/admin/createPortalUser — creates IAS user via SCIM + assigns VENDOR role collection
+  // IAS SCIM API: POST /scim/v2/Users with custom vendorId attribute
+  // XSUAA API: PUT /Groups/{vendorRoleCollId}/members to assign VENDOR role collection
+  cds.app.post('/api/admin/createPortalUser', express.json(), async (req, res) => {
+    try {
+      const { bp } = req.body;
+      if (!bp) return res.status(400).json({ error: 'bp is required' });
+      const db = await cds.connect.to('db');
+      const { VendorProvisioning } = db.entities('vendor.portal');
+      const vendor = await db.run(SELECT.one.from(VendorProvisioning).where({ bp }));
+      if (!vendor || !vendor.email) return res.status(400).json({ error: 'Vendor not found or no email on file' });
+
+      // TODO: Call IAS SCIM API to create user
+      // POST {IAS_URL}/scim/v2/Users { userName: vendor.email, emails: [...], customAttribute: { vendorId: bp } }
+      // TODO: Call XSUAA Management API to assign VENDOR role collection
+      // PUT {XSUAA_URL}/Groups/{vendorGroupId}/members { value: iasUserId }
+
+      await db.run(UPDATE(VendorProvisioning).set({ iasStatus: 'pending', provisionedAt: new Date().toISOString() }).where({ bp }));
+      res.json({ ok: true, message: 'IAS user created and activation email sent (stub)' });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── Admin: BRM user list ─────────────────────────────────────────
+  // GET /api/admin/brmUsers — returns BRM users with their current UserScopes
+  cds.app.get('/api/admin/brmUsers', async (req, res) => {
+    try {
+      const db = await cds.connect.to('db');
+      const { UserScopes } = db.entities('vendor.portal');
+      const scopeRows = await db.run(SELECT.from(UserScopes));
+
+      // TODO: fetch real user list from SAP API_BUSINESSUSER or maintain a BrmUsers table
+      // For now, return scopes so the frontend can merge with its own user list
+      const byUser = {};
+      scopeRows.forEach(r => {
+        if (!byUser[r.userId]) byUser[r.userId] = {};
+        byUser[r.userId][r.companyCode] = JSON.parse(r.roles || '[]');
+      });
+      res.json(byUser);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/admin/assignBrmRole — assigns XSUAA parent role collection to a BRM user
+  cds.app.post('/api/admin/assignBrmRole', express.json(), async (req, res) => {
+    try {
+      const { email, role } = req.body;
+      if (!email) return res.status(400).json({ error: 'email is required' });
+      // TODO: Call XSUAA Management API
+      // PUT {XSUAA_URL}/Groups/{roleGroupId}/members with SCIM user reference
+      console.log(`[admin] assignBrmRole: email=${email} role=${role}`);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/admin/saveScopes — persists role matrix to UserScopes HANA table
+  cds.app.post('/api/admin/saveScopes', express.json({ limit: '1mb' }), async (req, res) => {
+    try {
+      const { scopes } = req.body; // [{ userId, cc, roles[] }]
+      if (!Array.isArray(scopes)) return res.status(400).json({ error: 'scopes array required' });
+      const db = await cds.connect.to('db');
+      const { UserScopes } = db.entities('vendor.portal');
+      const now = new Date().toISOString();
+      await Promise.all(scopes.map(async ({ userId, cc, roles }) => {
+        const existing = await db.run(SELECT.one.from(UserScopes).where({ userId, companyCode: cc }));
+        if (existing) {
+          await db.run(UPDATE(UserScopes).set({ roles: JSON.stringify(roles), updatedAt: now }).where({ userId, companyCode: cc }));
+        } else {
+          await db.run(INSERT.into(UserScopes).entries({ userId, companyCode: cc, roles: JSON.stringify(roles), updatedAt: now }));
+        }
+        // TODO: Call XSUAA API to sync role collection membership for each CC
+      }));
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 });

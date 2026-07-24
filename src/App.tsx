@@ -13,6 +13,7 @@ import { VendorInvoice, BrmInvoice } from "./InvoicePages";
 import { VendorQuotation, BrmQuotation, BrmRfq, ApproverRfq, ApproverQuotation, DirectorHome, DirectorRfq } from "./QuotationRfqPages";
 import { VendorHome, BrmHome, ApproverHome } from "./HomePages";
 import { VendorProfile } from "./VendorProfile";
+import { AdminCockpit } from "./AdminPages";
 
 // Conditional lazy — Rollup dead-code-eliminates the dynamic import when isMockMode=false
 const LazyLogin = isMockMode ? lazy(() => import("./LoginPage")) : (null as any);
@@ -41,6 +42,8 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings,mockNotifs}) => 
     ?[{id:"dashboard",l:"Home"},{id:"apr-rfq",l:"RFQ Approval"},{id:"apr-quotation",l:"PO Confirmation"}]
     :user.role==="director"
     ?[{id:"dashboard",l:"Home"},{id:"dir-rfq",l:"RFQ Management"}]
+    :user.role==="admin"
+    ?[{id:"admin-cockpit",l:"Role Cockpit"}]
     :[{id:"dashboard",l:"Home"},{id:"brm-invoice",l:"Invoice Mgmt"},{id:"brm-rfq",l:"RFQ Mgmt"},{id:"brm-quotation",l:"Quotation Mgmt"}];
   const isMob=mob();
   return (
@@ -122,9 +125,10 @@ const Shell = ({user,onLogout,section,setSection,onOpenSettings,mockNotifs}) => 
                   <div style={{width:64,height:64,borderRadius:"50%",background:ac.bg,border:`2px solid ${ac.fg}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:700,color:ac.fg,letterSpacing:.5}}>{ini}</div>
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:15,fontWeight:700,color:C.t1,marginBottom:2}}>{user.name}</div>
-                    <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":user.role==="approver"?"Finance Approver":"BRM Employee"}</div>
+                    <div style={{fontSize:12,color:C.t2}}>{user.role==="vendor"?"Supplier":user.role==="approver"?"Finance Approver":user.role==="director"?"Director":user.role==="admin"?"IT Administrator":"BRM Employee"}</div>
                     {user.title&&<div style={{fontSize:12,color:C.t2,marginTop:1}}>{user.title}</div>}
                     {user.vendorId&&<div style={{fontSize:11,color:C.info,marginTop:5,padding:"2px 10px",background:C.infoBg,borderRadius:10,display:"inline-block",border:`1px solid ${C.info}30`}}>Vendor ID: {user.vendorId}</div>}
+                    {user.role==="admin"&&<div style={{fontSize:11,color:C.warn,marginTop:5,padding:"2px 10px",background:C.warnBg,borderRadius:10,display:"inline-block",border:`1px solid ${C.warn}30`}}>IT Administrator</div>}
                   </div>
                 </div>
                 <div style={{padding:"6px 0"}}>
@@ -414,6 +418,7 @@ export default function App() {
       case "quotation": return <VendorQuotation user={user} quotations={quotations} setQuotations={setQuotations} rfqs={rfqs}/>;
       default:          return <VendorHome user={user} invoices={invoices} quotations={quotations} rfqs={rfqs} setSection={setSection} onDrillInvoice={(no:string)=>drillInvoice(no,"invoice")}/>;
     }
+    if(user.role==="admin") return <AdminCockpit/>;
     if(user.role==="approver") switch(section){
       case "apr-rfq":       return <ApproverRfq rfqs={rfqs} setRfqs={setRfqs} quotations={quotations} setQuotations={setQuotations} user={user}/>;
       case "apr-quotation": return <ApproverQuotation quotations={quotations} setQuotations={setQuotations} rfqs={rfqs} user={user}/>;

@@ -13,6 +13,7 @@ export const USERS = [
   { id:"B002", role:"brm",    username:"buyer1",   password:"demo123", name:"Siti Rahma",   title:"Senior Buyer" },
   { id:"A001", role:"approver", username:"approver1", password:"demo123", name:"Budi Santoso", title:"Finance Approver" },
   { id:"D001", role:"director", username:"director1", password:"demo123", name:"Arief Budiman", title:"Director" },
+  { id:"ADMIN001", role:"admin", username:"admin", password:"demo123", name:"System Administrator", title:"IT Administrator" },
 ];
 export const VENDORS = {
   "10000001":{ id:"10000001", name:"PT Maju Bersama",    tax:"01.234.567.8-901.000", addr:"Jl. Sudirman No. 123, Jakarta Selatan 12190", phone:"+62 21 5555-1234", email:"ap@majubersama.co.id",
@@ -560,6 +561,37 @@ const VENDOR_NOTIFS = [
   {id:"v4", type:"change-request", icon:"pending", color:"#e76500", title:"Revision Requested", msg:"BRM has requested a revision on your quotation QT-2025-0007. Please update and resubmit.", time:"5 hr ago", read:true},
   {id:"v5", type:"invoice-confirmed", icon:"accept", color:"#107e3e", title:"Invoice Confirmed", msg:"Invoice INV/MJB/2025/006 (IDR 215,000,000) has been confirmed by BRM and is being processed.", time:"Yesterday", read:true},
   {id:"v6", type:"rfq-closing", icon:"alert", color:"#e76500", title:"RFQ Deadline Reminder", msg:"RFQ-2025-0005 (HVAC Maintenance) closes in 1 day. Submit your quotation before the deadline.", time:"Yesterday", read:true},
+];
+
+// ── Admin cockpit mock data ──────────────────────────────────────────────────
+export const MOCK_ADMIN_VENDORS = [
+  { bp:"10000001", name:"PT Maju Bersama",           email:"ap@majubersama.co.id",        taxId:"01.234.567.8-901.000", sapStatus:"Active",  iasStatus:"active",  iasEmail:"ap@majubersama.co.id" },
+  { bp:"10000002", name:"CV Sukses Mandiri",          email:"finance@suksesmandiri.co.id", taxId:"02.345.678.9-012.000", sapStatus:"Active",  iasStatus:"active",  iasEmail:"finance@suksesmandiri.co.id" },
+  { bp:"10000003", name:"PT Solusi Nusantara",        email:"procurement@solusinus.co.id", taxId:"03.456.789.0-123.000", sapStatus:"Active",  iasStatus:"active",  iasEmail:"procurement@solusinus.co.id" },
+  { bp:"10000004", name:"PT Karya Abadi Sejahtera",   email:"finance@karyaabadi.co.id",   taxId:"04.567.890.1-234.000", sapStatus:"Active",  iasStatus:"pending", iasEmail:null },
+  { bp:"10000005", name:"UD Sumber Jaya Makmur",      email:"",                           taxId:"05.678.901.2-345.000", sapStatus:"Active",  iasStatus:null,      iasEmail:null },
+  { bp:"10000006", name:"PT Tambang Sejahtera",       email:"ap@tambangsjt.co.id",        taxId:"06.789.012.3-456.000", sapStatus:"Active",  iasStatus:null,      iasEmail:null },
+  { bp:"10000007", name:"CV Bumi Perkasa Mandiri",    email:"finance@bumiperkasa.co.id",  taxId:"07.890.123.4-567.000", sapStatus:"Active",  iasStatus:"pending", iasEmail:null },
+  { bp:"10000008", name:"PT Energi Mineral Lestari",  email:"ap@energimineral.co.id",     taxId:"08.901.234.5-678.000", sapStatus:"Blocked", iasStatus:null,      iasEmail:null },
+  { bp:"10000009", name:"PT Konstruksi Nusa Indah",   email:"ap@knusaindah.co.id",        taxId:"09.012.345.6-789.000", sapStatus:"Active",  iasStatus:null,      iasEmail:null },
+  { bp:"10000010", name:"CV Logistik Andalan",        email:"logistik@andalan.co.id",     taxId:"10.123.456.7-890.000", sapStatus:"Active",  iasStatus:"active",  iasEmail:"logistik@andalan.co.id" },
+];
+
+export const MOCK_BRM_USERS = [
+  { id:"B001", name:"Ahmad Rizki",   email:"ahmad.rizki@bumi.co.id",   title:"Procurement Manager", sapUserId:"AHMAD.RIZKI",   iasConfirmed:true,  xsuaaRole:"BRM_AP_ADMIN",
+    scopes:{ BRMS:["AP_ADMIN"], CPMS:["AP_ADMIN"], GMIN:[], SHSI:[], LMRS:[] } },
+  { id:"B002", name:"Siti Rahma",    email:"siti.rahma@bumi.co.id",    title:"Senior Buyer",        sapUserId:"SITI.RAHMA",    iasConfirmed:true,  xsuaaRole:"BRM_BUYER",
+    scopes:{ BRMS:["BUYER"], CPMS:[], GMIN:["BUYER","TENDER"], SHSI:[], LMRS:[] } },
+  { id:"A001", name:"Budi Santoso",  email:"budi.santoso@bumi.co.id",  title:"Finance Approver",    sapUserId:"BUDI.SANTOSO",  iasConfirmed:true,  xsuaaRole:"BRM_AP_ADMIN",
+    scopes:{ BRMS:[], CPMS:[], GMIN:[], SHSI:[], LMRS:[] } },
+  { id:"A002", name:"Devi Kurnia",   email:"devi.kurnia@bumi.co.id",   title:"AP Specialist",       sapUserId:"DEVI.KURNIA",   iasConfirmed:true,  xsuaaRole:"BRM_AP_ADMIN",
+    scopes:{ BRMS:["AP_ADMIN"], CPMS:["AP_ADMIN"], GMIN:[], SHSI:["AP_ADMIN"], LMRS:[] } },
+  { id:"D001", name:"Arief Budiman", email:"arief.budiman@bumi.co.id", title:"Director",            sapUserId:"ARIEF.BUDIMAN", iasConfirmed:true,  xsuaaRole:"BRM_DIRECTOR",
+    scopes:{ BRMS:["DIRECTOR"], CPMS:["DIRECTOR"], GMIN:["DIRECTOR"], SHSI:["DIRECTOR"], LMRS:["DIRECTOR"] } },
+  { id:"B003", name:"Reza Pratama",  email:"reza.pratama@bumi.co.id",  title:"Buyer",               sapUserId:"REZA.PRATAMA",  iasConfirmed:true,  xsuaaRole:"BRM_BUYER",
+    scopes:{ BRMS:["BUYER"], CPMS:["BUYER"], GMIN:[], SHSI:[], LMRS:[] } },
+  { id:"B004", name:"Maya Sari",     email:"maya.sari@bumi.co.id",     title:"AP Analyst",          sapUserId:"MAYA.SARI",     iasConfirmed:false, xsuaaRole:"",
+    scopes:{ BRMS:[], CPMS:[], GMIN:[], SHSI:[], LMRS:[] } },
 ];
 
 // ── Notification mock data (mock-only) ───────────────────────────────────────

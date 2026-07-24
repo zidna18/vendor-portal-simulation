@@ -267,6 +267,42 @@ export function attachmentDownloadUrl(id: string) {
   return `${API_BASE}/attach/${id}`;
 }
 
+// ── Admin: Vendor provisioning ────────────────────────────────────
+export async function loadAdminVendors(): Promise<any[]> {
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return (m!.MOCK_ADMIN_VENDORS as any[]).map(v => ({ ...v }));
+  }
+  const rows = await odataGet('/admin/vendors');
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function createPortalUser(bp: string): Promise<void> {
+  if (USE_MOCK) return;
+  await odataPost('/admin/createPortalUser', { bp });
+}
+
+// ── Admin: BRM users ─────────────────────────────────────────────
+export async function loadBrmUsers(): Promise<any[]> {
+  if (USE_MOCK) {
+    const m = await getMockData();
+    return (m!.MOCK_BRM_USERS as any[]).map(u => ({ ...u, scopes: { ...u.scopes } }));
+  }
+  const rows = await odataGet('/admin/brmUsers');
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function assignBrmRole(email: string, role: string): Promise<void> {
+  if (USE_MOCK) return;
+  await odataPost('/admin/assignBrmRole', { email, role });
+}
+
+// ── Admin: Role matrix (UserScopes) ──────────────────────────────
+export async function saveAllScopes(scopes: { userId: string; cc: string; roles: string[] }[]): Promise<void> {
+  if (USE_MOCK) return;
+  await odataPost('/admin/saveScopes', { scopes });
+}
+
 export async function listAttachments(invoiceId: string): Promise<any[]> {
   if (USE_MOCK) return [];
   const rows = await odataGet(`/VendorPortal/InvoiceAttachments?$filter=invoiceId eq '${invoiceId}'`);
