@@ -824,8 +824,8 @@ module.exports = cds.service.impl(async function (srv) {
         { destinationName: 'S4HC' },
         {
           method: 'GET',
-          url: '/sap/opu/odata/sap/API_BUSINESSUSER_SRV/A_BusinessUser?$select=UserName,PersonFullName,DefaultEmailAddress&$top=200',
-          headers: { Accept: 'application/json' },
+          url: '/sap/opu/odata/sap/API_BUSINESSUSER_SRV/A_BusinessUser?$select=UserName,PersonFullName,DefaultEmailAddress&$top=200&$format=json',
+          headers: { Accept: 'application/json', 'sap-client': '100' },
         }
       );
 
