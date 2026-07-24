@@ -1,4 +1,5 @@
 const cds = require('@sap/cds');
+const express = require('express');
 
 module.exports = cds.service.impl(async function (srv) {
   // Temporary email→vendorId map until vendor master sync UI is built
