@@ -48,7 +48,7 @@ module.exports = cds.service.impl(async function (srv) {
       return;
     }
     const scope = await getUserCCScope(req);
-    if (scope) applyCCFilter(req.query, scope.allowedCCs);
+    if (scope && scope.allowedCCs.length > 0) applyCCFilter(req.query, scope.allowedCCs);
   });
 
   srv.before('CREATE', SCOPED_ENTITIES, async req => {
