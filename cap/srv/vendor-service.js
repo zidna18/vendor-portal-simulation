@@ -300,7 +300,7 @@ module.exports = cds.service.impl(async function (srv) {
       const grSelect = 'PurchasingDocument,PurchasingDocumentItem,AmountInTransactionCurrency,TransactionCurrency,DebitCreditCode';
       const grRes = await executeHttpRequest(dest, {
         method: 'GET',
-        url: `/sap/opu/odata/sap/API_OPLACCTGDOCITEMCUBE_SRV/A_OperationalAcctgDocItemCube?$filter=(${grPoFilter}) and AccountingDocumentType eq 'WE' and DebitCreditCode eq 'S'&$select=${grSelect}`,
+        url: `/sap/opu/odata/sap/API_OPLACCTGDOCITEMCUBE_SRV/A_OperationalAcctgDocItemCube?$filter=(${grPoFilter}) and AccountingDocumentType eq 'WE' and DebitCreditCode eq 'H'&$select=${grSelect}`,
         headers: hdrs,
       });
       const grRows = grRes.data?.d?.results || grRes.data?.value || [];

@@ -10,7 +10,19 @@ A **multi-file React + TypeScript prototype** of the "BRM Vendor Portal" — a U
 
 **TypeScript:** Strict mode is off. Typing is intentionally loose — most components and handlers use implicit `any`. Do not add type annotations or refactor toward stricter types unless asked.
 
-**Reference material:** The untracked `Reference/` folder contains local saved copies of SAP S/4HANA Cloud screens. Use them to match SAP Fiori UI patterns when implementing new features.
+**Reference material:** The untracked `Reference/` folder contains:
+- `Reference/` — local saved copies of SAP S/4HANA Cloud screens. Use them to match SAP Fiori UI patterns when implementing new features.
+- `Reference/API Notes/` — distilled SAP API cheat sheets (generated from official SAP API PDFs). Read the relevant file here **before** writing any OData handler in `cap/srv/vendor-service.js`. Do not read the raw PDFs — use these instead.
+
+| File | Covers |
+|---|---|
+| `api-purchase-order.md` | V4 PO header + item fields, GrossAmount sum pattern, schedule lines |
+| `api-supplier-invoice.md` | V2 POST payload, SupplierInvoiceStatus, mandatory fields |
+| `journal-entry-post.md` | Sync/async/by-ledger JE posting, mandatory fields, reversal |
+| `journal-entry-read.md` | Read A2X — no PO filter; use `api-oplacctgdocitemcube` instead |
+| `journal-entry-clearing.md` | Full/partial/residual clearing patterns |
+| `journal-entry-change.md` | Changeable fields, FieldValueChangeIsRequested pattern |
+| `fi-other.md` | `API_OPLACCTGDOCITEMCUBE_SRV` — GR amount lookup from ACDOCA |
 
 Runtime dependencies are `react` and `react-dom` only. No router, state library, or UI component library.
 
