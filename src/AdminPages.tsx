@@ -42,6 +42,7 @@ export function AdminCockpit() {
   const [scopes, setScopes]       = useState<Record<string,Record<string,string[]>>>({});
   const [matrixDirty, setMatrixDirty] = useState(false);
   const [matrixSaving, setMatrixSaving] = useState(false);
+  const [addUserEmail, setAddUserEmail] = useState("");
 
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +126,19 @@ export function AdminCockpit() {
     } finally {
       setMatrixSaving(false);
     }
+  };
+
+  const handleAddMatrixUser = () => {
+    const email = addUserEmail.trim().toLowerCase();
+    if (!email || brmUsers.find(u => u.id === email)) {
+      if (!email) return;
+      toast("User already in matrix.", "err"); return;
+    }
+    const newUser = { id: email, email, name: email, scopes: {}, xsuaaRole: "" };
+    setBrmUsers(p => [...p, newUser]);
+    setScopes(p => ({ ...p, [email]: {} }));
+    setMatrixDirty(true);
+    setAddUserEmail("");
   };
 
   const filteredVendors = vendors.filter(v => {
@@ -467,6 +481,19 @@ export function AdminCockpit() {
             </tbody>
           </table>
         </div>
+
+        {/* Add user row */}
+        <div style={{marginTop:10,display:"flex",gap:8,alignItems:"center"}}>
+          <Inp value={addUserEmail} onChange={e=>setAddUserEmail(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&handleAddMatrixUser()}
+            placeholder="Add BRM user by email (e.g. zidnaqoulan@gmail.com)"
+            style={{flex:1,maxWidth:380}}/>
+          <Btn v="neutral" sm onClick={handleAddMatrixUser}>+ Add to matrix</Btn>
+        </div>
+
+        {brmUsers.length===0&&<div style={{padding:"32px 0",textAlign:"center",color:C.t2,fontSize:13,fontStyle:"italic"}}>
+          No BRM users yet. Add a user above or use BRM User Sync to import from SAP.
+        </div>}
 
         {/* Legend */}
         <div style={{marginTop:10,display:"flex",gap:16,flexWrap:"wrap" as const,alignItems:"center"}}>

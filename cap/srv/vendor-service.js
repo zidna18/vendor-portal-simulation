@@ -781,20 +781,29 @@ module.exports = cds.service.impl(async function (srv) {
 
   // ── Admin: BRM user list ─────────────────────────────────────────
   // GET /api/admin/brmUsers — returns BRM users with their current UserScopes
+  // Returns array of { id, email, name, scopes: {cc: roles[]}, xsuaaRole: '' }
   cds.app.get('/api/admin/brmUsers', async (req, res) => {
     try {
       const db = await cds.connect.to('db');
       const { UserScopes } = db.entities('vendor.portal');
       const scopeRows = await db.run(SELECT.from(UserScopes));
 
-      // TODO: fetch real user list from SAP API_BUSINESSUSER or maintain a BrmUsers table
-      // For now, return scopes so the frontend can merge with its own user list
+      // Group by userId
       const byUser = {};
       scopeRows.forEach(r => {
         if (!byUser[r.userId]) byUser[r.userId] = {};
         byUser[r.userId][r.companyCode] = JSON.parse(r.roles || '[]');
       });
-      res.json(byUser);
+
+      // Convert to array expected by frontend
+      const users = Object.entries(byUser).map(([userId, ccScopes]) => ({
+        id: userId,
+        email: userId,
+        name: userId,
+        scopes: ccScopes,
+        xsuaaRole: '',
+      }));
+      res.json(users);
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
