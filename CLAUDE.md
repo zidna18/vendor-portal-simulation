@@ -23,6 +23,7 @@ A **multi-file React + TypeScript prototype** of the "BRM Vendor Portal" — a U
 | `journal-entry-clearing.md` | Full/partial/residual clearing patterns |
 | `journal-entry-change.md` | Changeable fields, FieldValueChangeIsRequested pattern |
 | `fi-other.md` | `API_OPLACCTGDOCITEMCUBE_SRV` — GR amount lookup from ACDOCA |
+| `api-business-user.md` | `API_BUSINESSUSER_SRV` V2 — BRM user sync, comm scenarios SAP_COM_0093/0193, filter patterns |
 
 Runtime dependencies are `react` and `react-dom` only. No router, state library, or UI component library.
 
