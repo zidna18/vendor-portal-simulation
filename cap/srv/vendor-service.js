@@ -6,6 +6,84 @@ module.exports = cds.service.impl(async function (srv) {
     'zidna.q.tsaqila@accenture.com': '2100000010',
   };
 
+  // ── CC scope helper ─────────────────────────────────────────────────
+  // Returns the list of company codes the current BRM user is authorized for.
+  // Vendor users are scoped by vendorId (XSUAA attribute), not by CC — returns null.
+  // Empty array means the user has no CC assignments; all queries should return nothing.
+  async function getUserCCScope(req) {
+    if (req.user.is('Vendor')) return null;
+    const db = await cds.connect.to('db');
+    const { UserScopes } = db.entities('vendor.portal');
+    const rows = await db.run(SELECT.from(UserScopes).where({ userId: req.user.id }));
+    const allowedCCs = rows.map(r => r.companyCode);
+    const rolesByCC = {};
+    rows.forEach(r => { rolesByCC[r.companyCode] = JSON.parse(r.roles || '[]'); });
+    return { allowedCCs, rolesByCC };
+  }
+
+  // Injects a companyCode IN filter into a CQN SELECT query.
+  function applyCCFilter(query, allowedCCs) {
+    if (!query.SELECT) return;
+    const ccCondition = { companyCode: { in: allowedCCs.length ? allowedCCs : ['__NONE__'] } };
+    const existing = query.SELECT.where;
+    query.SELECT.where = existing ? { and: [existing, ccCondition] } : ccCondition;
+  }
+
+  // ── Entity-level authorization hooks ───────────────────────────────
+  // READ: vendors see only their own records; BRM sees only their CC-scoped records.
+  // CREATE/UPDATE: validate the companyCode in the payload is within the user's scope.
+  const SCOPED_ENTITIES = ['Invoices', 'Quotations', 'RFQs'];
+
+  srv.before('READ', SCOPED_ENTITIES, async req => {
+    if (req.user.is('Vendor')) {
+      const attrs = req.user.attr || {};
+      const vendorId = (Array.isArray(attrs.vendorId) ? attrs.vendorId[0] : attrs.vendorId)
+        || VENDOR_MAP[req.user.id] || null;
+      if (vendorId && req.query.SELECT) {
+        const existing = req.query.SELECT.where;
+        const vCond = { vendorId: vendorId };
+        req.query.SELECT.where = existing ? { and: [existing, vCond] } : vCond;
+      }
+      return;
+    }
+    const scope = await getUserCCScope(req);
+    if (scope) applyCCFilter(req.query, scope.allowedCCs);
+  });
+
+  srv.before('CREATE', SCOPED_ENTITIES, async req => {
+    if (req.user.is('Vendor')) {
+      // Auto-stamp vendorId from XSUAA attribute — vendor cannot impersonate another
+      const attrs = req.user.attr || {};
+      const vendorId = (Array.isArray(attrs.vendorId) ? attrs.vendorId[0] : attrs.vendorId)
+        || VENDOR_MAP[req.user.id] || null;
+      if (vendorId) req.data.vendorId = vendorId;
+      return;
+    }
+    const scope = await getUserCCScope(req);
+    if (scope && req.data.companyCode && !scope.allowedCCs.includes(req.data.companyCode)) {
+      return req.error(403, `Not authorized for company code ${req.data.companyCode}`);
+    }
+  });
+
+  srv.before('UPDATE', SCOPED_ENTITIES, async req => {
+    if (req.user.is('Vendor')) return; // vendors can only update their own (READ filter already scopes)
+    const scope = await getUserCCScope(req);
+    if (!scope) return;
+    // If CC is being changed in the payload, validate target CC
+    if (req.data.companyCode && !scope.allowedCCs.includes(req.data.companyCode)) {
+      return req.error(403, `Not authorized for company code ${req.data.companyCode}`);
+    }
+    // Also validate the existing record's CC (prevent update of out-of-scope records)
+    const db = await cds.connect.to('db');
+    const entity = srv.entities[req.entity?.split('.').pop()];
+    if (entity && req.data.id) {
+      const existing = await db.run(SELECT.one.from(entity).columns('companyCode').where({ id: req.data.id }));
+      if (existing && !scope.allowedCCs.includes(existing.companyCode)) {
+        return req.error(403, `Not authorized for company code ${existing.companyCode}`);
+      }
+    }
+  });
+
   // ── whoami ──────────────────────────────────────────────────────────
   srv.on('whoami', req => {
     const u = req.user;
@@ -353,6 +431,19 @@ module.exports = cds.service.impl(async function (srv) {
         const { invoiceId, fileName, mimeType, content } = req.body;
         if (!invoiceId || !fileName || !content) return res.status(400).json({ error: 'invoiceId, fileName, content required' });
         const db = await cds.connect.to('db');
+
+        // CC scope check: validate user is authorized for the invoice's company code
+        if (req.user && !req.user.is('Vendor')) {
+          const { Invoices, UserScopes } = db.entities('vendor.portal');
+          const [inv, scopeRows] = await Promise.all([
+            db.run(SELECT.one.from(Invoices).columns('companyCode').where({ id: invoiceId })),
+            db.run(SELECT.from(UserScopes).where({ userId: req.user.id })),
+          ]);
+          const allowedCCs = scopeRows.map(r => r.companyCode);
+          if (inv && allowedCCs.length && !allowedCCs.includes(inv.companyCode)) {
+            return res.status(403).json({ error: `Not authorized for company code ${inv.companyCode}` });
+          }
+        }
         const id = cds.utils.uuid();
         const buf = Buffer.from(content, 'base64');
         // HANA LargeBinary: insert as Buffer (CAP marshals to BLOB)
@@ -395,6 +486,17 @@ module.exports = cds.service.impl(async function (srv) {
       try {
         const inv = req.body;
         if (!inv || !inv.id) return res.status(400).json({ error: 'invoice payload required' });
+
+        // CC scope check: BRM user must be authorized for the invoice's company code
+        if (req.user && !req.user.is('Vendor')) {
+          const db = await cds.connect.to('db');
+          const { UserScopes } = db.entities('vendor.portal');
+          const scopeRows = await db.run(SELECT.from(UserScopes).where({ userId: req.user.id }));
+          const allowedCCs = scopeRows.map(r => r.companyCode);
+          if (allowedCCs.length && inv.companyCode && !allowedCCs.includes(inv.companyCode)) {
+            return res.status(403).json({ error: `Not authorized for company code ${inv.companyCode}` });
+          }
+        }
 
         let executeHttpRequest;
         try {
