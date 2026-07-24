@@ -193,6 +193,9 @@ module.exports = cds.service.impl(async function (srv) {
   });
 
   // ── purchaseOrders ──────────────────────────────────────────────────
+  // Fetches PO headers for the vendor F4 value help popup (SAP_COM_0238).
+  // PO header entity has no total amount field — must expand _PurchaseOrderItem
+  // and sum GrossAmount (per-item gross order value) to get PO total (PDF confirmed).
   srv.on('purchaseOrders', async req => {
     const { vendorId } = req.data;
     if (!vendorId) return req.error(400, 'vendorId is required');
@@ -204,28 +207,44 @@ module.exports = cds.service.impl(async function (srv) {
       return req.error(503, 'SAP Cloud SDK not available: ' + e.message);
     }
 
-    const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
+    const dest   = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
     const hdrsV4 = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
     try {
+      // Expand _PurchaseOrderItem to get GrossAmount per item — no header-level total exists.
+      // GrossAmount = gross order value per item in document currency (NetPriceAmount × qty incl. discounts).
+      // NetPriceAmount + NetPriceQuantity + OrderQuantity are kept as fallback if GrossAmount is null.
+      const itemSelect = 'PurchaseOrder,PurchaseOrderItem,GrossAmount,NetPriceAmount,NetPriceQuantity,OrderQuantity,DocumentCurrency';
       const res = await executeHttpRequest(dest, {
         method: 'GET',
-        url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrder?$filter=Supplier eq '${vendorId}'&$top=100`,
+        url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrder?$filter=Supplier eq '${vendorId}'&$expand=_PurchaseOrderItem($select=${itemSelect})&$top=100`,
         headers: hdrsV4,
       });
       const rows = res.data?.value || [];
-      if (rows.length > 0) console.log('[purchaseOrders] V4 sample row keys:', Object.keys(rows[0]).join(','));
-      else console.log('[purchaseOrders] V4 returned 0 rows for vendorId:', vendorId);
-      return rows.map(r => ({
-        po:          r.PurchaseOrder || r.PurchasingDocument || '',
-        companyCode: r.CompanyCode || '',
-        supplier:    r.Supplier || r.SupplierAddressID || '',
-        currency:    r.DocumentCurrency || r.PurchaseOrderCurrency || 'IDR',
-        netAmount:   String(r.NetAmount || r.TotalNetAmount || r.NetOrderValue || '0'),
-        poDate:      r.CreationDate || r.PurchaseOrderDate || '',
-        description: r.PurchaseOrderType || r.PurchaseOrderLongText || '',
-        plant:       r.Plant || '',
-        purchOrg:    r.PurchasingOrganization || '',
-      }));
+      console.log(`[purchaseOrders] V4 returned ${rows.length} POs for vendor ${vendorId}`);
+
+      return rows.map(r => {
+        const itemList = r._PurchaseOrderItem?.value || r._PurchaseOrderItem || [];
+        const totalGross = itemList.reduce((sum, itm) => {
+          const gross = parseFloat(itm.GrossAmount || '0');
+          if (gross > 0) return sum + gross;
+          // Fallback: NetPriceAmount / NetPriceQuantity × OrderQuantity
+          const np  = parseFloat(itm.NetPriceAmount   || '0');
+          const npq = parseFloat(itm.NetPriceQuantity  || '1') || 1;
+          const oq  = parseFloat(itm.OrderQuantity     || '0');
+          return sum + (np / npq * oq);
+        }, 0);
+        return {
+          po:          r.PurchaseOrder || '',
+          companyCode: r.CompanyCode   || '',
+          supplier:    r.Supplier      || '',
+          currency:    r.DocumentCurrency || 'IDR',
+          netAmount:   String(totalGross),
+          poDate:      r.CreationDate  || '',
+          description: r.PurchaseOrderType || '',
+          plant:       r.Plant         || '',
+          purchOrg:    r.PurchasingOrganization || '',
+        };
+      });
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 300) || '';
@@ -235,8 +254,10 @@ module.exports = cds.service.impl(async function (srv) {
   });
 
   // ── purchaseOrderItems ──────────────────────────────────────────────
-  // Fetches real PO line items + GR amounts from SAP (SAP_COM_0053).
-  // DP amounts require SAP_COM_0002 (Journal Entry API) — returns 0 until configured.
+  // Fetches PO line items (SAP_COM_0238) + real GR amounts (SAP_COM_0002).
+  // GR amounts: API_OPLACCTGDOCITEMCUBE_SRV / A_OperationalAcctgDocItemCube
+  //   AccountingDocumentType='WE' (Wareneingang = Goods Receipt), DebitCreditCode='S'
+  //   PurchaseOrderScheduleLine has NO delivered-qty field (PDF confirmed) — old approach removed.
   srv.on('purchaseOrderItems', async req => {
     const { poNumbers } = req.data;
     const poList = (poNumbers || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -251,97 +272,72 @@ module.exports = cds.service.impl(async function (srv) {
 
     const dest = { destinationName: process.env.S4HC_DESTINATION || 'S4HC' };
     const hdrs = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
-    const base = `/sap/opu/odata/SAP/API_PURCHASEORDER_PROCESS_SRV`;
-
-    // Build OData filter for multiple POs
     const poFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
 
-    let items = [], v4Items = {};
+    // ── 1. Fetch PO items from V2 (price fields) ─────────────────────
+    let items = [];
     try {
-      // V2: expand to_ScheduleLine to get delivered quantities for GR amount
-      // V4: NetAmount (PO amount directly), IsCompletelyDelivered flag
-      const hdrsV4 = { Accept: 'application/json', 'sap-client': process.env.S4HC_CLIENT || '120' };
-      const v4ItemFilter = poList.map(p => `PurchaseOrder eq '${p}'`).join(' or ');
-      const [itemRes, v4Res] = await Promise.all([
-        executeHttpRequest(dest, {
-          method: 'GET',
-          url: `${base}/A_PurchaseOrderItem?$filter=${poFilter}&$expand=to_ScheduleLine`,
-          headers: hdrs,
-        }),
-        executeHttpRequest(dest, {
-          method: 'GET',
-          url: `/sap/opu/odata4/sap/api_purchaseorder_2/srvd_a2x/sap/purchaseorder/0001/PurchaseOrderItem?$filter=${v4ItemFilter}`,
-          headers: hdrsV4,
-        }).catch(e => { console.warn('[poItems] V4 item unavailable:', e.message); return null; }),
-      ]);
-
+      const itemRes = await executeHttpRequest(dest, {
+        method: 'GET',
+        url: `/sap/opu/odata/SAP/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrderItem?$filter=${poFilter}`,
+        headers: hdrs,
+      });
       items = itemRes.data?.d?.results || itemRes.data?.value || [];
-
-      const rawV4 = v4Res ? (v4Res.data?.value || []) : [];
-      if (rawV4.length > 0) {
-        rawV4.forEach(r => { v4Items[`${r.PurchaseOrder}/${r.PurchaseOrderItem}`] = r; });
-      }
     } catch (e) {
       const status = e.response?.status;
       const body = JSON.stringify(e.response?.data)?.slice(0, 300) || '';
-      console.error(`[poItems] SAP API failed: HTTP ${status} — ${e.message} — ${body}`);
+      console.error(`[poItems] PO item fetch failed: HTTP ${status} — ${e.message} — ${body}`);
       return req.error(502, `SAP API HTTP ${status}: ${e.message}`);
     }
 
-    return items.map(r => {
-      const key = `${r.PurchaseOrder}/${r.PurchaseOrderItem}`;
-      const v4   = v4Items[key];
+    // ── 2. Fetch GR amounts from Operational Accounting Document Item Cube ──
+    // API_OPLACCTGDOCITEMCUBE_SRV (SAP_COM_0002 — Financial Accounting, Read Access)
+    // AccountingDocumentType 'WE' = Wareneingang (Goods Receipt posting in FI)
+    // DebitCreditCode 'S' = debit side = inventory / expense account (the GR cost amount)
+    const grAmounts = {}; // key: "PO/item" → cumulative GR amount
+    try {
+      const grPoFilter = poList.map(p => `PurchasingDocument eq '${p}'`).join(' or ');
+      const grSelect = 'PurchasingDocument,PurchasingDocumentItem,AmountInTransactionCurrency,TransactionCurrency,DebitCreditCode';
+      const grRes = await executeHttpRequest(dest, {
+        method: 'GET',
+        url: `/sap/opu/odata/sap/API_OPLACCTGDOCITEMCUBE_SRV/A_OperationalAcctgDocItemCube?$filter=(${grPoFilter}) and AccountingDocumentType eq 'WE' and DebitCreditCode eq 'S'&$select=${grSelect}`,
+        headers: hdrs,
+      });
+      const grRows = grRes.data?.d?.results || grRes.data?.value || [];
+      console.log(`[poItems] GR rows from ACDOCA: ${grRows.length}`);
+      grRows.forEach(g => {
+        const key = `${g.PurchasingDocument}/${g.PurchasingDocumentItem}`;
+        grAmounts[key] = (grAmounts[key] || 0) + parseFloat(g.AmountInTransactionCurrency || '0');
+      });
+    } catch (e) {
+      // GR API is optional — SAP_COM_0002 may not be configured; log and continue with 0
+      console.warn('[poItems] GR amount API unavailable (SAP_COM_0002 required):', e.response?.status, e.message);
+    }
 
-      // PO Amount: use V4 NetAmount directly (confirmed available); fallback to calculation
+    // ── 3. Map items ──────────────────────────────────────────────────
+    return items.map(r => {
+      const key      = `${r.PurchaseOrder}/${r.PurchaseOrderItem}`;
       const orderQty = parseFloat(r.OrderQuantity    || '0');
       const netPrice = parseFloat(r.NetPriceAmount   || '0');
       const priceQty = parseFloat(r.NetPriceQuantity || '1') || 1;
-      const poAmount = v4 ? parseFloat(v4.NetAmount || '0') : netPrice / priceQty * orderQty;
-
-      // DP Amount: directly on V2 item (DownPaymentAmount confirmed in response)
+      const unitPrc  = netPrice / priceQty;
+      const poAmount = unitPrc * orderQty;
+      const grAmount = grAmounts[key] !== undefined ? Math.abs(grAmounts[key]) : 0;
       const dpAmount = parseFloat(r.DownPaymentAmount || '0');
 
-      // GR Amount: IsCompletelyDelivered=true → full PO amount; otherwise
-      // try V4 schedule line delivered qty (richer than V2), then V2 schedule lines
-      let grAmount = 0;
-      if (v4?.IsCompletelyDelivered === true) {
-        grAmount = poAmount;
-      } else {
-        // V4 schedule lines (expanded via _ScheduleLine)
-        const v4Sls = v4?._ScheduleLine?.value || v4?._ScheduleLine || [];
-        const v4DeliveredQty = v4Sls.reduce((sum, sl) => {
-          return sum + parseFloat(
-            sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ??
-            sl.QuantityDelivered ?? sl.GoodsReceiptQty ?? '0'
-          );
-        }, 0);
-        if (v4DeliveredQty > 0) {
-          grAmount = v4DeliveredQty * (netPrice / priceQty);
-        } else {
-          // Fallback: V2 schedule lines
-          const v2Sls = r.to_ScheduleLine?.results || [];
-          const v2DeliveredQty = v2Sls.reduce((sum, sl) => {
-            return sum + parseFloat(
-              sl.ScheduleLineDeliveredQtyInOrdUnit ?? sl.DeliveredQuantity ?? sl.QuantityDelivered ?? '0'
-            );
-          }, 0);
-          if (v2DeliveredQty > 0) grAmount = v2DeliveredQty * (netPrice / priceQty);
-        }
-      }
-
       return {
-        po:        r.PurchaseOrder || '',
-        item:      r.PurchaseOrderItem || '',
-        material:  r.Material || '',
-        desc:      r.PurchaseOrderItemText || '',
+        po:        r.PurchaseOrder        || '',
+        item:      r.PurchaseOrderItem    || '',
+        material:  r.Material             || '',
+        desc:      r.PurchaseOrderItemText|| '',
         qty:       String(orderQty),
         uom:       r.PurchaseOrderQuantityUnit || '',
-        unitPrice: String(netPrice / priceQty),
+        unitPrice: String(unitPrc),
         poAmount:  String(poAmount),
         grAmount:  String(grAmount),
         dpAmount:  String(dpAmount),
-        currency:  r.DocumentCurrency || 'IDR',
-        plant:     r.Plant || '',
+        currency:  r.DocumentCurrency    || 'IDR',
+        plant:     r.Plant               || '',
       };
     });
   });
